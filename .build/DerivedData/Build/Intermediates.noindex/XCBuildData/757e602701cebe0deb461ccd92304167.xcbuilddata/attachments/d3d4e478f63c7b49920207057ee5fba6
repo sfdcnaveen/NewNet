@@ -1,0 +1,219 @@
+{
+  "" : {
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NewNet-primary.dia",
+    "emit-module-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NewNet-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NewNet-primary-emit-module.dia",
+    "pch" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NewNet-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NewNet-primary.swiftdeps"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/GeneratedAssetSymbols~partial.swiftmodule"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/App/AppDelegate.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/AppDelegate.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/AppDelegate.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/AppDelegate.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/AppDelegate.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/AppDelegate.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/AppDelegate.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/AppDelegate.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/AppDelegate~partial.swiftmodule"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/App/StatusBarController.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/StatusBarController.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/StatusBarController.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/StatusBarController.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/StatusBarController.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/StatusBarController.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/StatusBarController.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/StatusBarController.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/StatusBarController~partial.swiftmodule"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/Models/AppSettings.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/AppSettings.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/AppSettings.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/AppSettings.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/AppSettings.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/AppSettings.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/AppSettings.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/AppSettings.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/AppSettings~partial.swiftmodule"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/Models/DownloadItem.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadItem.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadItem.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadItem.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadItem.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadItem.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadItem.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadItem.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadItem~partial.swiftmodule"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/Models/NetworkUsage.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkUsage.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkUsage.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkUsage.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkUsage.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkUsage.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkUsage.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkUsage.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkUsage~partial.swiftmodule"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/NewNetApp.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NewNetApp.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NewNetApp.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NewNetApp.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NewNetApp.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NewNetApp.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NewNetApp.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NewNetApp.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NewNetApp~partial.swiftmodule"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/Persistence/DownloadStore.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadStore.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadStore.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadStore.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadStore.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadStore.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadStore.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadStore.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadStore~partial.swiftmodule"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/Persistence/NetworkUsageStore.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkUsageStore.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkUsageStore.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkUsageStore.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkUsageStore.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkUsageStore.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkUsageStore.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkUsageStore.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkUsageStore~partial.swiftmodule"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/Services/ClipboardMonitor.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/ClipboardMonitor.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/ClipboardMonitor.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/ClipboardMonitor.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/ClipboardMonitor.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/ClipboardMonitor.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/ClipboardMonitor.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/ClipboardMonitor.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/ClipboardMonitor~partial.swiftmodule"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/Services/DownloadManager.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadManager.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadManager.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadManager.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadManager.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadManager.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadManager.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadManager.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadManager~partial.swiftmodule"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/Services/NetworkSpeedMonitor.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkSpeedMonitor.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkSpeedMonitor.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkSpeedMonitor.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkSpeedMonitor.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkSpeedMonitor.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkSpeedMonitor.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkSpeedMonitor.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/NetworkSpeedMonitor~partial.swiftmodule"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/Services/YTDLPService.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/YTDLPService.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/YTDLPService.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/YTDLPService.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/YTDLPService.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/YTDLPService.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/YTDLPService.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/YTDLPService.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/YTDLPService~partial.swiftmodule"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/ViewModels/DownloadManagerViewModel.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadManagerViewModel.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadManagerViewModel.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadManagerViewModel.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadManagerViewModel.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadManagerViewModel.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadManagerViewModel.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadManagerViewModel.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadManagerViewModel~partial.swiftmodule"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/ViewModels/MenuBarViewModel.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/MenuBarViewModel.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/MenuBarViewModel.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/MenuBarViewModel.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/MenuBarViewModel.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/MenuBarViewModel.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/MenuBarViewModel.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/MenuBarViewModel.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/MenuBarViewModel~partial.swiftmodule"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/Views/DownloadRow.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadRow.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadRow.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadRow.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadRow.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadRow.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadRow.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadRow.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DownloadRow~partial.swiftmodule"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/Views/DropdownPanel.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DropdownPanel.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DropdownPanel.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DropdownPanel.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DropdownPanel.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DropdownPanel.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DropdownPanel.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DropdownPanel.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/DropdownPanel~partial.swiftmodule"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/Views/Formatting.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/Formatting.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/Formatting.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/Formatting.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/Formatting.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/Formatting.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/Formatting.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/Formatting.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/Formatting~partial.swiftmodule"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/Views/GlassPanel.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/GlassPanel.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/GlassPanel.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/GlassPanel.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/GlassPanel.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/GlassPanel.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/GlassPanel.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/GlassPanel.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/GlassPanel~partial.swiftmodule"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/Views/MenuBarSpeedIndicator.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/MenuBarSpeedIndicator.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/MenuBarSpeedIndicator.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/MenuBarSpeedIndicator.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/MenuBarSpeedIndicator.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/MenuBarSpeedIndicator.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/MenuBarSpeedIndicator.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/MenuBarSpeedIndicator.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/MenuBarSpeedIndicator~partial.swiftmodule"
+  },
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/Views/SettingsView.swift" : {
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/SettingsView.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/SettingsView.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/SettingsView.dia",
+    "index-unit-output-path" : "/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/SettingsView.o",
+    "llvm-bc" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/SettingsView.bc",
+    "object" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/SettingsView.o",
+    "swift-dependencies" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/SettingsView.swiftdeps",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/NewNet.build/Debug/NewNet.build/Objects-normal/arm64/SettingsView~partial.swiftmodule"
+  }
+}

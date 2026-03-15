@@ -1,0 +1,12 @@
+{
+  "/Users/nn/Desktop/internetManager/NewNet/NewNet/App/AppDelegate.swift" : {
+    "abi-baseline-json" : "/Users/nn/Desktop/internetManager/NewNet/build/NewNet.build/Release/NewNet.build/Objects-normal/x86_64/NewNet.abi.json",
+    "const-values" : "/Users/nn/Desktop/internetManager/NewNet/build/NewNet.build/Release/NewNet.build/Objects-normal/x86_64/NewNet-primary.swiftconstvalues",
+    "dependencies" : "/Users/nn/Desktop/internetManager/NewNet/build/NewNet.build/Release/NewNet.build/Objects-normal/x86_64/NewNet-primary.d",
+    "diagnostics" : "/Users/nn/Desktop/internetManager/NewNet/build/NewNet.build/Release/NewNet.build/Objects-normal/x86_64/NewNet-primary.dia",
+    "objc-header" : "/Users/nn/Desktop/internetManager/NewNet/build/NewNet.build/Release/NewNet.build/Objects-normal/x86_64/NewNet-Swift.h",
+    "swiftdoc" : "/Users/nn/Desktop/internetManager/NewNet/build/NewNet.build/Release/NewNet.build/Objects-normal/x86_64/NewNet.swiftdoc",
+    "swiftmodule" : "/Users/nn/Desktop/internetManager/NewNet/build/NewNet.build/Release/NewNet.build/Objects-normal/x86_64/NewNet.swiftmodule",
+    "swiftsourceinfo" : "/Users/nn/Desktop/internetManager/NewNet/build/NewNet.build/Release/NewNet.build/Objects-normal/x86_64/NewNet.swiftsourceinfo"
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "buildCommand" : {
+    "command" : "build",
+    "skipDependencies" : false,
+    "style" : "buildOnly"
+  },
+  "configuredTargets" : [
+    {
+      "guid" : "cbe89e1a091940de35a8e6acb42971ae817e0f544afb5fecf46e5318fabf350b"
+    }
+  ],
+  "containerPath" : "/Users/nn/Desktop/internetManager/NewNet/NewNet.xcodeproj",
+  "continueBuildingAfterErrors" : false,
+  "dependencyScope" : "workspace",
+  "enableIndexBuildArena" : false,
+  "hideShellScriptEnvironment" : false,
+  "parameters" : {
+    "action" : "build",
+    "activeArchitecture" : "arm64",
+    "activeRunDestination" : {
+      "disableOnlyActiveArch" : false,
+      "platform" : "macosx",
+      "sdk" : "macosx26.2",
+      "sdkVariant" : "macos",
+      "supportedArchitectures" : [
+        "arm64e",
+        "arm64",
+        "x86_64"
+      ],
+      "targetArchitecture" : "arm64"
+    },
+    "arenaInfo" : {
+      "buildIntermediatesPath" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex",
+      "buildProductsPath" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Products",
+      "derivedDataPath" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData",
+      "indexDataStoreFolderPath" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Index.noindex/DataStore",
+      "indexEnableDataStore" : true,
+      "indexPCHPath" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Index.noindex/PrecompiledHeaders",
+      "pchPath" : "/Users/nn/Desktop/internetManager/NewNet/.build/DerivedData/Build/Intermediates.noindex/PrecompiledHeaders"
+    },
+    "configurationName" : "Debug",
+    "overrides" : {
+      "commandLine" : {
+        "table" : {
+
+        }
+      },
+      "synthesized" : {
+        "table" : {
+          "ACTION" : "build",
+          "ENABLE_PREVIEWS" : "NO",
+          "ENABLE_XOJIT_PREVIEWS" : "YES",
+          "ONLY_ACTIVE_ARCH" : "YES"
+        }
+      }
+    }
+  },
+  "schemeCommand" : "launch",
+  "showNonLoggedProgress" : true,
+  "useDryRun" : false,
+  "useImplicitDependencies" : true,
+  "useLegacyBuildLocations" : false,
+  "useParallelTargets" : true
+}
