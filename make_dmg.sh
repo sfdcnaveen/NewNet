@@ -8,7 +8,7 @@ STAGING_DIR="${STAGING_DIR:-/tmp/${APP_NAME}-dmg-staging}"
 DMG_PATH="${DMG_PATH:-${BUILD_DIR}/${APP_NAME}.dmg}"
 TMP_RW_DMG="/tmp/${APP_NAME}-rw.dmg"
 TMP_DMG="/tmp/${APP_NAME}.dmg"
-INSTALLER_ICON_PNG="${INSTALLER_ICON_PNG:-/Users/nn/Desktop/internetManager/NewNet/installer_icon.png}"
+INSTALLER_ICONSET_DIR="${INSTALLER_ICONSET_DIR:-/Users/nn/Desktop/internetManager/NewNet/NewNet/Assets.xcassets/AppIcon.appiconset}"
 
 if [[ ! -d "$APP_PATH" ]]; then
   echo "App not found at: $APP_PATH"
@@ -22,31 +22,39 @@ cp -R "$APP_PATH" "$STAGING_DIR/"
 
 hdiutil create -volname "$APP_NAME" -srcfolder "$STAGING_DIR" -ov -format UDRW "$TMP_RW_DMG"
 
-if [[ -f "$INSTALLER_ICON_PNG" ]]; then
+if [[ -d "$INSTALLER_ICONSET_DIR" ]]; then
   MOUNT_DIR="$(mktemp -d /tmp/${APP_NAME}-mount-XXXXXX)"
   TMP_ICNS="/tmp/${APP_NAME}.icns"
-  rm -f "$TMP_ICNS"
-  sips -s format icns "$INSTALLER_ICON_PNG" --out "$TMP_ICNS" >/dev/null
+  TMP_ICONSET="/tmp/${APP_NAME}.iconset"
+  rm -rf "$TMP_ICNS" "$TMP_ICONSET"
+  mkdir -p "$TMP_ICONSET"
+  cp "$INSTALLER_ICONSET_DIR"/icon_*.png "$TMP_ICONSET"/
+  iconutil -c icns "$TMP_ICONSET" -o "$TMP_ICNS"
   hdiutil attach "$TMP_RW_DMG" -mountpoint "$MOUNT_DIR" -nobrowse -quiet
   cp "$TMP_ICNS" "$MOUNT_DIR/.VolumeIcon.icns"
   SetFile -a V "$MOUNT_DIR/.VolumeIcon.icns"
   SetFile -a C "$MOUNT_DIR"
   hdiutil detach "$MOUNT_DIR" -quiet
-  rm -rf "$MOUNT_DIR" "$TMP_ICNS"
+  rm -rf "$MOUNT_DIR" "$TMP_ICNS" "$TMP_ICONSET"
 fi
 
 hdiutil convert "$TMP_RW_DMG" -format UDZO -o "$TMP_DMG" -ov
 mv "$TMP_DMG" "$DMG_PATH"
 rm -f "$TMP_RW_DMG"
 
-if [[ -f "$INSTALLER_ICON_PNG" ]]; then
+if [[ -d "$INSTALLER_ICONSET_DIR" ]]; then
+  TMP_ICNS="/tmp/${APP_NAME}.icns"
+  TMP_ICONSET="/tmp/${APP_NAME}.iconset"
+  rm -rf "$TMP_ICNS" "$TMP_ICONSET"
+  mkdir -p "$TMP_ICONSET"
+  cp "$INSTALLER_ICONSET_DIR"/icon_*.png "$TMP_ICONSET"/
+  iconutil -c icns "$TMP_ICONSET" -o "$TMP_ICNS"
   TMP_RSRC="/tmp/${APP_NAME}.rsrc"
   rm -f "$TMP_RSRC"
-  sips -i "$INSTALLER_ICON_PNG" >/dev/null
-  DeRez -only icns "$INSTALLER_ICON_PNG" > "$TMP_RSRC"
+  DeRez -only icns "$TMP_ICNS" > "$TMP_RSRC"
   Rez -append "$TMP_RSRC" -o "$DMG_PATH"
   SetFile -a C "$DMG_PATH"
-  rm -f "$TMP_RSRC"
+  rm -rf "$TMP_RSRC" "$TMP_ICNS" "$TMP_ICONSET"
 fi
 
 echo "DMG created at: $DMG_PATH"
