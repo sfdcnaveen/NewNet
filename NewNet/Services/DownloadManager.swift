@@ -8,6 +8,12 @@ enum DownloadSubmissionResult {
     case rejected(String)
 }
 
+enum DownloadPreparationResult {
+    case queued
+    case requiresFormatSelection(YTDLPMediaInfo)
+    case rejected(String)
+}
+
 actor TransferLimiter {
     private var windowStart = Date()
     private var bytesTransferredInWindow = 0
@@ -176,15 +182,15 @@ final class DownloadManager: ObservableObject {
         }
     }
 
-    func addDownload(from input: String, contentPreference: DownloadContentPreference? = nil) -> DownloadSubmissionResult {
-        guard
-            let url = URL(string: input.trimmingCharacters(in: .whitespacesAndNewlines)),
-            let scheme = url.scheme?.lowercased(),
-            ["http", "https"].contains(scheme)
-        else {
+    func prepareDownload(
+        from input: String,
+        contentPreference: DownloadContentPreference? = nil
+    ) async -> DownloadPreparationResult {
+        guard let url = validatedURL(from: input) else {
             return .rejected("Enter a valid http or https URL.")
         }
 
+        let effectivePreference = contentPreference ?? settings.preferredMediaType
         let engine: DownloadEngine = ytDLPService.canHandle(url) ? .ytDLP : .native
 
         if let existingItem = duplicateItem(for: url, engine: engine) {
@@ -195,7 +201,50 @@ final class DownloadManager: ObservableObject {
             return .rejected("This link is already in your downloads.")
         }
 
-        enqueue(url: url, engine: engine, contentPreference: contentPreference ?? settings.preferredMediaType)
+        switch engine {
+        case .native:
+            enqueue(
+                url: url,
+                engine: engine,
+                contentPreference: effectivePreference,
+                ytDLPConfiguration: nil,
+                preferredFileName: nil
+            )
+            return .queued
+        case .ytDLP:
+            do {
+                let mediaInfo = try await ytDLPService.inspectMedia(
+                    url: url,
+                    settings: settings,
+                    preferredContent: effectivePreference
+                )
+                return .requiresFormatSelection(mediaInfo)
+            } catch {
+                return .rejected(error.localizedDescription)
+            }
+        }
+    }
+
+    func confirmMediaDownload(
+        mediaInfo: YTDLPMediaInfo,
+        option: YTDLPDownloadOption
+    ) -> DownloadSubmissionResult {
+        if let existingItem = duplicateItem(for: mediaInfo.sourceURL, engine: .ytDLP) {
+            if existingItem.isTerminal {
+                return .rejected("This link was already downloaded recently.")
+            }
+
+            return .rejected("This link is already in your downloads.")
+        }
+
+        enqueue(
+            url: mediaInfo.sourceURL,
+            engine: .ytDLP,
+            contentPreference: option.configuration.contentPreference,
+            ytDLPConfiguration: option.configuration,
+            preferredFileName: mediaInfo.title
+        )
+
         return .accepted
     }
 
@@ -263,9 +312,15 @@ final class DownloadManager: ObservableObject {
         FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
     }
 
-    private func enqueue(url: URL, engine: DownloadEngine, contentPreference: DownloadContentPreference) {
+    private func enqueue(
+        url: URL,
+        engine: DownloadEngine,
+        contentPreference: DownloadContentPreference,
+        ytDLPConfiguration: YTDLPDownloadConfiguration?,
+        preferredFileName: String?
+    ) {
         let id = UUID()
-        let defaultName = defaultFileName(for: url, engine: engine)
+        let defaultName = defaultFileName(for: url, engine: engine, preferredFileName: preferredFileName)
 
         let item = DownloadItem(
             id: id,
@@ -274,6 +329,7 @@ final class DownloadManager: ObservableObject {
             fileName: defaultName,
             engine: engine,
             contentPreference: contentPreference,
+            ytDLPConfiguration: ytDLPConfiguration,
             state: .queued,
             createdAt: .now,
             totalBytesExpected: 0,
@@ -288,12 +344,14 @@ final class DownloadManager: ObservableObject {
         resume(id: id)
     }
 
-    private func defaultFileName(for url: URL, engine: DownloadEngine) -> String {
+    private func defaultFileName(for url: URL, engine: DownloadEngine, preferredFileName: String?) -> String {
         switch engine {
         case .native:
             return url.lastPathComponent.ifEmpty("Download-\(UUID().uuidString.prefix(6))")
         case .ytDLP:
-            return url.host?.replacingOccurrences(of: "www.", with: "") ?? "Media Download"
+            return preferredFileName?.trimmingCharacters(in: .whitespacesAndNewlines)
+                .ifEmpty(url.host?.replacingOccurrences(of: "www.", with: "") ?? "Media Download")
+                ?? (url.host?.replacingOccurrences(of: "www.", with: "") ?? "Media Download")
         }
     }
 
@@ -755,6 +813,18 @@ final class DownloadManager: ObservableObject {
 
             return false
         }
+    }
+
+    private func validatedURL(from input: String) -> URL? {
+        guard
+            let url = URL(string: input.trimmingCharacters(in: .whitespacesAndNewlines)),
+            let scheme = url.scheme?.lowercased(),
+            ["http", "https"].contains(scheme)
+        else {
+            return nil
+        }
+
+        return url
     }
 
     private func normalizedURLString(for url: URL) -> String {

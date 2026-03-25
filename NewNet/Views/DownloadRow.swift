@@ -30,6 +30,13 @@ struct DownloadRow: View {
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
+
+                    if let formatSummary = item.ytDLPConfiguration?.displayName, item.engine == .ytDLP {
+                        Text(formatSummary)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                 }
 
                 Spacer()
@@ -46,9 +53,7 @@ struct DownloadRow: View {
                 )
             }
 
-            ProgressView(value: item.progress)
-                .progressViewStyle(.linear)
-                .tint(.blue.opacity(0.9))
+            DownloadProgressBar(progress: item.progress)
 
             HStack {
                 Text(ByteCountFormatter.compactFileSize(item.downloadedBytes))
@@ -155,5 +160,34 @@ struct DownloadRow: View {
         } else {
             onResume()
         }
+    }
+}
+
+private struct DownloadProgressBar: View {
+    let progress: Double
+
+    var body: some View {
+        GeometryReader { geometry in
+            let clamped = max(0, min(progress, 1))
+
+            ZStack(alignment: .leading) {
+                Capsule(style: .continuous)
+                    .fill(Color.white.opacity(0.08))
+
+                Capsule(style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.blue.opacity(0.95),
+                                Color.cyan.opacity(0.78)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: max(8, geometry.size.width * clamped))
+            }
+        }
+        .frame(height: 7)
     }
 }

@@ -43,6 +43,36 @@ enum DownloadContentPreference: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+struct YTDLPDownloadConfiguration: Codable, Hashable, Sendable {
+    var formatExpression: String
+    var displayName: String
+    var detailText: String
+    var contentPreference: DownloadContentPreference
+    var extractAudio: Bool
+    var audioFormat: String?
+    var mergeOutputFormat: String?
+}
+
+struct YTDLPDownloadOption: Identifiable, Hashable, Sendable {
+    let id: String
+    let label: String
+    let detail: String
+    let estimatedBytes: Int64?
+    let configuration: YTDLPDownloadConfiguration
+}
+
+struct YTDLPMediaInfo: Identifiable, Hashable, Sendable {
+    let id = UUID()
+    let sourceURL: URL
+    let title: String
+    let uploader: String?
+    let extractor: String?
+    let duration: TimeInterval?
+    let thumbnailURL: URL?
+    let videoOptions: [YTDLPDownloadOption]
+    let audioOptions: [YTDLPDownloadOption]
+}
+
 struct DownloadSegment: Codable, Identifiable, Hashable {
     let index: Int
     var lowerBound: Int64
@@ -73,6 +103,7 @@ struct DownloadItem: Identifiable, Codable, Hashable {
     var fileName: String
     var engine: DownloadEngine
     var contentPreference: DownloadContentPreference
+    var ytDLPConfiguration: YTDLPDownloadConfiguration?
     var state: DownloadState
     var createdAt: Date
     var totalBytesExpected: Int64
@@ -88,6 +119,7 @@ struct DownloadItem: Identifiable, Codable, Hashable {
         fileName: String,
         engine: DownloadEngine,
         contentPreference: DownloadContentPreference,
+        ytDLPConfiguration: YTDLPDownloadConfiguration?,
         state: DownloadState,
         createdAt: Date,
         totalBytesExpected: Int64,
@@ -102,6 +134,7 @@ struct DownloadItem: Identifiable, Codable, Hashable {
         self.fileName = fileName
         self.engine = engine
         self.contentPreference = contentPreference
+        self.ytDLPConfiguration = ytDLPConfiguration
         self.state = state
         self.createdAt = createdAt
         self.totalBytesExpected = totalBytesExpected
@@ -118,6 +151,7 @@ struct DownloadItem: Identifiable, Codable, Hashable {
         case fileName
         case engine
         case contentPreference
+        case ytDLPConfiguration
         case state
         case createdAt
         case totalBytesExpected
@@ -135,6 +169,7 @@ struct DownloadItem: Identifiable, Codable, Hashable {
         fileName = try container.decode(String.self, forKey: .fileName)
         engine = try container.decodeIfPresent(DownloadEngine.self, forKey: .engine) ?? .native
         contentPreference = try container.decodeIfPresent(DownloadContentPreference.self, forKey: .contentPreference) ?? .auto
+        ytDLPConfiguration = try container.decodeIfPresent(YTDLPDownloadConfiguration.self, forKey: .ytDLPConfiguration)
         state = try container.decode(DownloadState.self, forKey: .state)
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         totalBytesExpected = try container.decode(Int64.self, forKey: .totalBytesExpected)

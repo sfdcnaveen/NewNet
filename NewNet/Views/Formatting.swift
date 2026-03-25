@@ -1,17 +1,17 @@
 import Foundation
 
 extension ByteCountFormatter {
-    static func menuBarSpeedString(for bytesPerSecond: Double) -> String {
+    nonisolated static func menuBarSpeedString(for bytesPerSecond: Double) -> String {
         guard bytesPerSecond > 0 else { return "0" }
         return formattedSpeedString(for: bytesPerSecond)
     }
 
-    static func compactSpeedString(for bytesPerSecond: Double) -> String {
+    nonisolated static func compactSpeedString(for bytesPerSecond: Double) -> String {
         guard bytesPerSecond > 0 else { return "0 B/s" }
         return formattedSpeedString(for: bytesPerSecond) + "/s"
     }
 
-    static func compactFileSize(_ bytes: Int64) -> String {
+    nonisolated static func compactFileSize(_ bytes: Int64) -> String {
         let formatter = ByteCountFormatter()
         formatter.allowedUnits = [.useKB, .useMB, .useGB]
         formatter.countStyle = .file
@@ -20,7 +20,7 @@ extension ByteCountFormatter {
         return formatter.string(fromByteCount: bytes)
     }
 
-    private static func formattedSpeedString(for bytesPerSecond: Double) -> String {
+    nonisolated private static func formattedSpeedString(for bytesPerSecond: Double) -> String {
         let units = ["B", "KB", "MB", "GB", "TB"]
         var value = bytesPerSecond
         var unitIndex = 0
