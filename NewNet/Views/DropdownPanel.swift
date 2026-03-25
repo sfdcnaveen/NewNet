@@ -10,6 +10,44 @@ struct DropdownPanel: View {
     @State private var isDropTarget = false
 
     var body: some View {
+        ZStack(alignment: .topTrailing) {
+            panelCard {
+                if let pendingSelection = downloadManagerViewModel.pendingMediaSelection {
+                    MediaFormatSelectionScreen(
+                        pendingSelection: pendingSelection,
+                        downloadManagerViewModel: downloadManagerViewModel
+                    )
+                } else {
+                    mainPanel
+                }
+            }
+
+            if isDropTarget && downloadManagerViewModel.pendingMediaSelection == nil {
+                Text("Drop URL to download")
+                    .font(.system(size: 11, weight: .semibold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(Color.white.opacity(0.12))
+                    )
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                    )
+                    .padding(20)
+                    .transition(.opacity)
+            }
+        }
+        .padding(8)
+        .contentShape(Rectangle())
+        .onDrop(of: [.url, .fileURL, .text], isTargeted: $isDropTarget) { providers in
+            downloadManagerViewModel.handleDrop(providers: providers)
+        }
+        .animation(.easeOut(duration: 0.18), value: isDropTarget)
+    }
+
+    private var mainPanel: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 header
@@ -22,54 +60,38 @@ struct DropdownPanel: View {
                 menuDivider
                 menuActions
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(menuBackground)
-            .overlay(menuOutline)
-            .padding(8)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
         }
         .scrollIndicators(.hidden)
-        .background(Color.clear)
-        .overlay(alignment: .topTrailing) {
-            if isDropTarget {
-                Text("Drop URL to download")
-                    .font(.system(size: 11, weight: .semibold))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(.regularMaterial, in: Capsule())
-                    .padding(16)
-                    .transition(.opacity.combined(with: .scale))
-            }
-        }
-        .onDrop(of: [.url, .fileURL, .text], isTargeted: $isDropTarget) { providers in
-            downloadManagerViewModel.handleDrop(providers: providers)
-        }
-        .animation(.spring(duration: 0.28), value: isDropTarget)
+    }
+
+    private func panelCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .background(menuBackground)
+            .overlay(menuOutline)
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
     }
 
     private var header: some View {
         HStack(spacing: 12) {
-            Image(systemName: "network")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 40, height: 40)
-                .background(
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.blue.opacity(0.95),
-                                    Color.cyan.opacity(0.9)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 42, height: 42)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
                 )
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text("NewNet")
                     .font(.system(size: 18, weight: .semibold))
+
+                Text("Faster direct and media downloads")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
@@ -77,14 +99,14 @@ struct DropdownPanel: View {
             statusCapsule
         }
         .padding(.top, 4)
-        .padding(.bottom, 10)
+        .padding(.bottom, 12)
     }
 
     private var usageSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             sectionTitle("Network Usage")
 
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 compactUsageMetric(
                     symbol: "arrow.down.circle.fill",
                     tint: .blue,
@@ -116,11 +138,11 @@ struct DropdownPanel: View {
             }
             .menuItemBackground()
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, 12)
     }
 
     private var addDownloadSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             sectionTitle("Add Download")
 
             if let clipboardURL = menuBarViewModel.clipboardURL, settings.clipboardMonitoringEnabled {
@@ -139,7 +161,7 @@ struct DropdownPanel: View {
 
                         Spacer()
 
-                        Image(systemName: "chevron.right")
+                        Image(systemName: "arrow.up.forward")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(.secondary)
                     }
@@ -156,36 +178,63 @@ struct DropdownPanel: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 11)
                     .background(inputBackground)
+                    .disabled(downloadManagerViewModel.isInspectingURL)
                     .onSubmit {
                         downloadManagerViewModel.submitURL()
                     }
 
-                Button("Add") {
+                Button {
                     downloadManagerViewModel.submitURL()
+                } label: {
+                    HStack(spacing: 6) {
+                        if downloadManagerViewModel.isInspectingURL {
+                            LoadingGlyph()
+                        }
+
+                        Text(downloadManagerViewModel.isInspectingURL ? "Checking" : "Add")
+                            .font(.system(size: 14, weight: .semibold))
+                    }
+                    .frame(minWidth: 78)
+                    .padding(.vertical, 10)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.regular)
-                .tint(.blue)
+                .buttonStyle(.plain)
+                .foregroundStyle(.white)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.blue.opacity(downloadManagerViewModel.isInspectingURL ? 0.75 : 0.95))
+                )
+                .disabled(
+                    downloadManagerViewModel.isInspectingURL ||
+                    downloadManagerViewModel.urlField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                )
             }
 
-            Picker("Media type", selection: $downloadManagerViewModel.contentPreference) {
-                ForEach(DownloadContentPreference.allCases) { preference in
-                    Text(preference.title).tag(preference)
+            DownloadPreferenceControl(
+                selection: $downloadManagerViewModel.contentPreference,
+                options: DownloadContentPreference.allCases
+            )
+
+            if downloadManagerViewModel.isInspectingURL {
+                HStack(spacing: 8) {
+                    LoadingGlyph()
+                    Text("Inspecting available formats")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
                 }
             }
-            .pickerStyle(.segmented)
 
             if let validationMessage = downloadManagerViewModel.validationMessage {
                 Text(validationMessage)
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, 12)
     }
 
     private var downloadsSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center) {
                 sectionTitle("Recent Downloads")
 
@@ -220,11 +269,11 @@ struct DropdownPanel: View {
                 }
             }
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, 12)
     }
 
     private var menuActions: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 4) {
             actionRow(title: "Open Downloads Folder", systemImage: "folder") {
                 downloadManagerViewModel.openDownloadsFolder()
             }
@@ -233,37 +282,37 @@ struct DropdownPanel: View {
                 NSApplication.shared.terminate(nil)
             }
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, 12)
     }
 
     private var menuBackground: some View {
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
+        RoundedRectangle(cornerRadius: 28, style: .continuous)
             .fill(
                 LinearGradient(
                     colors: [
-                        Color.black.opacity(0.9),
-                        Color(nsColor: .windowBackgroundColor).opacity(0.97)
+                        Color.black.opacity(0.94),
+                        Color(nsColor: .windowBackgroundColor).opacity(0.98)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
             )
             .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
                     .fill(.ultraThinMaterial)
             )
     }
 
     private var menuOutline: some View {
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
+        RoundedRectangle(cornerRadius: 28, style: .continuous)
+            .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
     }
 
     private var inputBackground: some View {
-        RoundedRectangle(cornerRadius: 10, style: .continuous)
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
             .fill(Color.white.opacity(0.08))
             .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
             )
     }
@@ -303,22 +352,7 @@ struct DropdownPanel: View {
         Text(title)
             .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(.secondary)
-            .padding(.bottom, 4)
-    }
-
-    private func menuSummaryRow(title: String, value: String) -> some View {
-        HStack {
-            Text(title)
-                .font(.system(size: 14, weight: .medium))
-
-            Spacer()
-
-            Text(value)
-                .font(.system(size: 14, weight: .semibold))
-                .monospacedDigit()
-        }
-        .foregroundStyle(.primary)
-        .menuItemBackground()
+            .padding(.bottom, 2)
     }
 
     private func compactUsageMetric(
@@ -341,7 +375,7 @@ struct DropdownPanel: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 11)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.white.opacity(0.04))
         )
     }
@@ -364,7 +398,358 @@ struct DropdownPanel: View {
         .foregroundStyle(role == .destructive ? .red : .primary)
         .menuItemBackground()
     }
+}
 
+private struct MediaFormatSelectionScreen: View {
+    let pendingSelection: PendingMediaSelection
+    @ObservedObject var downloadManagerViewModel: DownloadManagerViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            selectionHeader
+            divider
+            mediaHero
+            divider
+
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Select Format")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+
+                DownloadPreferenceControl(
+                    selection: preferenceBinding,
+                    options: availablePreferenceOptions
+                )
+
+                ScrollView {
+                    LazyVStack(spacing: 10) {
+                        ForEach(pendingSelection.availableOptions) { option in
+                            MediaFormatOptionRow(
+                                option: option,
+                                isSelected: option.id == pendingSelection.selectedOptionID
+                            ) {
+                                downloadManagerViewModel.setPendingOption(id: option.id)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+                .scrollIndicators(.hidden)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
+
+            divider
+
+            HStack(spacing: 10) {
+                Button("Back") {
+                    downloadManagerViewModel.cancelPendingSelection()
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.white.opacity(0.06))
+                )
+
+                Spacer()
+
+                if let selectedOption = pendingSelection.selectedOption {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(selectedOption.label)
+                            .font(.system(size: 12, weight: .semibold))
+                            .lineLimit(1)
+                        Text(selectedOption.detail)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: 170, alignment: .trailing)
+                }
+
+                Button("Download") {
+                    downloadManagerViewModel.confirmPendingSelection()
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.blue.opacity(0.95))
+                )
+                .disabled(pendingSelection.selectedOption == nil)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+        }
+    }
+
+    private var selectionHeader: some View {
+        HStack(spacing: 12) {
+            Button {
+                downloadManagerViewModel.cancelPendingSelection()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 30, height: 30)
+                    .background(
+                        Circle()
+                            .fill(Color.white.opacity(0.08))
+                    )
+            }
+            .buttonStyle(.plain)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Choose Format")
+                    .font(.system(size: 17, weight: .semibold))
+                Text("NewNet will download exactly what you select.")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+
+    private var mediaHero: some View {
+        HStack(alignment: .top, spacing: 14) {
+            AsyncImage(url: pendingSelection.mediaInfo.thumbnailURL) { image in
+                image
+                    .resizable()
+                    .scaledToFill()
+            } placeholder: {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.05),
+                                Color.white.opacity(0.02)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        Image(systemName: "play.rectangle.fill")
+                            .font(.system(size: 28))
+                            .foregroundStyle(.secondary)
+                    )
+            }
+            .frame(width: 118, height: 82)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text(pendingSelection.mediaInfo.title)
+                    .font(.system(size: 16, weight: .semibold))
+                    .lineLimit(3)
+                    .multilineTextAlignment(.leading)
+
+                FlowLayout(horizontalSpacing: 8, verticalSpacing: 8) {
+                    if let uploader = pendingSelection.mediaInfo.uploader, !uploader.isEmpty {
+                        infoChip(text: uploader)
+                    }
+
+                    if let extractor = pendingSelection.mediaInfo.extractor, !extractor.isEmpty {
+                        infoChip(text: extractor.uppercased())
+                    }
+
+                    if let duration = pendingSelection.mediaInfo.duration {
+                        infoChip(text: durationString(for: duration))
+                    }
+                }
+
+                Text("Prefer the exact quality you want instead of the extractor default.")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 16)
+    }
+
+    private var availablePreferenceOptions: [DownloadContentPreference] {
+        var options: [DownloadContentPreference] = []
+        if !pendingSelection.mediaInfo.videoOptions.isEmpty {
+            options.append(.video)
+        }
+        if !pendingSelection.mediaInfo.audioOptions.isEmpty {
+            options.append(.audio)
+        }
+        return options
+    }
+
+    private var preferenceBinding: Binding<DownloadContentPreference> {
+        Binding(
+            get: { pendingSelection.selectedPreference == .audio ? .audio : .video },
+            set: { downloadManagerViewModel.setPendingPreference($0) }
+        )
+    }
+
+    private var divider: some View {
+        Divider()
+            .overlay(Color.white.opacity(0.08))
+    }
+
+    private func infoChip(text: String) -> some View {
+        Text(text)
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.white.opacity(0.06))
+            )
+    }
+
+    private func durationString(for duration: TimeInterval) -> String {
+        let formatter = DateComponentsFormatter()
+        formatter.allowedUnits = duration >= 3600 ? [.hour, .minute, .second] : [.minute, .second]
+        formatter.unitsStyle = .positional
+        formatter.zeroFormattingBehavior = [.pad]
+        return formatter.string(from: duration) ?? ""
+    }
+}
+
+private struct DownloadPreferenceControl: View {
+    @Binding var selection: DownloadContentPreference
+    let options: [DownloadContentPreference]
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(options) { option in
+                Button {
+                    selection = option
+                } label: {
+                    Text(option.title)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(selection == option ? Color.white : Color.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 9)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(selection == option ? Color.blue.opacity(0.95) : Color.clear)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.white.opacity(0.06))
+        )
+    }
+}
+
+private struct MediaFormatOptionRow: View {
+    let option: YTDLPDownloadOption
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(isSelected ? Color.blue.opacity(0.16) : Color.white.opacity(0.06))
+                        .frame(width: 28, height: 28)
+
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(isSelected ? Color.blue : Color.secondary)
+                }
+                .padding(.top, 2)
+
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Text(option.label)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(2)
+
+                        Spacer(minLength: 6)
+
+                        if let estimatedBytes = option.estimatedBytes {
+                            Text(ByteCountFormatter.compactFileSize(estimatedBytes))
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .fill(Color.white.opacity(0.06))
+                                )
+                        }
+                    }
+
+                    Text(option.detail)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 13)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(background)
+            .overlay(border)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var background: some View {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .fill(isSelected ? Color.blue.opacity(0.11) : Color.white.opacity(0.035))
+    }
+
+    private var border: some View {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .strokeBorder(isSelected ? Color.blue.opacity(0.55) : Color.white.opacity(0.08), lineWidth: 1)
+    }
+}
+
+private struct LoadingGlyph: View {
+    @State private var isAnimating = false
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(0..<3, id: \.self) { index in
+                Circle()
+                    .fill(Color.white.opacity(opacity(for: index)))
+                    .frame(width: 5, height: 5)
+            }
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                isAnimating = true
+            }
+        }
+    }
+
+    private func opacity(for index: Int) -> Double {
+        guard isAnimating else { return 0.35 }
+        return 0.35 + (Double(index) * 0.18)
+    }
+}
+
+private struct FlowLayout<Content: View>: View {
+    let horizontalSpacing: CGFloat
+    let verticalSpacing: CGFloat
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        content
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
 }
 
 private extension View {
@@ -372,16 +757,8 @@ private extension View {
         padding(.horizontal, 10)
             .padding(.vertical, 9)
             .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(Color.white.opacity(0.04))
             )
-    }
-}
-
-private extension Text {
-    func menuValueStyle() -> some View {
-        font(.system(size: 11, weight: .medium))
-            .foregroundStyle(.secondary)
-            .monospacedDigit()
     }
 }

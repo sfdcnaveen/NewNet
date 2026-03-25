@@ -47,14 +47,14 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         popover.delegate = self
         popover.behavior = .transient
         popover.animates = true
-        popover.contentSize = NSSize(width: 360, height: 560)
+        popover.contentSize = NSSize(width: 420, height: 620)
         popover.contentViewController = NSHostingController(
             rootView: DropdownPanel(
                 menuBarViewModel: menuBarViewModel,
                 downloadManagerViewModel: downloadManagerViewModel,
                 settings: settings
             )
-            .frame(width: 360, height: 560)
+            .frame(width: 420, height: 620)
         )
     }
 

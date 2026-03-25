@@ -2,12 +2,34 @@ import Combine
 import Foundation
 import UniformTypeIdentifiers
 
+struct PendingMediaSelection: Identifiable, Hashable {
+    let id = UUID()
+    let mediaInfo: YTDLPMediaInfo
+    var selectedPreference: DownloadContentPreference
+    var selectedOptionID: String
+
+    var availableOptions: [YTDLPDownloadOption] {
+        switch selectedPreference {
+        case .audio:
+            return mediaInfo.audioOptions
+        case .auto, .video:
+            return mediaInfo.videoOptions
+        }
+    }
+
+    var selectedOption: YTDLPDownloadOption? {
+        availableOptions.first(where: { $0.id == selectedOptionID })
+    }
+}
+
 @MainActor
 final class DownloadManagerViewModel: ObservableObject {
     @Published private(set) var items: [DownloadItem] = []
     @Published var urlField = ""
     @Published var validationMessage: String?
     @Published var contentPreference: DownloadContentPreference
+    @Published var isInspectingURL = false
+    @Published var pendingMediaSelection: PendingMediaSelection?
 
     private let downloadManager: DownloadManager
     private let settings: AppSettings
@@ -44,10 +66,66 @@ final class DownloadManagerViewModel: ObservableObject {
     }
 
     func submitURL() {
-        switch downloadManager.addDownload(from: urlField, contentPreference: contentPreference) {
+        guard !isInspectingURL else { return }
+
+        let submittedValue = urlField
+        isInspectingURL = true
+        validationMessage = nil
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+
+            let result = await downloadManager.prepareDownload(from: submittedValue, contentPreference: contentPreference)
+            isInspectingURL = false
+
+            switch result {
+            case .queued:
+                validationMessage = nil
+                pendingMediaSelection = nil
+                urlField = ""
+            case .requiresFormatSelection(let mediaInfo):
+                pendingMediaSelection = makePendingSelection(for: mediaInfo)
+            case .rejected(let message):
+                validationMessage = message
+            }
+        }
+    }
+
+    func cancelPendingSelection() {
+        pendingMediaSelection = nil
+    }
+
+    func setPendingPreference(_ preference: DownloadContentPreference) {
+        guard var pendingMediaSelection else { return }
+
+        let normalizedPreference: DownloadContentPreference = preference == .audio ? .audio : .video
+        pendingMediaSelection.selectedPreference = normalizedPreference
+
+        let availableOptions = pendingMediaSelection.availableOptions
+        if !availableOptions.contains(where: { $0.id == pendingMediaSelection.selectedOptionID }) {
+            pendingMediaSelection.selectedOptionID = availableOptions.first?.id ?? ""
+        }
+
+        self.pendingMediaSelection = pendingMediaSelection
+    }
+
+    func setPendingOption(id: String) {
+        guard var pendingMediaSelection else { return }
+        pendingMediaSelection.selectedOptionID = id
+        self.pendingMediaSelection = pendingMediaSelection
+    }
+
+    func confirmPendingSelection() {
+        guard let pendingMediaSelection, let option = pendingMediaSelection.selectedOption else {
+            validationMessage = "Choose a format before downloading."
+            return
+        }
+
+        switch downloadManager.confirmMediaDownload(mediaInfo: pendingMediaSelection.mediaInfo, option: option) {
         case .accepted:
             validationMessage = nil
             urlField = ""
+            self.pendingMediaSelection = nil
         case .rejected(let message):
             validationMessage = message
         }
@@ -126,5 +204,30 @@ final class DownloadManagerViewModel: ObservableObject {
         }
 
         return true
+    }
+
+    private func makePendingSelection(for mediaInfo: YTDLPMediaInfo) -> PendingMediaSelection {
+        let preferredSelection: DownloadContentPreference
+        switch contentPreference {
+        case .audio:
+            preferredSelection = mediaInfo.audioOptions.isEmpty ? .video : .audio
+        case .auto, .video:
+            preferredSelection = mediaInfo.videoOptions.isEmpty ? .audio : .video
+        }
+
+        let selectedOptionID = {
+            switch preferredSelection {
+            case .audio:
+                return mediaInfo.audioOptions.first?.id
+            case .auto, .video:
+                return mediaInfo.videoOptions.first?.id
+            }
+        }() ?? ""
+
+        return PendingMediaSelection(
+            mediaInfo: mediaInfo,
+            selectedPreference: preferredSelection,
+            selectedOptionID: selectedOptionID
+        )
     }
 }
