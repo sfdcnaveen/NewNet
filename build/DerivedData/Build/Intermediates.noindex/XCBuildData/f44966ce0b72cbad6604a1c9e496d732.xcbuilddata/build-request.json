@@ -38,12 +38,11 @@
       "indexPCHPath" : "/Users/nn/Desktop/internetManager/NewNet/build/DerivedData/Index.noindex/PrecompiledHeaders",
       "pchPath" : "/Users/nn/Desktop/internetManager/NewNet/build/DerivedData/Build/Intermediates.noindex/PrecompiledHeaders"
     },
-    "configurationName" : "Debug",
+    "configurationName" : "Release",
     "overrides" : {
       "commandLine" : {
         "table" : {
-          "CODE_SIGNING_ALLOWED" : "NO",
-          "CODE_SIGNING_REQUIRED" : "NO"
+
         }
       },
       "synthesized" : {
