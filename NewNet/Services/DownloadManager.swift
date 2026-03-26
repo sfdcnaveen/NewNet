@@ -422,6 +422,14 @@ final class DownloadManager: ObservableObject {
             do {
                 _ = try await self.ytDLPService.ensureInstalled(settings: self.settings)
 
+                let itemRequiresFFmpeg: Bool = await MainActor.run {
+                    guard let currentIndex = self.indexOfItem(id: id) else { return false }
+                    return self.ytDLPService.requiresFFmpeg(for: self.items[currentIndex])
+                }
+                if itemRequiresFFmpeg {
+                    _ = try await self.ytDLPService.ensureFFmpegInstalled()
+                }
+
                 await MainActor.run {
                     guard let refreshedIndex = self.indexOfItem(id: id) else { return }
                     guard self.items[refreshedIndex].state != .paused else { return }

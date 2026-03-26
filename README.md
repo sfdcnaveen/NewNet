@@ -17,7 +17,7 @@ NewNet is a lightweight macOS menu‑bar download manager built around `yt-dlp`.
 
 - macOS 15+.
 - `yt-dlp` installed (NewNet can download it automatically).
-- `ffmpeg` installed for merged audio/video formats.
+- `ffmpeg` is bundled in release builds (auto-installs when running from source).
 
 ## Download
 

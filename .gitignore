@@ -1,0 +1,9 @@
+.DS_Store
+.build/
+DerivedData/
+build/
+*.dmg
+*.sparseimage
+*.xcactivitylog
+*.xcuserstate
+*.xcuserdata/

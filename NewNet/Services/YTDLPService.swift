@@ -69,6 +69,51 @@ actor YTDLPInstaller {
     }
 }
 
+actor FFmpegInstaller {
+    private let fileManager = FileManager.default
+    private var installTask: Task<URL, Error>?
+
+    func ensureInstalled(targetURL: URL, downloadURL: URL) async throws -> URL {
+        if fileManager.isExecutableFile(atPath: targetURL.path(percentEncoded: false)) {
+            return targetURL
+        }
+
+        if let installTask {
+            return try await installTask.value
+        }
+
+        let task = Task<URL, Error> {
+            let parentDirectory = targetURL.deletingLastPathComponent()
+            try self.fileManager.createDirectory(at: parentDirectory, withIntermediateDirectories: true)
+
+            let (temporaryURL, _) = try await URLSession.shared.download(from: downloadURL)
+
+            if self.fileManager.fileExists(atPath: targetURL.path(percentEncoded: false)) {
+                try self.fileManager.removeItem(at: targetURL)
+            }
+
+            try self.fileManager.moveItem(at: temporaryURL, to: targetURL)
+            try self.fileManager.setAttributes(
+                [.posixPermissions: NSNumber(value: Int16(0o755))],
+                ofItemAtPath: targetURL.path(percentEncoded: false)
+            )
+
+            return targetURL
+        }
+
+        installTask = task
+
+        do {
+            let result = try await task.value
+            installTask = nil
+            return result
+        } catch {
+            installTask = nil
+            throw error
+        }
+    }
+}
+
 final class YTDLPRunningTask {
     let process: Process
 
@@ -101,6 +146,10 @@ final class YTDLPRunningTask {
 
 final class YTDLPService {
     private static let releaseBinaryURL = URL(string: "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos")!
+    private static let ffmpegReleaseTag = "b6.1.1"
+    private static let ffmpegDownloadBaseURL = URL(
+        string: "https://github.com/eugeneware/ffmpeg-static/releases/download/\(ffmpegReleaseTag)/"
+    )!
     private static let supportedHosts = [
         "youtube.com",
         "youtu.be",
@@ -120,8 +169,8 @@ final class YTDLPService {
     }
 
     private static var commonFFmpegPaths: [String] {
-        [
-            Bundle.main.path(forAuxiliaryExecutable: "ffmpeg") ?? "",
+        bundledFFmpegCandidates + [
+            managedFFmpegURL.path(percentEncoded: false),
             "/opt/homebrew/bin/ffmpeg",
             "/usr/local/bin/ffmpeg",
             "/usr/bin/ffmpeg"
@@ -129,6 +178,7 @@ final class YTDLPService {
     }
 
     private static let installer = YTDLPInstaller()
+    private static let ffmpegInstaller = FFmpegInstaller()
 
     private static var managedBinaryURL: URL {
         let supportURL = (try? FileManager.default.url(
@@ -141,6 +191,52 @@ final class YTDLPService {
         return supportURL
             .appendingPathComponent("NewNet/Tools", isDirectory: true)
             .appendingPathComponent("yt-dlp")
+    }
+
+    private static var managedFFmpegURL: URL {
+        let supportURL = (try? FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )) ?? URL(fileURLWithPath: NSTemporaryDirectory())
+
+        return supportURL
+            .appendingPathComponent("NewNet/Tools", isDirectory: true)
+            .appendingPathComponent("ffmpeg")
+    }
+
+    private static var bundledFFmpegCandidates: [String] {
+        var candidates: [String] = []
+
+        if let auxPath = Bundle.main.path(forAuxiliaryExecutable: "ffmpeg"), !auxPath.isEmpty {
+            candidates.append(auxPath)
+        }
+
+        if let resourceURL = Bundle.main.resourceURL {
+            let preferredName = prefersIntelFFmpeg ? "ffmpeg-x64" : "ffmpeg-arm64"
+            let fallbackName = prefersIntelFFmpeg ? "ffmpeg-arm64" : "ffmpeg-x64"
+            candidates.append(resourceURL.appendingPathComponent(preferredName).path(percentEncoded: false))
+            candidates.append(resourceURL.appendingPathComponent(fallbackName).path(percentEncoded: false))
+            candidates.append(resourceURL.appendingPathComponent("ffmpeg").path(percentEncoded: false))
+        }
+
+        return candidates
+    }
+    private static var prefersIntelFFmpeg: Bool {
+        if ProcessInfo.processInfo.isTranslated {
+            return true
+        }
+#if arch(arm64)
+        return false
+#else
+        return true
+#endif
+    }
+
+    private static var ffmpegDownloadURL: URL {
+        let assetName = prefersIntelFFmpeg ? "ffmpeg-darwin-x64" : "ffmpeg-darwin-arm64"
+        return ffmpegDownloadBaseURL.appendingPathComponent(assetName)
     }
 
     func canHandle(_ url: URL) -> Bool {
@@ -183,6 +279,23 @@ final class YTDLPService {
         }
     }
 
+    func ensureFFmpegInstalled() async throws -> URL {
+        if let binaryURL = resolvedFFmpegURL() {
+            return binaryURL
+        }
+
+        do {
+            return try await Self.ffmpegInstaller.ensureInstalled(
+                targetURL: Self.managedFFmpegURL,
+                downloadURL: Self.ffmpegDownloadURL
+            )
+        } catch {
+            throw YTDLPServiceError.installFailed(
+                "NewNet could not automatically install ffmpeg. Check your connection and try again."
+            )
+        }
+    }
+
     func resolvedFFmpegURL() -> URL? {
         for path in Self.commonFFmpegPaths where !path.isEmpty {
             if FileManager.default.isExecutableFile(atPath: path) {
@@ -199,6 +312,20 @@ final class YTDLPService {
         }
 
         return "Auto-installs on first social-media download"
+    }
+
+    func requiresFFmpeg(for item: DownloadItem) -> Bool {
+        guard let configuration = item.ytDLPConfiguration else { return false }
+        if configuration.formatExpression.contains("+") {
+            return true
+        }
+        if configuration.extractAudio {
+            return true
+        }
+        if let mergeOutputFormat = configuration.mergeOutputFormat, !mergeOutputFormat.isEmpty {
+            return true
+        }
+        return false
     }
 
     func inspectMedia(
@@ -266,7 +393,7 @@ final class YTDLPService {
            resolvedFFmpegURL() == nil
         {
             throw YTDLPServiceError.installFailed(
-                "ffmpeg is required to merge separate video and audio streams into one file."
+                "NewNet could not prepare ffmpeg. Check your connection and try again."
             )
         }
 
@@ -369,7 +496,7 @@ final class YTDLPService {
         ]
 
         if let ffmpegURL = resolvedFFmpegURL() {
-            arguments += ["--ffmpeg-location", ffmpegURL.deletingLastPathComponent().path(percentEncoded: false)]
+            arguments += ["--ffmpeg-location", ffmpegURL.path(percentEncoded: false)]
         }
 
         if settings.speedLimitKBps > 0 {
@@ -1033,6 +1160,15 @@ private extension Optional where Wrapped == String {
         case .none:
             return nil
         }
+    }
+}
+
+private extension ProcessInfo {
+    var isTranslated: Bool {
+        var flag: Int32 = 0
+        var size = size_t(MemoryLayout<Int32>.size)
+        let result = sysctlbyname("sysctl.proc_translated", &flag, &size, nil, 0)
+        return result == 0 && flag == 1
     }
 }
 
