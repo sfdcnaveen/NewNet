@@ -20,6 +20,14 @@ extension ByteCountFormatter {
         return formatter.string(fromByteCount: bytes)
     }
 
+    nonisolated static func compactFileSize(_ bytes: UInt64) -> String {
+        if bytes > UInt64(Int64.max) {
+            return compactFileSize(Int64.max)
+        }
+
+        return compactFileSize(Int64(bytes))
+    }
+
     nonisolated private static func formattedSpeedString(for bytesPerSecond: Double) -> String {
         let units = ["B", "KB", "MB", "GB", "TB"]
         var value = bytesPerSecond

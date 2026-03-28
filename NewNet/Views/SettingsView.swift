@@ -3,6 +3,8 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     private let ytDLPService = YTDLPService()
+    @State private var loginErrorMessage: String?
+    @State private var showLoginError = false
 
     var body: some View {
         Form {
@@ -31,6 +33,10 @@ struct SettingsView: View {
                 }
 
                 Toggle("Resume downloads after app restart", isOn: autoResumeBinding)
+            }
+
+            Section("Startup") {
+                Toggle("Open NewNet at login", isOn: launchAtLoginBinding)
             }
 
             Section("yt-dlp") {
@@ -62,10 +68,11 @@ struct SettingsView: View {
 
             Section("Smart Features") {
                 Toggle("Detect links copied to clipboard", isOn: clipboardBinding)
+                Toggle("Battery saver mode", isOn: powerSavingBinding)
             }
 
             Section {
-                Text("NewNet keeps transfers lightweight by sampling interface counters once per second, persists downloads in Application Support, and uses yt-dlp for supported social-media links. Download only content you are authorized to save.")
+                Text("NewNet keeps transfers lightweight by adapting background sampling based on activity, persists downloads in Application Support, and uses yt-dlp for supported social-media links. Download only content you are authorized to save.")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
             }
@@ -73,6 +80,11 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .padding(20)
         .background(.thinMaterial)
+        .alert("Unable to Update Login Item", isPresented: $showLoginError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(loginErrorMessage ?? "NewNet could not update the login item.")
+        }
     }
 
     private var maxSegmentsBinding: Binding<Int> {
@@ -100,6 +112,29 @@ struct SettingsView: View {
         Binding(
             get: { settings.autoResumeDownloads },
             set: { settings.autoResumeDownloads = $0 }
+        )
+    }
+
+    private var launchAtLoginBinding: Binding<Bool> {
+        Binding(
+            get: { settings.launchAtLogin },
+            set: { newValue in
+                do {
+                    try LaunchAtLoginManager.setEnabled(newValue)
+                    settings.launchAtLogin = LaunchAtLoginManager.isEnabled
+                } catch {
+                    loginErrorMessage = error.localizedDescription
+                    showLoginError = true
+                    settings.launchAtLogin = LaunchAtLoginManager.isEnabled
+                }
+            }
+        )
+    }
+
+    private var powerSavingBinding: Binding<Bool> {
+        Binding(
+            get: { settings.powerSavingEnabled },
+            set: { settings.powerSavingEnabled = $0 }
         )
     }
 

@@ -58,6 +58,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         )
     }
 
+    private func updatePopoverAppearance() {
+        let match = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) ?? .aqua
+        popover.appearance = NSAppearance(named: match)
+    }
+
     private func bindSnapshot(_ menuBarViewModel: MenuBarViewModel) {
         menuBarViewModel.$snapshot
             .receive(on: RunLoop.main)
@@ -114,6 +119,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         }
 
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        updatePopoverAppearance()
         NSApp.activate(ignoringOtherApps: true)
     }
 
@@ -125,4 +131,5 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
         applyDeferredWidthIfNeeded()
     }
+
 }

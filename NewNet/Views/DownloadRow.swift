@@ -6,6 +6,7 @@ struct DownloadRow: View {
     let onResume: () -> Void
     let onOpen: () -> Void
 
+    @Environment(\.colorScheme) private var colorScheme
     @State private var isHovering = false
 
     var body: some View {
@@ -49,7 +50,7 @@ struct DownloadRow: View {
                 .buttonStyle(.plain)
                 .background(
                     Circle()
-                        .fill(Color.white.opacity(isHovering ? 0.18 : 0.08))
+                        .fill(glassFill(light: isHovering ? 0.9 : 0.75, dark: isHovering ? 0.18 : 0.08))
                 )
             }
 
@@ -69,11 +70,15 @@ struct DownloadRow: View {
         .padding(.vertical, 9)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.white.opacity(isHovering ? 0.08 : 0.04))
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(glassFill(light: isHovering ? 0.78 : 0.65, dark: isHovering ? 0.08 : 0.04))
+                )
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                .strokeBorder(glassStroke(light: 0.1, dark: 0.08), lineWidth: 1)
         )
         .onHover { isHovering = $0 }
         .animation(.easeOut(duration: 0.18), value: isHovering)
@@ -152,6 +157,14 @@ struct DownloadRow: View {
         }
     }
 
+    private func glassFill(light: Double, dark: Double) -> Color {
+        colorScheme == .dark ? Color.white.opacity(dark) : Color.white.opacity(light)
+    }
+
+    private func glassStroke(light: Double, dark: Double) -> Color {
+        colorScheme == .dark ? Color.white.opacity(dark) : Color.black.opacity(light)
+    }
+
     private func action() {
         if item.state == .completed {
             onOpen()
@@ -165,6 +178,7 @@ struct DownloadRow: View {
 
 private struct DownloadProgressBar: View {
     let progress: Double
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         GeometryReader { geometry in
@@ -172,7 +186,7 @@ private struct DownloadProgressBar: View {
 
             ZStack(alignment: .leading) {
                 Capsule(style: .continuous)
-                    .fill(Color.white.opacity(0.08))
+                    .fill(glassFill(light: 0.32, dark: 0.08))
 
                 Capsule(style: .continuous)
                     .fill(
@@ -189,5 +203,9 @@ private struct DownloadProgressBar: View {
             }
         }
         .frame(height: 7)
+    }
+
+    private func glassFill(light: Double, dark: Double) -> Color {
+        colorScheme == .dark ? Color.white.opacity(dark) : Color.white.opacity(light)
     }
 }

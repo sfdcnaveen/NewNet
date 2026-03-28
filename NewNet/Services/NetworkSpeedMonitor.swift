@@ -1,6 +1,9 @@
 import Combine
 import Darwin
 import Foundation
+#if canImport(AppKit)
+import AppKit
+#endif
 
 final class NetworkSpeedMonitor: ObservableObject {
     @Published private(set) var snapshot: NetworkSpeedSnapshot = .zero
@@ -17,26 +20,76 @@ final class NetworkSpeedMonitor: ObservableObject {
     private var timer: DispatchSourceTimer?
     private var lastSampleDate: Date?
     private var lastTotals: InterfaceTotals?
+    private var refreshInterval: TimeInterval = 1
+    private var wakeObserver: Any?
 
     init(usageStore: NetworkUsageStore) {
         self.usageStore = usageStore
+        registerWakeObserver()
         start()
     }
 
     deinit {
         timer?.cancel()
+        #if canImport(AppKit)
+        if let wakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
+        }
+        #endif
     }
 
     private func start() {
         guard timer == nil else { return }
 
         let timer = DispatchSource.makeTimerSource(queue: queue)
-        timer.schedule(deadline: .now(), repeating: .seconds(1), leeway: .milliseconds(120))
+        let milliseconds = max(Int(refreshInterval * 1000), 500)
+        timer.schedule(deadline: .now(), repeating: .milliseconds(milliseconds), leeway: .milliseconds(120))
         timer.setEventHandler { [weak self] in
             self?.sample()
         }
         self.timer = timer
         timer.resume()
+    }
+
+    private func registerWakeObserver() {
+        #if canImport(AppKit)
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: nil
+        ) { [weak self] _ in
+            self?.handleWake()
+        }
+        #endif
+    }
+
+    private func handleWake() {
+        queue.async { [weak self] in
+            guard let self else { return }
+            self.lastSampleDate = nil
+            self.lastTotals = nil
+            if let timer = self.timer {
+                timer.cancel()
+                self.timer = nil
+            }
+            self.start()
+        }
+    }
+
+    func setRefreshInterval(_ interval: TimeInterval) {
+        let clamped = max(interval, 0.5)
+        guard abs(clamped - refreshInterval) > 0.1 else { return }
+        refreshInterval = clamped
+
+        queue.async { [weak self] in
+            guard let self, let timer = self.timer else { return }
+            let milliseconds = max(Int(self.refreshInterval * 1000), 500)
+            timer.schedule(
+                deadline: .now(),
+                repeating: .milliseconds(milliseconds),
+                leeway: .milliseconds(200)
+            )
+        }
     }
 
     private func sample() {

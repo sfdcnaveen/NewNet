@@ -21,7 +21,7 @@ struct NetworkUsage: Equatable {
     var sentBytes: UInt64
 
     var totalBytes: UInt64 {
-        receivedBytes + sentBytes
+        receivedBytes &+ sentBytes
     }
 
     static let zero = NetworkUsage(receivedBytes: 0, sentBytes: 0)

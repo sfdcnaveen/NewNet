@@ -11,6 +11,7 @@ struct NewNetApp: App {
     @StateObject private var menuBarViewModel: MenuBarViewModel
     @StateObject private var downloadManagerViewModel: DownloadManagerViewModel
     private let statusBarController: StatusBarController
+    private let performanceCoordinator: PerformanceCoordinator
 
     init() {
         let settings = AppSettings()
@@ -31,6 +32,12 @@ struct NewNetApp: App {
             downloadManagerViewModel: downloadManagerViewModel,
             settings: settings
         )
+        let performanceCoordinator = PerformanceCoordinator(
+            settings: settings,
+            networkMonitor: networkMonitor,
+            clipboardMonitor: clipboardMonitor,
+            downloadManager: downloadManager
+        )
 
         _settings = StateObject(wrappedValue: settings)
         _networkMonitor = StateObject(wrappedValue: networkMonitor)
@@ -39,12 +46,13 @@ struct NewNetApp: App {
         _menuBarViewModel = StateObject(wrappedValue: menuBarViewModel)
         _downloadManagerViewModel = StateObject(wrappedValue: downloadManagerViewModel)
         self.statusBarController = statusBarController
+        self.performanceCoordinator = performanceCoordinator
     }
 
     var body: some Scene {
         Settings {
             SettingsView(settings: settings)
-                .frame(width: 420, height: 280)
+                .frame(width: 420, height: 360)
         }
     }
 }

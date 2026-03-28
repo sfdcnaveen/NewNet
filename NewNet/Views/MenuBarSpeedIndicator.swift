@@ -7,6 +7,11 @@ final class MenuBarSpeedIndicator: NSView {
         }
     }
 
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        // Allow clicks to pass through to the status bar button.
+        nil
+    }
+
     override var isFlipped: Bool {
         true
     }

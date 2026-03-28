@@ -7,6 +7,7 @@ struct DropdownPanel: View {
     @ObservedObject var downloadManagerViewModel: DownloadManagerViewModel
     @ObservedObject var settings: AppSettings
 
+    @Environment(\.colorScheme) private var colorScheme
     @State private var isDropTarget = false
 
     var body: some View {
@@ -29,11 +30,11 @@ struct DropdownPanel: View {
                     .padding(.vertical, 6)
                     .background(
                         Capsule(style: .continuous)
-                            .fill(Color.white.opacity(0.12))
+                            .fill(glassFill(light: 0.78, dark: 0.12))
                     )
                     .overlay(
                         Capsule(style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                            .strokeBorder(glassStroke(light: 0.12, dark: 0.08), lineWidth: 1)
                     )
                     .padding(20)
                     .transition(.opacity)
@@ -82,7 +83,7 @@ struct DropdownPanel: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        .stroke(glassStroke(light: 0.12, dark: 0.12), lineWidth: 1)
                 )
 
             VStack(alignment: .leading, spacing: 4) {
@@ -110,13 +111,13 @@ struct DropdownPanel: View {
                 compactUsageMetric(
                     symbol: "arrow.down.circle.fill",
                     tint: .blue,
-                    amount: ByteCountFormatter.compactFileSize(Int64(menuBarViewModel.usage.receivedBytes))
+                    amount: ByteCountFormatter.compactFileSize(menuBarViewModel.usage.receivedBytes)
                 )
 
                 compactUsageMetric(
                     symbol: "arrow.up.circle.fill",
                     tint: .green,
-                    amount: ByteCountFormatter.compactFileSize(Int64(menuBarViewModel.usage.sentBytes))
+                    amount: ByteCountFormatter.compactFileSize(menuBarViewModel.usage.sentBytes)
                 )
             }
 
@@ -126,7 +127,7 @@ struct DropdownPanel: View {
                     .foregroundStyle(.secondary)
                     .frame(width: 18)
 
-                Text(ByteCountFormatter.compactFileSize(Int64(menuBarViewModel.usage.totalBytes)))
+                Text(ByteCountFormatter.compactFileSize(menuBarViewModel.usage.totalBytes))
                     .font(.system(size: 15, weight: .semibold))
                     .monospacedDigit()
 
@@ -287,33 +288,35 @@ struct DropdownPanel: View {
 
     private var menuBackground: some View {
         RoundedRectangle(cornerRadius: 28, style: .continuous)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color.black.opacity(0.94),
-                        Color(nsColor: .windowBackgroundColor).opacity(0.98)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+            .fill(.ultraThinMaterial)
             .background(
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .fill(.ultraThinMaterial)
+                    .fill(
+                        LinearGradient(
+                            colors: menuGradientStops,
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
             )
+            .shadow(color: menuShadowColor, radius: 24, x: 0, y: 12)
     }
 
     private var menuOutline: some View {
         RoundedRectangle(cornerRadius: 28, style: .continuous)
-            .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
+            .strokeBorder(glassStroke(light: 0.08, dark: 0.12), lineWidth: 1)
     }
 
     private var inputBackground: some View {
         RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(Color.white.opacity(0.08))
+            .fill(.ultraThinMaterial)
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                    .fill(glassFill(light: 0.86, dark: 0.08))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(glassStroke(light: 0.12, dark: 0.08), lineWidth: 1)
             )
     }
 
@@ -331,7 +334,7 @@ struct DropdownPanel: View {
         .padding(.vertical, 7)
         .background(
             Capsule(style: .continuous)
-                .fill(Color.white.opacity(0.08))
+                .fill(glassFill(light: 0.82, dark: 0.08))
         )
     }
 
@@ -345,7 +348,7 @@ struct DropdownPanel: View {
 
     private var menuDivider: some View {
         Divider()
-            .overlay(Color.white.opacity(0.08))
+            .overlay(glassStroke(light: 0.08, dark: 0.08))
     }
 
     private func sectionTitle(_ title: String) -> some View {
@@ -376,7 +379,11 @@ struct DropdownPanel: View {
         .padding(.vertical, 11)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(0.04))
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(glassFill(light: 0.72, dark: 0.04))
+                )
         )
     }
 
@@ -398,11 +405,38 @@ struct DropdownPanel: View {
         .foregroundStyle(role == .destructive ? .red : .primary)
         .menuItemBackground()
     }
+
+    private var menuGradientStops: [Color] {
+        if colorScheme == .dark {
+            return [
+                Color.black.opacity(0.94),
+                Color(nsColor: .windowBackgroundColor).opacity(0.98)
+            ]
+        }
+
+        return [
+            Color.white.opacity(0.9),
+            Color.white.opacity(0.68)
+        ]
+    }
+
+    private var menuShadowColor: Color {
+        colorScheme == .dark ? Color.black.opacity(0.45) : Color.black.opacity(0.18)
+    }
+
+    private func glassFill(light: Double, dark: Double) -> Color {
+        colorScheme == .dark ? Color.white.opacity(dark) : Color.white.opacity(light)
+    }
+
+    private func glassStroke(light: Double, dark: Double) -> Color {
+        colorScheme == .dark ? Color.white.opacity(dark) : Color.black.opacity(light)
+    }
 }
 
 private struct MediaFormatSelectionScreen: View {
     let pendingSelection: PendingMediaSelection
     @ObservedObject var downloadManagerViewModel: DownloadManagerViewModel
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -451,7 +485,7 @@ private struct MediaFormatSelectionScreen: View {
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.white.opacity(0.06))
+                        .fill(glassFill(light: 0.8, dark: 0.06))
                 )
 
                 Spacer()
@@ -498,7 +532,7 @@ private struct MediaFormatSelectionScreen: View {
                     .frame(width: 30, height: 30)
                     .background(
                         Circle()
-                            .fill(Color.white.opacity(0.08))
+                            .fill(glassFill(light: 0.84, dark: 0.08))
                     )
             }
             .buttonStyle(.plain)
@@ -528,8 +562,8 @@ private struct MediaFormatSelectionScreen: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.05),
-                                Color.white.opacity(0.02)
+                                glassFill(light: 0.7, dark: 0.05),
+                                glassFill(light: 0.5, dark: 0.02)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -594,7 +628,7 @@ private struct MediaFormatSelectionScreen: View {
 
     private var divider: some View {
         Divider()
-            .overlay(Color.white.opacity(0.08))
+            .overlay(glassStroke(light: 0.08, dark: 0.08))
     }
 
     private func infoChip(text: String) -> some View {
@@ -605,7 +639,7 @@ private struct MediaFormatSelectionScreen: View {
             .padding(.vertical, 6)
             .background(
                 Capsule(style: .continuous)
-                    .fill(Color.white.opacity(0.06))
+                    .fill(glassFill(light: 0.8, dark: 0.06))
             )
     }
 
@@ -616,11 +650,20 @@ private struct MediaFormatSelectionScreen: View {
         formatter.zeroFormattingBehavior = [.pad]
         return formatter.string(from: duration) ?? ""
     }
+
+    private func glassFill(light: Double, dark: Double) -> Color {
+        colorScheme == .dark ? Color.white.opacity(dark) : Color.white.opacity(light)
+    }
+
+    private func glassStroke(light: Double, dark: Double) -> Color {
+        colorScheme == .dark ? Color.white.opacity(dark) : Color.black.opacity(light)
+    }
 }
 
 private struct DownloadPreferenceControl: View {
     @Binding var selection: DownloadContentPreference
     let options: [DownloadContentPreference]
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         HStack(spacing: 6) {
@@ -644,8 +687,16 @@ private struct DownloadPreferenceControl: View {
         .padding(4)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(0.06))
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(glassFill(light: 0.78, dark: 0.06))
+                )
         )
+    }
+
+    private func glassFill(light: Double, dark: Double) -> Color {
+        colorScheme == .dark ? Color.white.opacity(dark) : Color.white.opacity(light)
     }
 }
 
@@ -653,13 +704,14 @@ private struct MediaFormatOptionRow: View {
     let option: YTDLPDownloadOption
     let isSelected: Bool
     let action: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Button(action: action) {
             HStack(alignment: .top, spacing: 12) {
                 ZStack {
                     Circle()
-                        .fill(isSelected ? Color.blue.opacity(0.16) : Color.white.opacity(0.06))
+                        .fill(isSelected ? Color.blue.opacity(0.16) : glassFill(light: 0.78, dark: 0.06))
                         .frame(width: 28, height: 28)
 
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
@@ -685,7 +737,7 @@ private struct MediaFormatOptionRow: View {
                                 .padding(.vertical, 4)
                                 .background(
                                     Capsule(style: .continuous)
-                                        .fill(Color.white.opacity(0.06))
+                                        .fill(glassFill(light: 0.8, dark: 0.06))
                                 )
                         }
                     }
@@ -708,23 +760,36 @@ private struct MediaFormatOptionRow: View {
 
     private var background: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(isSelected ? Color.blue.opacity(0.11) : Color.white.opacity(0.035))
+            .fill(.ultraThinMaterial)
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(isSelected ? Color.blue.opacity(0.11) : glassFill(light: 0.7, dark: 0.035))
+            )
     }
 
     private var border: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .strokeBorder(isSelected ? Color.blue.opacity(0.55) : Color.white.opacity(0.08), lineWidth: 1)
+            .strokeBorder(isSelected ? Color.blue.opacity(0.55) : glassStroke(light: 0.1, dark: 0.08), lineWidth: 1)
+    }
+
+    private func glassFill(light: Double, dark: Double) -> Color {
+        colorScheme == .dark ? Color.white.opacity(dark) : Color.white.opacity(light)
+    }
+
+    private func glassStroke(light: Double, dark: Double) -> Color {
+        colorScheme == .dark ? Color.white.opacity(dark) : Color.black.opacity(light)
     }
 }
 
 private struct LoadingGlyph: View {
     @State private var isAnimating = false
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         HStack(spacing: 3) {
             ForEach(0..<3, id: \.self) { index in
                 Circle()
-                    .fill(Color.white.opacity(opacity(for: index)))
+                    .fill(dotColor.opacity(opacity(for: index)))
                     .frame(width: 5, height: 5)
             }
         }
@@ -738,6 +803,10 @@ private struct LoadingGlyph: View {
     private func opacity(for index: Int) -> Double {
         guard isAnimating else { return 0.35 }
         return 0.35 + (Double(index) * 0.18)
+    }
+
+    private var dotColor: Color {
+        colorScheme == .dark ? Color.white : Color.primary
     }
 }
 
@@ -754,11 +823,36 @@ private struct FlowLayout<Content: View>: View {
 
 private extension View {
     func menuItemBackground() -> some View {
-        padding(.horizontal, 10)
+        modifier(MenuItemGlassBackground())
+    }
+}
+
+private struct MenuItemGlassBackground: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, 10)
             .padding(.vertical, 9)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white.opacity(0.04))
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(glassFill(light: 0.72, dark: 0.04))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(glassStroke(light: 0.1, dark: 0.08), lineWidth: 1)
+                    )
             )
+    }
+
+    private func glassFill(light: Double, dark: Double) -> Color {
+        colorScheme == .dark ? Color.white.opacity(dark) : Color.white.opacity(light)
+    }
+
+    private func glassStroke(light: Double, dark: Double) -> Color {
+        colorScheme == .dark ? Color.white.opacity(dark) : Color.black.opacity(light)
     }
 }

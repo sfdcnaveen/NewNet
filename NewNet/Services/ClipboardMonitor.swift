@@ -11,12 +11,29 @@ final class ClipboardMonitor: ObservableObject {
     private var changeCount: Int
     private var timer: Timer?
     private var lastDetectedString: String?
+    private var pollInterval: TimeInterval = 2
+    private var cancellables: Set<AnyCancellable> = []
 
     init(settings: AppSettings, pasteboard: NSPasteboard = .general) {
         self.settings = settings
         self.pasteboard = pasteboard
         changeCount = pasteboard.changeCount
-        start()
+
+        settings.$clipboardMonitoringEnabled
+            .receive(on: RunLoop.main)
+            .sink { [weak self] enabled in
+                guard let self else { return }
+                if enabled {
+                    self.start()
+                } else {
+                    self.stop()
+                }
+            }
+            .store(in: &cancellables)
+
+        if settings.clipboardMonitoringEnabled {
+            start()
+        }
     }
 
     deinit {
@@ -28,12 +45,19 @@ final class ClipboardMonitor: ObservableObject {
     }
 
     private func start() {
-        timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: pollInterval, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.poll()
             }
         }
-        timer?.tolerance = 0.5
+        timer?.tolerance = min(pollInterval * 0.25, 1)
+    }
+
+    private func stop() {
+        timer?.invalidate()
+        timer = nil
+        detectedURL = nil
     }
 
     private func poll() {
@@ -58,5 +82,14 @@ final class ClipboardMonitor: ObservableObject {
 
         lastDetectedString = rawString
         detectedURL = url
+    }
+
+    func setPollInterval(_ interval: TimeInterval) {
+        let clamped = max(interval, 1)
+        guard abs(clamped - pollInterval) > 0.1 else { return }
+        pollInterval = clamped
+        if settings.clipboardMonitoringEnabled {
+            start()
+        }
     }
 }
