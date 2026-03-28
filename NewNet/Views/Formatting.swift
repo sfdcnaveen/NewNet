@@ -2,8 +2,8 @@ import Foundation
 
 extension ByteCountFormatter {
     nonisolated static func menuBarSpeedString(for bytesPerSecond: Double) -> String {
-        guard bytesPerSecond > 0 else { return "0" }
-        return formattedSpeedString(for: bytesPerSecond)
+        guard bytesPerSecond > 0 else { return "0 B/s" }
+        return formattedSpeedString(for: bytesPerSecond) + "/s"
     }
 
     nonisolated static func compactSpeedString(for bytesPerSecond: Double) -> String {

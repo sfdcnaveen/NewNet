@@ -7,3 +7,6 @@
 
 ## v1.1.1
 - Fixed download usage overflow when system network counters reset.
+
+## v1.1.2
+- Added per-second units to the menu bar speed indicator.
