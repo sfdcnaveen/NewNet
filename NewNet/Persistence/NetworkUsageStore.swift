@@ -53,6 +53,19 @@ final class NetworkUsageStore {
             return .zero
         }
 
+        if snapshot.totalReceivedBytes < baseline.receivedBaseline ||
+            snapshot.totalSentBytes < baseline.sentBaseline
+        {
+            let refreshedBaseline = UsageBaseline(
+                dayStamp: dayStamp,
+                receivedBaseline: snapshot.totalReceivedBytes,
+                sentBaseline: snapshot.totalSentBytes
+            )
+            cachedBaseline = refreshedBaseline
+            persist()
+            return .zero
+        }
+
         return NetworkUsage(
             receivedBytes: snapshot.totalReceivedBytes &- baseline.receivedBaseline,
             sentBytes: snapshot.totalSentBytes &- baseline.sentBaseline
