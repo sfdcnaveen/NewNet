@@ -10,8 +10,10 @@ struct NewNetApp: App {
     @StateObject private var downloadManager: DownloadManager
     @StateObject private var menuBarViewModel: MenuBarViewModel
     @StateObject private var downloadManagerViewModel: DownloadManagerViewModel
+    @StateObject private var speedTestViewModel: SpeedTestViewModel
     private let statusBarController: StatusBarController
     private let performanceCoordinator: PerformanceCoordinator
+    private let localSpeedTestServer: LocalSpeedTestServer
 
     init() {
         let settings = AppSettings()
@@ -23,6 +25,8 @@ struct NewNetApp: App {
             networkMonitor: networkMonitor,
             clipboardMonitor: clipboardMonitor
         )
+        let speedTestManager = SpeedTestManager(endpoints: .placeholder)
+        let speedTestViewModel = SpeedTestViewModel(manager: speedTestManager)
         let downloadManagerViewModel = DownloadManagerViewModel(
             downloadManager: downloadManager,
             settings: settings
@@ -30,6 +34,7 @@ struct NewNetApp: App {
         let statusBarController = StatusBarController(
             menuBarViewModel: menuBarViewModel,
             downloadManagerViewModel: downloadManagerViewModel,
+            speedTestViewModel: speedTestViewModel,
             settings: settings
         )
         let performanceCoordinator = PerformanceCoordinator(
@@ -45,8 +50,14 @@ struct NewNetApp: App {
         _downloadManager = StateObject(wrappedValue: downloadManager)
         _menuBarViewModel = StateObject(wrappedValue: menuBarViewModel)
         _downloadManagerViewModel = StateObject(wrappedValue: downloadManagerViewModel)
+        _speedTestViewModel = StateObject(wrappedValue: speedTestViewModel)
         self.statusBarController = statusBarController
         self.performanceCoordinator = performanceCoordinator
+        self.localSpeedTestServer = LocalSpeedTestServer()
+
+        self.localSpeedTestServer.start { endpoints in
+            speedTestViewModel.updateEndpoints(endpoints)
+        }
     }
 
     var body: some Scene {
