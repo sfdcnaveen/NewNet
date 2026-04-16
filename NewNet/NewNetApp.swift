@@ -4,6 +4,7 @@ import SwiftUI
 struct NewNetApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
+    @StateObject private var updateManager: UpdateManager
     @StateObject private var settings: AppSettings
     @StateObject private var networkMonitor: NetworkSpeedMonitor
     @StateObject private var clipboardMonitor: ClipboardMonitor
@@ -14,11 +15,13 @@ struct NewNetApp: App {
     private let performanceCoordinator: PerformanceCoordinator
 
     init() {
+        let analytics = AnalyticsClient.shared
+        let updateManager = UpdateManager.shared
         let settings = AppSettings()
         let usageStore = NetworkUsageStore()
         let networkMonitor = NetworkSpeedMonitor(usageStore: usageStore)
         let clipboardMonitor = ClipboardMonitor(settings: settings)
-        let downloadManager = DownloadManager(settings: settings)
+        let downloadManager = DownloadManager(settings: settings, analytics: analytics)
         let menuBarViewModel = MenuBarViewModel(
             networkMonitor: networkMonitor,
             clipboardMonitor: clipboardMonitor
@@ -39,6 +42,7 @@ struct NewNetApp: App {
             downloadManager: downloadManager
         )
 
+        _updateManager = StateObject(wrappedValue: updateManager)
         _settings = StateObject(wrappedValue: settings)
         _networkMonitor = StateObject(wrappedValue: networkMonitor)
         _clipboardMonitor = StateObject(wrappedValue: clipboardMonitor)
@@ -47,12 +51,27 @@ struct NewNetApp: App {
         _downloadManagerViewModel = StateObject(wrappedValue: downloadManagerViewModel)
         self.statusBarController = statusBarController
         self.performanceCoordinator = performanceCoordinator
+
+        Task { @MainActor in
+            updateManager.checkForUpdatesOnLaunch()
+            await analytics.setEnabled(settings.analyticsEnabled)
+            await analytics.trackInstallIfNeeded()
+            await analytics.trackAppOpened()
+        }
     }
 
     var body: some Scene {
         Settings {
             SettingsView(settings: settings)
                 .frame(width: 420, height: 360)
+        }
+        .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates…") {
+                    updateManager.checkForUpdatesManually()
+                }
+                .disabled(!updateManager.canCheckForUpdates)
+            }
         }
     }
 }

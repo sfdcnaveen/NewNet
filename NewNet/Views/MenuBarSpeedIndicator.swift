@@ -7,6 +7,12 @@ final class MenuBarSpeedIndicator: NSView {
         }
     }
 
+    var quickText: String? {
+        didSet {
+            needsDisplay = true
+        }
+    }
+
     override func hitTest(_ point: NSPoint) -> NSView? {
         // Allow clicks to pass through to the status bar button.
         nil
@@ -22,6 +28,11 @@ final class MenuBarSpeedIndicator: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
+
+        if let quickText {
+            drawQuickText(quickText, in: bounds)
+            return
+        }
 
         if snapshot.downloadBytesPerSecond <= 0, snapshot.uploadBytesPerSecond <= 0 {
             drawIdleState(in: bounds)
@@ -42,6 +53,10 @@ final class MenuBarSpeedIndicator: NSView {
         NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .semibold)
     }
 
+    private var quickFont: NSFont {
+        NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .semibold)
+    }
+
     private var uploadText: String {
         "\(ByteCountFormatter.menuBarSpeedString(for: snapshot.uploadBytesPerSecond))↑"
     }
@@ -51,6 +66,10 @@ final class MenuBarSpeedIndicator: NSView {
     }
 
     private var contentWidth: CGFloat {
+        if let quickText {
+            return measuredWidth(for: quickText, font: quickFont) + (horizontalInset * 2)
+        }
+
         if snapshot.downloadBytesPerSecond <= 0, snapshot.uploadBytesPerSecond <= 0 {
             return measuredWidth(for: "0", font: idleFont) + (horizontalInset * 2)
         }
@@ -61,6 +80,18 @@ final class MenuBarSpeedIndicator: NSView {
         )
 
         return widestLine + (horizontalInset * 2)
+    }
+
+    private func drawQuickText(_ text: String, in rect: NSRect) {
+        let attributed = NSAttributedString(string: text, attributes: textAttributes(for: quickFont))
+        let size = attributed.size()
+        let drawRect = NSRect(
+            x: rect.maxX - horizontalInset - size.width,
+            y: floor((rect.height - size.height) / 2),
+            width: size.width,
+            height: size.height
+        )
+        attributed.draw(in: drawRect)
     }
 
     private func drawIdleState(in rect: NSRect) {
