@@ -9,16 +9,16 @@
     <language>en</language>
 
     <item>
-      <title>Version 1.0.0</title>
-      <sparkle:version>1</sparkle:version>
-      <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+      <title>Version 1.1.5</title>
+      <sparkle:version>115</sparkle:version>
+      <sparkle:shortVersionString>1.1.5</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-      <pubDate>Fri, 03 Apr 2026 12:00:00 +0000</pubDate>
-      <sparkle:releaseNotesLink>https://github.com/sfdcnaveen/NewNet/releases/tag/v1.0.0</sparkle:releaseNotesLink>
+      <pubDate>Thu, 16 Apr 2026 16:00:00 +0000</pubDate>
+      <sparkle:releaseNotesLink>https://github.com/sfdcnaveen/NewNet/releases/tag/v1.1.5</sparkle:releaseNotesLink>
       <enclosure
-        url="https://github.com/sfdcnaveen/NewNet/releases/download/v1.0.0/NewNet-1.0.0.dmg"
-        sparkle:edSignature="Lr/kJAFX+J6XdRpYHMDqWFShPZCbKsVnyrZiGjUhguZn4TAFf56Ez6LtxteBN9imLsc/TRIlQ+WMxIPMIZdFCg=="
-        length="45832286"
+        url="https://github.com/sfdcnaveen/NewNet/releases/download/v1.1.5/NewNet-1.1.5.dmg"
+        sparkle:edSignature="KjIzWCnTyMWjI9uISy6DS7qia3sqQzgtlUEKlavziQAh+ldgG4Uq3/s62krmU6NaIt6zZd1mhveHT/kHvjltCA=="
+        length="46709790"
         type="application/octet-stream" />
     </item>
   </channel>
