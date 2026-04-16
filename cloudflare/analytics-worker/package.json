@@ -1,0 +1,16 @@
+{
+  "name": "newnet-analytics-worker",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "db:create": "wrangler d1 create newnet_analytics",
+    "db:migrate": "wrangler d1 migrations apply newnet_analytics",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0",
+    "wrangler": "^4.13.2"
+  }
+}

@@ -12,6 +12,8 @@ NewNet is a lightweight macOS menu‑bar download manager built around `yt-dlp`.
 - Direct download support with resumable transfers.
 - Per‑download progress, speed, and status.
 - Recent downloads list with quick access to the Downloads folder.
+- Sparkle-based auto updates (outside App Store).
+- Privacy-friendly anonymous usage analytics with opt-out in Settings.
 
 ## Requirements
 
@@ -53,3 +55,10 @@ To generate a DMG:
 ```bash
 /Users/nn/Desktop/internetManager/NewNet/make_dmg.sh
 ```
+
+## Updates and Analytics Docs
+
+- Update integration and release checklist: `docs/UPDATES.md`
+- Analytics event contract and privacy details: `docs/ANALYTICS.md`
+- Cloudflare endpoint setup: `docs/CLOUDFLARE_ANALYTICS_SETUP.md`
+- Example Sparkle feed template: `appcast.xml`

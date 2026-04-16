@@ -5,7 +5,6 @@ import UniformTypeIdentifiers
 struct DropdownPanel: View {
     @ObservedObject var menuBarViewModel: MenuBarViewModel
     @ObservedObject var downloadManagerViewModel: DownloadManagerViewModel
-    @ObservedObject var speedTestViewModel: SpeedTestViewModel
     @ObservedObject var settings: AppSettings
 
     @Environment(\.colorScheme) private var colorScheme
@@ -55,8 +54,6 @@ struct DropdownPanel: View {
                 header
                 menuDivider
                 usageSection
-                menuDivider
-                speedTestSection
                 menuDivider
                 addDownloadSection
                 menuDivider
@@ -141,111 +138,6 @@ struct DropdownPanel: View {
                     .foregroundStyle(.secondary)
             }
             .menuItemBackground()
-        }
-        .padding(.vertical, 12)
-    }
-
-    private var speedTestSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sectionTitle("Speed Test")
-
-            HStack(spacing: 10) {
-                Button {
-                    speedTestViewModel.runSpeedTest()
-                } label: {
-                    HStack(spacing: 8) {
-                        if speedTestViewModel.isTesting {
-                            LoadingGlyph()
-                        }
-
-                        Text(speedTestViewModel.isTesting ? "Testing..." : "Run Speed Test")
-                            .font(.system(size: 14, weight: .semibold))
-                    }
-                    .frame(minWidth: 140)
-                    .padding(.vertical, 10)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.white)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.blue.opacity(speedTestViewModel.isTesting ? 0.75 : 0.95))
-                )
-                .disabled(speedTestViewModel.isTesting)
-
-                Spacer()
-
-                if let result = speedTestViewModel.lastResult {
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(result.server)
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                        Text(result.date.formatted(date: .abbreviated, time: .shortened))
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-
-            if let result = speedTestViewModel.lastResult {
-                HStack(spacing: 12) {
-                    speedMetric(title: "Ping", value: String(format: "%.0f ms", result.ping))
-                    speedMetric(title: "Download", value: String(format: "%.1f Mbps", result.download))
-                    speedMetric(title: "Upload", value: String(format: "%.1f Mbps", result.upload))
-                }
-            } else if !speedTestViewModel.isTesting {
-                Text("No speed test yet.")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
-            }
-
-            if let error = speedTestViewModel.errorMessage {
-                Text(error)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.red)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                Toggle(isOn: $speedTestViewModel.autoTestEnabled) {
-                    Text("Auto Test")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-                .toggleStyle(.switch)
-
-                Stepper(
-                    value: $speedTestViewModel.autoTestIntervalMinutes,
-                    in: 2...60,
-                    step: 1
-                ) {
-                    Text("Every \(speedTestViewModel.autoTestIntervalMinutes) min")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
-                .disabled(!speedTestViewModel.autoTestEnabled)
-            }
-            .menuItemBackground()
-
-            if speedTestViewModel.history.isEmpty {
-                Text("No history yet.")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
-            } else {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(speedTestViewModel.history) { result in
-                        HStack {
-                            Text(result.date.formatted(date: .abbreviated, time: .omitted))
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Text(String(format: "↓ %.0f ↑ %.0f", result.download, result.upload))
-                                .font(.system(size: 12, weight: .semibold))
-                                .monospacedDigit()
-                        }
-                        .menuItemBackground()
-                    }
-                }
-            }
         }
         .padding(.vertical, 12)
     }
@@ -512,34 +404,6 @@ struct DropdownPanel: View {
         .buttonStyle(.plain)
         .foregroundStyle(role == .destructive ? .red : .primary)
         .menuItemBackground()
-    }
-
-    private func speedMetric(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.system(size: 14, weight: .semibold))
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(glassFill(light: 0.72, dark: 0.04))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(glassStroke(light: 0.1, dark: 0.08), lineWidth: 1)
-                )
-        )
     }
 
     private var menuGradientStops: [Color] {

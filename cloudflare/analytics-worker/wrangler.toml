@@ -1,0 +1,9 @@
+name = "newnet-analytics"
+main = "src/index.ts"
+compatibility_date = "2026-04-16"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "newnet_analytics"
+database_id = "ed85cb37-0290-4f98-93c6-4370b8fd39b9"

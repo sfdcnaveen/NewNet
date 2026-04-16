@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     private let ytDLPService = YTDLPService()
+    @StateObject private var updateManager = UpdateManager.shared
     @State private var loginErrorMessage: String?
     @State private var showLoginError = false
 
@@ -39,6 +40,13 @@ struct SettingsView: View {
                 Toggle("Open NewNet at login", isOn: launchAtLoginBinding)
             }
 
+            Section("Updates") {
+                Button("Check for Updates…") {
+                    updateManager.checkForUpdatesManually()
+                }
+                .disabled(!updateManager.canCheckForUpdates)
+            }
+
             Section("yt-dlp") {
                 HStack(alignment: .firstTextBaseline) {
                     Text("Override path")
@@ -69,6 +77,13 @@ struct SettingsView: View {
             Section("Smart Features") {
                 Toggle("Detect links copied to clipboard", isOn: clipboardBinding)
                 Toggle("Battery saver mode", isOn: powerSavingBinding)
+            }
+
+            Section("Privacy") {
+                Toggle("Share anonymous usage analytics", isOn: analyticsBinding)
+                Text("Tracked events: app_installed, app_opened, and feature_used. NewNet stores a random anonymous ID locally. No personal data, no device fingerprinting, and no content metadata are collected.")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
             }
 
             Section {
@@ -135,6 +150,18 @@ struct SettingsView: View {
         Binding(
             get: { settings.powerSavingEnabled },
             set: { settings.powerSavingEnabled = $0 }
+        )
+    }
+
+    private var analyticsBinding: Binding<Bool> {
+        Binding(
+            get: { settings.analyticsEnabled },
+            set: { newValue in
+                settings.analyticsEnabled = newValue
+                Task {
+                    await AnalyticsClient.shared.setEnabled(newValue)
+                }
+            }
         )
     }
 

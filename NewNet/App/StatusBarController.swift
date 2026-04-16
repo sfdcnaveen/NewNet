@@ -13,7 +13,6 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     init(
         menuBarViewModel: MenuBarViewModel,
         downloadManagerViewModel: DownloadManagerViewModel,
-        speedTestViewModel: SpeedTestViewModel,
         settings: AppSettings
     ) {
         super.init()
@@ -21,11 +20,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         configurePopover(
             menuBarViewModel: menuBarViewModel,
             downloadManagerViewModel: downloadManagerViewModel,
-            speedTestViewModel: speedTestViewModel,
             settings: settings
         )
         bindSnapshot(menuBarViewModel)
-        bindSpeedTestQuickView(speedTestViewModel)
     }
 
     private func configureStatusItem() {
@@ -45,7 +42,6 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private func configurePopover(
         menuBarViewModel: MenuBarViewModel,
         downloadManagerViewModel: DownloadManagerViewModel,
-        speedTestViewModel: SpeedTestViewModel,
         settings: AppSettings
     ) {
         popover.delegate = self
@@ -56,7 +52,6 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             rootView: DropdownPanel(
                 menuBarViewModel: menuBarViewModel,
                 downloadManagerViewModel: downloadManagerViewModel,
-                speedTestViewModel: speedTestViewModel,
                 settings: settings
             )
             .frame(width: 420, height: 620)
@@ -77,26 +72,6 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             .store(in: &cancellables)
 
         apply(snapshot: menuBarViewModel.snapshot)
-    }
-
-    private func bindSpeedTestQuickView(_ speedTestViewModel: SpeedTestViewModel) {
-        speedTestViewModel.$menuBarQuickText
-            .receive(on: RunLoop.main)
-            .sink { [weak self] quickText in
-                guard let self else { return }
-                self.indicatorView.quickText = quickText
-
-                guard let button = self.statusItem.button else { return }
-                let width = self.indicatorView.preferredWidth
-
-                if self.popover.isShown {
-                    self.deferredWidth = width
-                    self.updateIndicatorFrame(for: button, width: button.bounds.width)
-                } else {
-                    self.applyWidth(width, to: button)
-                }
-            }
-            .store(in: &cancellables)
     }
 
     private func apply(snapshot: NetworkSpeedSnapshot) {
