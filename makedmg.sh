@@ -24,6 +24,7 @@ xcodebuild \
   -scheme NewNet \
   -configuration Release \
   -derivedDataPath "$DERIVED_DATA" \
+  -destination "generic/platform=macOS" \
   CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO
 
