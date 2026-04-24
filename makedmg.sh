@@ -45,6 +45,9 @@ if [[ ! -x "$RESOURCE_DIR/ffmpeg-x64" ]]; then
   chmod +x "$RESOURCE_DIR/ffmpeg-x64"
 fi
 
+echo "Ad-hoc signing the app bundle to prevent 'damaged' errors..."
+codesign --force --deep --sign - "$APP_PATH"
+
 echo "Preparing staging folder..."
 rm -rf "$STAGING_DIR"
 mkdir -p "$STAGING_DIR"
