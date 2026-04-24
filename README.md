@@ -1,64 +1,65 @@
-# NewNet
+<div align="center">
+  <img src="app_icon.png" width="128" alt="NewNet Logo">
+  <h1>NewNet</h1>
+  <p><strong>A lightning-fast, native macOS menu-bar download manager powered by <code>yt-dlp</code>.</strong></p>
 
-![NewNet App Icon](app_icon.png)
+  [![macOS](https://img.shields.io/badge/macOS-15.0+-000000.svg?logo=apple&style=flat-square)](https://apple.com/macos)
+  [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
+  [![GitHub release (latest by date)](https://img.shields.io/github/v/release/sfdcnaveen/NewNet?style=flat-square)](https://github.com/sfdcnaveen/NewNet/releases)
+  [![Downloads](https://img.shields.io/github/downloads/sfdcnaveen/NewNet/total?style=flat-square)](https://github.com/sfdcnaveen/NewNet/releases)
+</div>
 
-NewNet is a lightweight macOS menu‑bar download manager built around `yt-dlp`. It focuses on quick pasting, explicit format selection, and reliable merging of video + audio into a single file.
+<br>
 
-## Features
+NewNet is a lightweight, natively built macOS menu-bar utility designed for quick, explicit, and reliable media downloading. It acts as a beautiful frontend for `yt-dlp`, allowing you to easily select video and audio formats, download them, and automatically merge them using bundled `ffmpeg`—all without opening a terminal.
 
-- Menu‑bar UI with quick paste and one‑click downloads.
-- Format picker for supported media links (video/audio/resolution/codec).
-- `yt-dlp` integration with automatic `ffmpeg` merging for separate audio/video streams.
-- Direct download support with resumable transfers.
-- Per‑download progress, speed, and status.
-- Recent downloads list with quick access to the Downloads folder.
-- Sparkle-based auto updates (outside App Store).
-- Privacy-friendly anonymous usage analytics with opt-out in Settings.
+## ✨ Features
 
-## Requirements
+- **Menu-Bar Native UI:** Instantly accessible from your menu bar with quick paste functionality.
+- **Explicit Format Selection:** Choose exactly what video/audio resolution and codec you want before downloading.
+- **Auto-Merging:** Seamlessly merges separate high-quality video and audio streams via bundled `ffmpeg`.
+- **Resumable Downloads:** Direct download support with robust resumption capabilities.
+- **Live Progress Tracking:** Monitor speeds, progress, and statuses directly in the app.
+- **In-App Auto Updates:** Never miss a release. Powered by Sparkle, NewNet updates itself automatically.
+- **Privacy First:** Built-in telemetry is anonymous and easily opt-outable in Settings.
 
-- macOS 15+.
-- `yt-dlp` installed (NewNet can download it automatically).
-- `ffmpeg` is bundled in release builds (auto-installs when running from source).
+## 🚀 Installation
 
-## Download
+### Option 1: Direct Download (Recommended)
+1. Head to the [Releases](https://github.com/sfdcnaveen/NewNet/releases) page.
+2. Download the latest `NewNet-X.X.X.dmg`.
+3. Open the DMG and drag `NewNet.app` into your `/Applications` folder.
+4. Launch NewNet! 
+> *Note: If macOS prompts you with an "Unverified Developer" warning, simply Right-Click (or Control-Click) the app in your Applications folder and select **"Open"**.*
 
-Get the latest DMG from GitHub Releases.
-
-## Install
-
-1. Open the DMG.
-2. Drag `NewNet.app` into `/Applications`.
-3. Launch NewNet from Applications (it runs in the menu bar).
-
-### If macOS blocks the app (quarantine)
-
+### Option 2: Homebrew (Coming Soon)
 ```bash
-xattr -dr com.apple.quarantine /Applications/NewNet.app
+brew install --cask newnet
 ```
 
-## Usage
+## 🛠️ Usage
 
-1. Launch NewNet from the menu bar.
-2. Paste a supported link.
-3. Choose Video or Audio, then select a format from the list.
-4. Click Download. Progress updates live in the download row.
+1. Click the NewNet icon in your macOS menu bar.
+2. Paste any supported media link (YouTube, Twitter, Vimeo, etc.).
+3. Choose **Video** or **Audio**, then select your preferred format and quality from the dropdown.
+4. Click **Download**! The file will be saved directly to your Downloads folder.
 
-## Build (Developer)
+## 💻 Development & Building
 
+Want to build NewNet from source or contribute? Check out our [Contributing Guidelines](CONTRIBUTING.md).
+
+**Quick Build:**
 ```bash
-xcodebuild -scheme NewNet -configuration Release -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+# Clone the repository
+git clone https://github.com/sfdcnaveen/NewNet.git
+cd NewNet
+
+# Build the release app
+./makedmg.sh
 ```
 
-To generate a DMG:
+*Note: You must have `yt-dlp` installed for local development. `ffmpeg` binaries are downloaded automatically during the DMG build process.*
 
-```bash
-/Users/nn/Desktop/internetManager/NewNet/make_dmg.sh
-```
+## 📄 License
 
-## Updates and Analytics Docs
-
-- Update integration and release checklist: `docs/UPDATES.md`
-- Analytics event contract and privacy details: `docs/ANALYTICS.md`
-- Cloudflare endpoint setup: `docs/CLOUDFLARE_ANALYTICS_SETUP.md`
-- Example Sparkle feed template: `appcast.xml`
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
