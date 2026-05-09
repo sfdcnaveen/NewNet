@@ -197,6 +197,7 @@ struct DropdownPanel: View {
                     }
                     .frame(minWidth: 78)
                     .padding(.vertical, 10)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.white)
@@ -483,6 +484,7 @@ private struct MediaFormatSelectionScreen: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
+                .contentShape(Rectangle())
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(glassFill(light: 0.8, dark: 0.06))
@@ -510,6 +512,7 @@ private struct MediaFormatSelectionScreen: View {
                 .foregroundStyle(.white)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
+                .contentShape(Rectangle())
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(Color.blue.opacity(0.95))
@@ -680,6 +683,7 @@ private struct DownloadPreferenceControl: View {
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
                                 .fill(selection == option ? Color.blue.opacity(0.95) : Color.clear)
                         )
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -754,6 +758,7 @@ private struct MediaFormatOptionRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(background)
             .overlay(border)
+            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(.plain)
     }

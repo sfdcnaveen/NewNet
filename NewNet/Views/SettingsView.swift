@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     private let ytDLPService = YTDLPService()
+    private let externalToolsService = ExternalToolsService()
     @StateObject private var updateManager = UpdateManager.shared
     @State private var loginErrorMessage: String?
     @State private var showLoginError = false
@@ -40,6 +41,26 @@ struct SettingsView: View {
                 Toggle("Open NewNet at login", isOn: launchAtLoginBinding)
             }
 
+            Section("Menu Bar Panel") {
+                HStack {
+                    Text("Panel size")
+                    Spacer()
+                    Text("\(Int((settings.menuBarPanelScale * 100).rounded()))%")
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+
+                Slider(value: menuBarPanelScaleBinding, in: 0.85...1.25, step: 0.05) {
+                    Text("Panel size")
+                } minimumValueLabel: {
+                    Text("Smaller")
+                        .font(.system(size: 10, weight: .medium))
+                } maximumValueLabel: {
+                    Text("Larger")
+                        .font(.system(size: 10, weight: .medium))
+                }
+            }
+
             Section("Updates") {
                 Button("Check for Updates…") {
                     updateManager.checkForUpdatesManually()
@@ -70,6 +91,38 @@ struct SettingsView: View {
                 }
 
                 Text("NewNet downloads yt-dlp automatically when a supported social-media link is added. Leave the override empty unless you want to force a specific binary.")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("External Tools") {
+                ForEach(ExternalTool.allCases.filter { $0 != .ytDLP }) { tool in
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(tool.title)
+                            Spacer()
+                            TextField(
+                                tool.defaultPaths.first ?? "/opt/homebrew/bin/\(tool.rawValue)",
+                                text: overridePathBinding(for: tool)
+                            )
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 220)
+                        }
+
+                        HStack {
+                            Text("Resolved")
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text(externalToolsService.status(for: tool, settings: settings).description)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+                        .font(.system(size: 11, weight: .medium))
+                    }
+                }
+
+                Text("These tools are optional. NewNet detects them from your override path first, then common Homebrew/system locations. Note: yt-dlp-aria2c and yt-dlp-ffmpeg are yt-dlp modes, not separate binaries.")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
             }
@@ -165,10 +218,24 @@ struct SettingsView: View {
         )
     }
 
+    private var menuBarPanelScaleBinding: Binding<Double> {
+        Binding(
+            get: { settings.menuBarPanelScale },
+            set: { settings.menuBarPanelScale = $0 }
+        )
+    }
+
     private var ytDLPPathBinding: Binding<String> {
         Binding(
             get: { settings.ytDLPPath },
             set: { settings.ytDLPPath = $0 }
+        )
+    }
+
+    private func overridePathBinding(for tool: ExternalTool) -> Binding<String> {
+        Binding(
+            get: { settings.overridePath(for: tool) },
+            set: { settings.setOverridePath($0, for: tool) }
         )
     }
 

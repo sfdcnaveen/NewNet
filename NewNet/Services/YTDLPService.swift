@@ -73,8 +73,10 @@ actor FFmpegInstaller {
     private let fileManager = FileManager.default
     private var installTask: Task<URL, Error>?
 
-    func ensureInstalled(targetURL: URL, downloadURL: URL) async throws -> URL {
-        if fileManager.isExecutableFile(atPath: targetURL.path(percentEncoded: false)) {
+    func ensureInstalled(targetURL: URL, downloadURL: URL, releaseTag: String) async throws -> URL {
+        if fileManager.isExecutableFile(atPath: targetURL.path(percentEncoded: false)),
+           installedReleaseTag(for: targetURL) == releaseTag
+        {
             return targetURL
         }
 
@@ -97,6 +99,11 @@ actor FFmpegInstaller {
                 [.posixPermissions: NSNumber(value: Int16(0o755))],
                 ofItemAtPath: targetURL.path(percentEncoded: false)
             )
+            try releaseTag.write(
+                to: self.versionMarkerURL(for: targetURL),
+                atomically: true,
+                encoding: .utf8
+            )
 
             return targetURL
         }
@@ -111,6 +118,15 @@ actor FFmpegInstaller {
             installTask = nil
             throw error
         }
+    }
+
+    private func installedReleaseTag(for targetURL: URL) -> String? {
+        try? String(contentsOf: versionMarkerURL(for: targetURL), encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func versionMarkerURL(for targetURL: URL) -> URL {
+        targetURL.deletingLastPathComponent().appendingPathComponent(".ffmpeg-release")
     }
 }
 
@@ -280,14 +296,15 @@ final class YTDLPService {
     }
 
     func ensureFFmpegInstalled() async throws -> URL {
-        if let binaryURL = resolvedFFmpegURL() {
+        if let binaryURL = resolvedExternalOrBundledFFmpegURL() {
             return binaryURL
         }
 
         do {
             return try await Self.ffmpegInstaller.ensureInstalled(
                 targetURL: Self.managedFFmpegURL,
-                downloadURL: Self.ffmpegDownloadURL
+                downloadURL: Self.ffmpegDownloadURL,
+                releaseTag: Self.ffmpegReleaseTag
             )
         } catch {
             throw YTDLPServiceError.installFailed(
@@ -298,6 +315,17 @@ final class YTDLPService {
 
     func resolvedFFmpegURL() -> URL? {
         for path in Self.commonFFmpegPaths where !path.isEmpty {
+            if FileManager.default.isExecutableFile(atPath: path) {
+                return URL(fileURLWithPath: path)
+            }
+        }
+
+        return nil
+    }
+
+    private func resolvedExternalOrBundledFFmpegURL() -> URL? {
+        let managedPath = Self.managedFFmpegURL.path(percentEncoded: false)
+        for path in Self.commonFFmpegPaths where !path.isEmpty && path != managedPath {
             if FileManager.default.isExecutableFile(atPath: path) {
                 return URL(fileURLWithPath: path)
             }
@@ -630,7 +658,7 @@ final class YTDLPService {
     }
 
     private func buildAudioOptions(from formats: [YTDLPInspectionFormat]) -> [YTDLPDownloadOption] {
-        formats
+        let sourceOptions = formats
             .filter(\.hasAudio)
             .filter { !$0.hasVideo }
             .sorted(by: Self.isPreferredAudioFormat)
@@ -640,6 +668,9 @@ final class YTDLPService {
                     result.append(option)
                 }
             }
+
+        let mp3Options = sourceOptions.map(makeMP3AudioOption(from:))
+        return sourceOptions + mp3Options
     }
 
     private func makeCombinedVideoOption(from format: YTDLPInspectionFormat) -> YTDLPDownloadOption {
@@ -741,6 +772,38 @@ final class YTDLPService {
                 contentPreference: .audio,
                 extractAudio: false,
                 audioFormat: nil,
+                mergeOutputFormat: nil
+            )
+        )
+    }
+
+    private func makeMP3AudioOption(from option: YTDLPDownloadOption) -> YTDLPDownloadOption {
+        let bitrate = option.label
+            .split(separator: "•", maxSplits: 1)
+            .first?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .ifEmpty("Audio") ?? "Audio"
+        let label = "\(bitrate) • MP3"
+        let detail = [
+            "Converted to MP3",
+            option.detail
+        ]
+        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .filter { !$0.isEmpty }
+        .joined(separator: "  ")
+
+        return YTDLPDownloadOption(
+            id: "\(option.id)-mp3",
+            label: label,
+            detail: detail.ifEmpty("Audio converted to MP3"),
+            estimatedBytes: option.estimatedBytes,
+            configuration: YTDLPDownloadConfiguration(
+                formatExpression: option.configuration.formatExpression,
+                displayName: label,
+                detailText: detail.ifEmpty("Audio converted to MP3"),
+                contentPreference: .audio,
+                extractAudio: true,
+                audioFormat: "mp3",
                 mergeOutputFormat: nil
             )
         )

@@ -4,11 +4,14 @@ import SwiftUI
 
 @MainActor
 final class StatusBarController: NSObject, NSPopoverDelegate {
+    fileprivate static let basePopoverSize = NSSize(width: 420, height: 620)
+
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let indicatorView = MenuBarSpeedIndicator(frame: .zero)
     private let popover = NSPopover()
     private var cancellables: Set<AnyCancellable> = []
     private var deferredWidth: CGFloat?
+    private var globalMouseMonitor: Any?
 
     init(
         menuBarViewModel: MenuBarViewModel,
@@ -23,6 +26,15 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             settings: settings
         )
         bindSnapshot(menuBarViewModel)
+        bindSettings(settings)
+        observeDismissalEvents()
+    }
+
+    deinit {
+        if let globalMouseMonitor {
+            NSEvent.removeMonitor(globalMouseMonitor)
+        }
+        NotificationCenter.default.removeObserver(self)
     }
 
     private func configureStatusItem() {
@@ -47,14 +59,13 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         popover.delegate = self
         popover.behavior = .transient
         popover.animates = true
-        popover.contentSize = NSSize(width: 420, height: 620)
+        popover.contentSize = Self.popoverSize(for: settings.menuBarPanelScale)
         popover.contentViewController = NSHostingController(
-            rootView: DropdownPanel(
+            rootView: MenuBarPanelHost(
                 menuBarViewModel: menuBarViewModel,
                 downloadManagerViewModel: downloadManagerViewModel,
                 settings: settings
             )
-            .frame(width: 420, height: 620)
         )
     }
 
@@ -72,6 +83,46 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             .store(in: &cancellables)
 
         apply(snapshot: menuBarViewModel.snapshot)
+    }
+
+    private func bindSettings(_ settings: AppSettings) {
+        settings.$menuBarPanelScale
+            .receive(on: RunLoop.main)
+            .sink { [weak self] scale in
+                self?.updatePopoverSize(scale: scale)
+            }
+            .store(in: &cancellables)
+
+        updatePopoverSize(scale: settings.menuBarPanelScale)
+    }
+
+    private func observeDismissalEvents() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(closePopoverForExternalInteraction),
+            name: NSApplication.didResignActiveNotification,
+            object: nil
+        )
+
+        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.closePopoverForExternalInteraction()
+            }
+        }
+    }
+
+    private static func popoverSize(for scale: Double) -> NSSize {
+        let clampedScale = min(max(scale, 0.85), 1.25)
+        return NSSize(
+            width: basePopoverSize.width * clampedScale,
+            height: basePopoverSize.height * clampedScale
+        )
+    }
+
+    private func updatePopoverSize(scale: Double) {
+        popover.contentSize = Self.popoverSize(for: scale)
     }
 
     private func apply(snapshot: NetworkSpeedSnapshot) {
@@ -123,6 +174,13 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    @objc
+    private func closePopoverForExternalInteraction() {
+        guard popover.isShown else { return }
+        popover.performClose(nil)
+        applyDeferredWidthIfNeeded()
+    }
+
     private func applyDeferredWidthIfNeeded() {
         guard let width = deferredWidth, let button = statusItem.button else { return }
         applyWidth(width, to: button)
@@ -132,4 +190,32 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         applyDeferredWidthIfNeeded()
     }
 
+}
+
+private struct MenuBarPanelHost: View {
+    @ObservedObject var settings: AppSettings
+    let menuBarViewModel: MenuBarViewModel
+    let downloadManagerViewModel: DownloadManagerViewModel
+
+    init(
+        menuBarViewModel: MenuBarViewModel,
+        downloadManagerViewModel: DownloadManagerViewModel,
+        settings: AppSettings
+    ) {
+        self.menuBarViewModel = menuBarViewModel
+        self.downloadManagerViewModel = downloadManagerViewModel
+        self.settings = settings
+    }
+
+    var body: some View {
+        DropdownPanel(
+            menuBarViewModel: menuBarViewModel,
+            downloadManagerViewModel: downloadManagerViewModel,
+            settings: settings
+        )
+        .frame(
+            width: StatusBarController.basePopoverSize.width * settings.menuBarPanelScale,
+            height: StatusBarController.basePopoverSize.height * settings.menuBarPanelScale
+        )
+    }
 }

@@ -24,9 +24,7 @@ xcodebuild \
   -scheme NewNet \
   -configuration Release \
   -derivedDataPath "$DERIVED_DATA" \
-  -destination "generic/platform=macOS" \
-  CODE_SIGNING_ALLOWED=NO \
-  CODE_SIGNING_REQUIRED=NO
+  -destination "generic/platform=macOS"
 
 APP_PATH="$DERIVED_DATA/Build/Products/Release/NewNet.app"
 if [[ ! -d "$APP_PATH" ]]; then

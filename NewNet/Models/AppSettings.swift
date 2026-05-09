@@ -11,7 +11,16 @@ final class AppSettings: ObservableObject {
         static let launchAtLogin = "settings.launchAtLogin"
         static let powerSavingEnabled = "settings.powerSavingEnabled"
         static let analyticsEnabled = "settings.analyticsEnabled"
+        static let menuBarPanelScale = "settings.menuBarPanelScale"
         static let ytDLPPath = "settings.ytDLPPath"
+        static let youtubeDLPath = "settings.youtubeDLPath"
+        static let galleryDLPath = "settings.galleryDLPath"
+        static let youGetPath = "settings.youGetPath"
+        static let svtplayDLPath = "settings.svtplayDLPath"
+        static let aria2cPath = "settings.aria2cPath"
+        static let wgetPath = "settings.wgetPath"
+        static let getSaucePath = "settings.getSaucePath"
+        static let luxPath = "settings.luxPath"
         static let preferredMediaType = "settings.preferredMediaType"
     }
 
@@ -69,9 +78,68 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    @Published var menuBarPanelScale: Double {
+        didSet {
+            let clamped = min(max(menuBarPanelScale, 0.85), 1.25)
+            if menuBarPanelScale != clamped {
+                menuBarPanelScale = clamped
+                return
+            }
+            defaults.set(clamped, forKey: Keys.menuBarPanelScale)
+        }
+    }
+
     @Published var ytDLPPath: String {
         didSet {
             defaults.set(ytDLPPath.trimmingCharacters(in: .whitespacesAndNewlines), forKey: Keys.ytDLPPath)
+        }
+    }
+
+    @Published var galleryDLPath: String {
+        didSet {
+            defaults.set(galleryDLPath.trimmingCharacters(in: .whitespacesAndNewlines), forKey: Keys.galleryDLPath)
+        }
+    }
+
+    @Published var youtubeDLPath: String {
+        didSet {
+            defaults.set(youtubeDLPath.trimmingCharacters(in: .whitespacesAndNewlines), forKey: Keys.youtubeDLPath)
+        }
+    }
+
+    @Published var youGetPath: String {
+        didSet {
+            defaults.set(youGetPath.trimmingCharacters(in: .whitespacesAndNewlines), forKey: Keys.youGetPath)
+        }
+    }
+
+    @Published var svtplayDLPath: String {
+        didSet {
+            defaults.set(svtplayDLPath.trimmingCharacters(in: .whitespacesAndNewlines), forKey: Keys.svtplayDLPath)
+        }
+    }
+
+    @Published var aria2cPath: String {
+        didSet {
+            defaults.set(aria2cPath.trimmingCharacters(in: .whitespacesAndNewlines), forKey: Keys.aria2cPath)
+        }
+    }
+
+    @Published var wgetPath: String {
+        didSet {
+            defaults.set(wgetPath.trimmingCharacters(in: .whitespacesAndNewlines), forKey: Keys.wgetPath)
+        }
+    }
+
+    @Published var getSaucePath: String {
+        didSet {
+            defaults.set(getSaucePath.trimmingCharacters(in: .whitespacesAndNewlines), forKey: Keys.getSaucePath)
+        }
+    }
+
+    @Published var luxPath: String {
+        didSet {
+            defaults.set(luxPath.trimmingCharacters(in: .whitespacesAndNewlines), forKey: Keys.luxPath)
         }
     }
 
@@ -94,9 +162,65 @@ final class AppSettings: ObservableObject {
         launchAtLogin = defaults.object(forKey: Keys.launchAtLogin) as? Bool ?? LaunchAtLoginManager.isEnabled
         powerSavingEnabled = defaults.object(forKey: Keys.powerSavingEnabled) as? Bool ?? true
         analyticsEnabled = defaults.object(forKey: Keys.analyticsEnabled) as? Bool ?? true
+        let storedMenuBarPanelScale = defaults.object(forKey: Keys.menuBarPanelScale) as? Double ?? 1.0
+        menuBarPanelScale = min(max(storedMenuBarPanelScale, 0.85), 1.25)
         ytDLPPath = defaults.string(forKey: Keys.ytDLPPath) ?? ""
+        youtubeDLPath = defaults.string(forKey: Keys.youtubeDLPath) ?? ""
+        galleryDLPath = defaults.string(forKey: Keys.galleryDLPath) ?? ""
+        youGetPath = defaults.string(forKey: Keys.youGetPath) ?? ""
+        svtplayDLPath = defaults.string(forKey: Keys.svtplayDLPath) ?? ""
+        aria2cPath = defaults.string(forKey: Keys.aria2cPath) ?? ""
+        wgetPath = defaults.string(forKey: Keys.wgetPath) ?? ""
+        getSaucePath = defaults.string(forKey: Keys.getSaucePath) ?? ""
+        luxPath = defaults.string(forKey: Keys.luxPath) ?? ""
         preferredMediaType = DownloadContentPreference(
             rawValue: defaults.string(forKey: Keys.preferredMediaType) ?? ""
         ) ?? .auto
+    }
+
+    func overridePath(for tool: ExternalTool) -> String {
+        switch tool {
+        case .ytDLP:
+            ytDLPPath
+        case .galleryDL:
+            galleryDLPath
+        case .youtubeDL:
+            youtubeDLPath
+        case .youGet:
+            youGetPath
+        case .svtplayDL:
+            svtplayDLPath
+        case .aria2c:
+            aria2cPath
+        case .wget:
+            wgetPath
+        case .getSauce:
+            getSaucePath
+        case .lux:
+            luxPath
+        }
+    }
+
+    func setOverridePath(_ value: String, for tool: ExternalTool) {
+        switch tool {
+        case .ytDLP:
+            ytDLPPath = value
+        case .galleryDL:
+            galleryDLPath = value
+        case .youtubeDL:
+            youtubeDLPath = value
+        case .youGet:
+            youGetPath = value
+        case .svtplayDL:
+            svtplayDLPath = value
+        case .aria2c:
+            aria2cPath = value
+        case .wget:
+            wgetPath = value
+        case .getSauce:
+            getSaucePath = value
+        case .lux:
+            luxPath = value
+        }
     }
 }

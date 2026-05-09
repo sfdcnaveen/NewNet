@@ -9,6 +9,20 @@
     <language>en</language>
 
     <item>
+      <title>Version 1.1.8</title>
+      <sparkle:version>118</sparkle:version>
+      <sparkle:shortVersionString>1.1.8</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <pubDate>Sat, 09 May 2026 12:44:21 +0530</pubDate>
+      <sparkle:releaseNotesLink>https://github.com/sfdcnaveen/NewNet/releases/tag/v1.1.8</sparkle:releaseNotesLink>
+      <enclosure
+        url="https://github.com/sfdcnaveen/NewNet/releases/download/v1.1.8/NewNet-1.1.8.dmg"
+        sparkle:edSignature="mkdIhCvdK0/2UhqVQxQ1IXYkxoFvg+IZzODB1PW0OG30aWGNL3OmlULT8FWhy5TQUAoUQqpmzxl+AnoUxPe/BA=="
+        length="47261181"
+        type="application/octet-stream" />
+    </item>
+
+    <item>
       <title>Version 1.1.7</title>
       <sparkle:version>117</sparkle:version>
       <sparkle:shortVersionString>1.1.7</sparkle:shortVersionString>

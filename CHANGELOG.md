@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.8
+- Close the menu bar panel when NewNet loses focus or another menu bar app is clicked.
+- Add a settings control for resizing the menu bar panel from 85% to 125%.
+- Expand button hit areas so Add, Video, Audio, Back, Download, and format rows respond across the full visible control.
+- Add MP3 audio download options using yt-dlp audio extraction and ffmpeg conversion.
+- Track the managed ffmpeg release tag so NewNet can refresh its bundled downloader dependency when the pinned release changes.
+
 ## v1.1.6
 - Refresh release metadata so Sparkle updates stay aligned per release (version, appcast URL, signature, and archive length).
 
