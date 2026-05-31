@@ -5,11 +5,20 @@ struct SettingsView: View {
     private let ytDLPService = YTDLPService()
     private let externalToolsService = ExternalToolsService()
     @StateObject private var updateManager = UpdateManager.shared
+    @StateObject private var githubUpdater = GitHubUpdateService()
     @State private var loginErrorMessage: String?
     @State private var showLoginError = false
 
     var body: some View {
         Form {
+            Section("Appearance") {
+                Picker("Theme", selection: themeBinding) {
+                    ForEach(AppTheme.allCases) { theme in
+                        Text(theme.rawValue).tag(theme)
+                    }
+                }
+            }
+            
             Section("Download Engine") {
                 Stepper(value: maxSegmentsBinding, in: 1...8) {
                     HStack {
@@ -62,10 +71,53 @@ struct SettingsView: View {
             }
 
             Section("Updates") {
-                Button("Check for Updates…") {
+                Button("Check for Updates (System)…") {
                     updateManager.checkForUpdatesManually()
                 }
                 .disabled(!updateManager.canCheckForUpdates)
+                
+                Divider()
+                
+                VStack(alignment: .leading, spacing: 10) {
+                    Button("Check for Updates (GitHub)…") {
+                        githubUpdater.checkForUpdates()
+                    }
+                    .disabled(githubUpdater.state == .checking)
+                    
+                    switch githubUpdater.state {
+                    case .idle:
+                        EmptyView()
+                    case .checking:
+                        HStack(spacing: 6) {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text("Checking...")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.secondary)
+                        }
+                    case .upToDate(let version):
+                        Text("You are using the latest version (\(version)).")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                    case .updateAvailable(let version, let notes, let url):
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Version \(version) is available!")
+                                .font(.system(size: 12, weight: .semibold))
+                            Text(notes)
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(3)
+                            Button("Download Update") {
+                                githubUpdater.openReleasePage(url: url)
+                            }
+                            .buttonStyle(.link)
+                        }
+                    case .error(let msg):
+                        Text("Error: \(msg)")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.red)
+                    }
+                }
             }
 
             Section("yt-dlp") {
@@ -146,8 +198,8 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .padding(20)
-        .background(.thinMaterial)
+        .scrollContentBackground(.hidden)
+        .padding(10)
         .alert("Unable to Update Login Item", isPresented: $showLoginError) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -243,6 +295,13 @@ struct SettingsView: View {
         Binding(
             get: { settings.preferredMediaType },
             set: { settings.preferredMediaType = $0 }
+        )
+    }
+
+    private var themeBinding: Binding<AppTheme> {
+        Binding(
+            get: { settings.appTheme },
+            set: { settings.appTheme = $0 }
         )
     }
 }

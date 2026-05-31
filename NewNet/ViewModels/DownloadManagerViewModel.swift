@@ -131,6 +131,25 @@ final class DownloadManagerViewModel: ObservableObject {
         }
     }
 
+    private func submitDefaultMediaDownload(_ mediaInfo: YTDLPMediaInfo) {
+        let pendingSelection = makePendingSelection(for: mediaInfo)
+        guard let option = pendingSelection.selectedOption else {
+            validationMessage = "No downloadable formats were found for this link."
+            pendingMediaSelection = nil
+            return
+        }
+
+        switch downloadManager.confirmMediaDownload(mediaInfo: mediaInfo, option: option) {
+        case .accepted:
+            validationMessage = nil
+            urlField = ""
+            pendingMediaSelection = nil
+        case .rejected(let message):
+            validationMessage = message
+            pendingMediaSelection = nil
+        }
+    }
+
     func pause(_ item: DownloadItem) {
         downloadManager.pause(item)
     }

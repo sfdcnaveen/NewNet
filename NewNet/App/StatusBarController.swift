@@ -198,6 +198,7 @@ private struct MenuBarPanelHost: View {
     @ObservedObject var settings: AppSettings
     let menuBarViewModel: MenuBarViewModel
     let downloadManagerViewModel: DownloadManagerViewModel
+    @State private var showingSettings = false
 
     init(
         menuBarViewModel: MenuBarViewModel,
@@ -210,14 +211,70 @@ private struct MenuBarPanelHost: View {
     }
 
     var body: some View {
-        DropdownPanel(
-            menuBarViewModel: menuBarViewModel,
-            downloadManagerViewModel: downloadManagerViewModel,
-            settings: settings
-        )
+        ZStack {
+            if showingSettings {
+                VStack(spacing: 0) {
+                    HStack {
+                        Button {
+                            withAnimation(.easeOut(duration: 0.15)) {
+                                showingSettings = false
+                            }
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(.primary)
+                                .frame(width: 28, height: 28)
+                                .background(
+                                    Circle()
+                                        .fill(Color.primary.opacity(0.1))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Text("Settings")
+                            .font(.system(size: 15, weight: .semibold))
+                            .padding(.leading, 8)
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 14)
+                    .padding(.bottom, 8)
+                    
+                    Divider()
+                    
+                    SettingsView(settings: settings)
+                        .padding(.top, -12)
+                }
+                .background(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
+                        )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            } else {
+                DropdownPanel(
+                    menuBarViewModel: menuBarViewModel,
+                    downloadManagerViewModel: downloadManagerViewModel,
+                    settings: settings,
+                    onSettingsTapped: {
+                        withAnimation(.easeOut(duration: 0.15)) {
+                            showingSettings = true
+                        }
+                    }
+                )
+                .transition(.move(edge: .leading).combined(with: .opacity))
+            }
+        }
         .frame(
             width: StatusBarController.basePopoverSize.width * settings.menuBarPanelScale,
             height: StatusBarController.basePopoverSize.height * settings.menuBarPanelScale
         )
+        .preferredColorScheme(settings.appTheme.colorScheme)
+        .animation(.easeOut(duration: 0.15), value: showingSettings)
     }
 }

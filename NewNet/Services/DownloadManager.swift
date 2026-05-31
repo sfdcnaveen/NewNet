@@ -487,13 +487,15 @@ final class DownloadManager: ObservableObject {
             scheduleSave()
 
         case .progress(let downloadedBytes, let totalBytes):
-            items[index].downloadedBytes = max(items[index].downloadedBytes, downloadedBytes)
+            var item = items[index]
+            item.downloadedBytes = max(item.downloadedBytes, downloadedBytes)
             if let totalBytes, totalBytes > 0 {
-                items[index].totalBytesExpected = totalBytes
-            } else if items[index].totalBytesExpected < items[index].downloadedBytes {
-                items[index].totalBytesExpected = items[index].downloadedBytes
+                item.totalBytesExpected = totalBytes
+            } else if item.totalBytesExpected < item.downloadedBytes {
+                item.totalBytesExpected = item.downloadedBytes
             }
-            items[index].state = .downloading
+            item.state = .downloading
+            items[index] = item
             scheduleSave()
 
         case .finalFile(let fileURL):

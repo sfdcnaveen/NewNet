@@ -10,7 +10,7 @@ struct DownloadRow: View {
     @State private var isHovering = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: leadingSymbol)
                     .font(.system(size: 18))
@@ -54,34 +54,26 @@ struct DownloadRow: View {
                 )
             }
 
-            DownloadProgressBar(progress: item.progress)
-
-            HStack {
-                Text(ByteCountFormatter.compactFileSize(item.downloadedBytes))
-                Spacer()
-                if item.totalBytesExpected > 0 {
-                    Text("\(Int(item.progress * 100))% of \(ByteCountFormatter.compactFileSize(item.totalBytesExpected))")
-                }
-            }
-        .font(.system(size: 11, weight: .medium))
-        .foregroundStyle(.secondary)
+            downloadStateFooter
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 9)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(.ultraThinMaterial)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(glassFill(light: isHovering ? 0.78 : 0.65, dark: isHovering ? 0.08 : 0.04))
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(rowFill)
                 )
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(glassStroke(light: 0.1, dark: 0.08), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(rowStroke, lineWidth: 1)
         )
+        .shadow(color: rowShadow, radius: item.isActive ? 12 : 8, x: 0, y: 6)
         .onHover { isHovering = $0 }
         .animation(.easeOut(duration: 0.18), value: isHovering)
+        .animation(.easeOut(duration: 0.2), value: item.state)
     }
 
     private var statusText: String {
@@ -111,10 +103,6 @@ struct DownloadRow: View {
         switch item.state {
         case .failed:
             return .red
-        case .completed:
-            return .green
-        case .paused:
-            return .orange
         default:
             return .secondary
         }
@@ -137,12 +125,10 @@ struct DownloadRow: View {
         switch item.state {
         case .failed:
             return .red
-        case .completed:
-            return .green
-        case .paused:
-            return .orange
+        case .completed, .paused:
+            return .secondary
         default:
-            return .blue
+            return .accentColor
         }
     }
 
@@ -165,6 +151,99 @@ struct DownloadRow: View {
         colorScheme == .dark ? Color.white.opacity(dark) : Color.black.opacity(light)
     }
 
+    private var downloadStateFooter: some View {
+        HStack(spacing: 10) {
+            switch item.state {
+            case .queued, .preparing, .downloading, .completing:
+                ProgressView()
+                    .controlSize(.small)
+                    .frame(width: 16, height: 16)
+
+                Text(activeStatusText)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Text("In progress")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            case .completed:
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.secondary)
+
+                Text("Completed")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                if item.downloadedBytes > 0 {
+                    Text(ByteCountFormatter.compactFileSize(item.downloadedBytes))
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            case .paused:
+                Image(systemName: "pause.circle.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.orange)
+
+                Text("Paused")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+            case .failed:
+                Image(systemName: "exclamationmark.circle.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.red)
+
+                Text("Needs attention")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.red)
+
+                Spacer()
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(glassFill(light: 0.7, dark: 0.05))
+                )
+        )
+    }
+
+    private var activeStatusText: String {
+        switch item.state {
+        case .queued, .preparing:
+            return "Preparing download..."
+        case .downloading:
+            return "Downloading..."
+        case .completing:
+            return item.engine == .ytDLP ? "Finalizing media..." : "Merging segments..."
+        default:
+            return statusText
+        }
+    }
+
+    private var rowFill: Color {
+        Color.clear
+    }
+
+    private var rowStroke: Color {
+        glassStroke(light: 0.1, dark: 0.08)
+    }
+
+    private var rowShadow: Color {
+        colorScheme == .dark ? Color.black.opacity(0.32) : Color.black.opacity(0.12)
+    }
+
     private func action() {
         if item.state == .completed {
             onOpen()
@@ -174,38 +253,5 @@ struct DownloadRow: View {
             onResume()
         }
     }
-}
 
-private struct DownloadProgressBar: View {
-    let progress: Double
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        GeometryReader { geometry in
-            let clamped = max(0, min(progress, 1))
-
-            ZStack(alignment: .leading) {
-                Capsule(style: .continuous)
-                    .fill(glassFill(light: 0.32, dark: 0.08))
-
-                Capsule(style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.blue.opacity(0.95),
-                                Color.cyan.opacity(0.78)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .frame(width: max(8, geometry.size.width * clamped))
-            }
-        }
-        .frame(height: 7)
-    }
-
-    private func glassFill(light: Double, dark: Double) -> Color {
-        colorScheme == .dark ? Color.white.opacity(dark) : Color.white.opacity(light)
-    }
 }
