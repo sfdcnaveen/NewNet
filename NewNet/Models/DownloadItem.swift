@@ -41,6 +41,14 @@ enum DownloadContentPreference: String, Codable, CaseIterable, Identifiable {
             return "Audio"
         }
     }
+    
+    var icon: String {
+        switch self {
+        case .auto: return "wand.and.stars"
+        case .video: return "play.rectangle"
+        case .audio: return "music.note"
+        }
+    }
 }
 
 struct YTDLPDownloadConfiguration: Codable, Hashable, Sendable {

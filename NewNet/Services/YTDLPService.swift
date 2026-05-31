@@ -457,9 +457,10 @@ final class YTDLPService {
         }
 
         let progressAccumulator = LineAccumulator(trackSignificantLine: false) { line in
-            Self.handleStandardOutput(line, onEvent: onEvent)
+            if line.contains("PROGRESS:") || line.contains("[download]") || line.contains("size=") || line.contains("[ffmpeg]") {
+                Self.handleStandardOutput(line, onEvent: onEvent)
+            }
         }
-
         let stderrAccumulator = LineAccumulator()
 
         let runningTask = YTDLPRunningTask(
@@ -518,7 +519,9 @@ final class YTDLPService {
             "--print",
             "after_move:FILE:%(filepath)s",
             "--progress-template",
-            "download:PROGRESS:%(progress.downloaded_bytes)s|%(progress.downloaded_bytes_estimate)s|%(progress.total_bytes)s|%(progress.total_bytes_estimate)s",
+            "download:PROGRESS:%(progress.downloaded_bytes)s|%(progress.downloaded_bytes_estimate)s|%(progress.total_bytes)s|%(progress.total_bytes_estimate)s|%(progress._percent_str)s|%(progress._downloaded_bytes_str)s|%(progress._total_bytes_str)s",
+            "--progress-template",
+            "frag_download:PROGRESS:%(progress.downloaded_bytes)s|%(progress.downloaded_bytes_estimate)s|%(progress.total_bytes)s|%(progress.total_bytes_estimate)s|%(progress._percent_str)s|%(progress._downloaded_bytes_str)s|%(progress._total_bytes_str)s",
             "--concurrent-fragments",
             "\(max(settings.maxSegments, 1))"
         ]
@@ -912,25 +915,52 @@ final class YTDLPService {
         if let progressRange = line.range(of: "PROGRESS:") {
             let payload = String(line[progressRange.upperBound...])
             let components = payload.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
-            let downloadedBytes = parseByteValue(components[safe: 0]) ?? parseByteValue(components[safe: 1])
-            let explicitTotal = parseByteValue(components[safe: 2])
+            let downloadedBytes = parseByteValue(components[safe: 0]) ??
+                parseByteValue(components[safe: 1]) ??
+                parseFormattedByteValue(components[safe: 5])
+            let explicitTotal = parseByteValue(components[safe: 2]) ??
+                parseFormattedByteValue(components[safe: 6])
             let estimatedTotal = parseByteValue(components[safe: 3])
+            let totalBytes = explicitTotal ?? estimatedTotal
 
-            guard let downloaded = downloadedBytes else { return }
-            onEvent(.progress(downloadedBytes: downloaded, totalBytes: explicitTotal ?? estimatedTotal))
+            if let downloaded = downloadedBytes {
+                onEvent(.progress(downloadedBytes: downloaded, totalBytes: totalBytes))
+                return
+            }
+
+            guard let percent = parsePercentValue(components[safe: 4]),
+                  let totalBytes,
+                  totalBytes > 0
+            else { return }
+
+            let downloaded = Int64((Double(totalBytes) * percent / 100.0).rounded())
+            onEvent(.progress(downloadedBytes: max(0, downloaded), totalBytes: totalBytes))
             return
         }
 
         if let fallback = parseLegacyProgressLine(line) {
             onEvent(.progress(downloadedBytes: fallback.downloadedBytes, totalBytes: fallback.totalBytes))
+            return
+        }
+
+        if let ffmpegBytes = parseFFmpegProgressLine(line) {
+            onEvent(.progress(downloadedBytes: ffmpegBytes, totalBytes: nil))
         }
     }
+}
+
+private func parseFFmpegProgressLine(_ line: String) -> Int64? {
+    let pattern = #"size=\s*([0-9]+(?:\.[0-9]+)?)\s*([a-zA-Z]+)"#
+    if let match = firstRegexMatch(pattern: pattern, in: line) {
+        return sizeToBytes(value: match.group(1), unit: match.group(2))
+    }
+    return nil
 }
 
 private func parseLegacyProgressLine(_ line: String) -> (downloadedBytes: Int64, totalBytes: Int64?)? {
     guard line.contains("[download]") else { return nil }
 
-    let percentPattern = #"([0-9]+(?:\.[0-9]+)?)%\s+of\s+~?([0-9]+(?:\.[0-9]+)?)\s*([KMGTP]?i?B)"#
+    let percentPattern = #"([0-9]+(?:\.[0-9]+)?)%\s+of\s+~?\s*([0-9]+(?:\.[0-9]+)?)\s*([KMGTP]?i?B)"#
     if let match = firstRegexMatch(pattern: percentPattern, in: line) {
         let percent = match.group(1)
         let totalValue = match.group(2)
@@ -943,7 +973,7 @@ private func parseLegacyProgressLine(_ line: String) -> (downloadedBytes: Int64,
         }
     }
 
-    let ofPattern = #"([0-9]+(?:\.[0-9]+)?)\s*([KMGTP]?i?B)\s+of\s+~?([0-9]+(?:\.[0-9]+)?)\s*([KMGTP]?i?B)"#
+    let ofPattern = #"([0-9]+(?:\.[0-9]+)?)\s*([KMGTP]?i?B)\s+of\s+~?\s*([0-9]+(?:\.[0-9]+)?)\s*([KMGTP]?i?B)"#
     if let match = firstRegexMatch(pattern: ofPattern, in: line) {
         let downloadedValue = match.group(1)
         let downloadedUnit = match.group(2)
@@ -1024,6 +1054,20 @@ private func parseByteValue(_ raw: String?) -> Int64? {
         return Int64(value)
     }
     return nil
+}
+
+private func parseFormattedByteValue(_ raw: String?) -> Int64? {
+    guard let raw = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { return nil }
+    let pattern = #"([0-9]+(?:\.[0-9]+)?)\s*([KMGTP]?i?B|B)"#
+    guard let match = firstRegexMatch(pattern: pattern, in: raw) else { return nil }
+    return sizeToBytes(value: match.group(1), unit: match.group(2))
+}
+
+private func parsePercentValue(_ raw: String?) -> Double? {
+    guard let raw = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { return nil }
+    let normalized = raw.replacingOccurrences(of: "%", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let percent = Double(normalized), percent.isFinite else { return nil }
+    return max(0, min(percent, 100))
 }
 
 private struct YTDLPInspectionResponse: Decodable {

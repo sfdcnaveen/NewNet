@@ -1,5 +1,21 @@
 import Combine
 import Foundation
+import SwiftUI
+
+enum AppTheme: String, CaseIterable, Identifiable {
+    case system = "System"
+    case light = "Light"
+    case dark = "Dark"
+    var id: String { rawValue }
+    
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .light: return .light
+        case .dark: return .dark
+        case .system: return nil
+        }
+    }
+}
 
 @MainActor
 final class AppSettings: ObservableObject {
@@ -22,6 +38,7 @@ final class AppSettings: ObservableObject {
         static let getSaucePath = "settings.getSaucePath"
         static let luxPath = "settings.luxPath"
         static let preferredMediaType = "settings.preferredMediaType"
+        static let appTheme = "settings.appTheme"
     }
 
     private let defaults: UserDefaults
@@ -149,6 +166,12 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    @Published var appTheme: AppTheme {
+        didSet {
+            defaults.set(appTheme.rawValue, forKey: Keys.appTheme)
+        }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
 
@@ -176,6 +199,9 @@ final class AppSettings: ObservableObject {
         preferredMediaType = DownloadContentPreference(
             rawValue: defaults.string(forKey: Keys.preferredMediaType) ?? ""
         ) ?? .auto
+        appTheme = AppTheme(
+            rawValue: defaults.string(forKey: Keys.appTheme) ?? ""
+        ) ?? .system
     }
 
     func overridePath(for tool: ExternalTool) -> String {
