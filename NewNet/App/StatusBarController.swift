@@ -31,10 +31,12 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     }
 
     deinit {
-        if let globalMouseMonitor {
-            NSEvent.removeMonitor(globalMouseMonitor)
+        MainActor.assumeIsolated {
+            if let globalMouseMonitor {
+                NSEvent.removeMonitor(globalMouseMonitor)
+            }
+            NotificationCenter.default.removeObserver(self)
         }
-        NotificationCenter.default.removeObserver(self)
     }
 
     private func configureStatusItem() {

@@ -37,7 +37,9 @@ final class ClipboardMonitor: ObservableObject {
     }
 
     deinit {
-        timer?.invalidate()
+        MainActor.assumeIsolated {
+            timer?.invalidate()
+        }
     }
 
     func dismissSuggestion() {

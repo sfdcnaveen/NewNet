@@ -130,7 +130,7 @@ actor FFmpegInstaller {
     }
 }
 
-final class YTDLPRunningTask {
+nonisolated final class YTDLPRunningTask: @unchecked Sendable {
     let process: Process
 
     private let stdoutPipe: Pipe
@@ -1149,7 +1149,7 @@ private struct YTDLPInspectionFormat: Decodable {
     }
 }
 
-private final class LineAccumulator {
+nonisolated private final class LineAccumulator: @unchecked Sendable {
     private var buffer = Data()
     private let onLine: (String) -> Void
     private let trackSignificantLine: Bool

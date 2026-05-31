@@ -30,12 +30,14 @@ final class NetworkSpeedMonitor: ObservableObject {
     }
 
     deinit {
-        timer?.cancel()
-        #if canImport(AppKit)
-        if let wakeObserver {
-            NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
+        MainActor.assumeIsolated {
+            timer?.cancel()
+            #if canImport(AppKit)
+            if let wakeObserver {
+                NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
+            }
+            #endif
         }
-        #endif
     }
 
     private func start() {
@@ -45,7 +47,9 @@ final class NetworkSpeedMonitor: ObservableObject {
         let milliseconds = max(Int(refreshInterval * 1000), 500)
         timer.schedule(deadline: .now(), repeating: .milliseconds(milliseconds), leeway: .milliseconds(120))
         timer.setEventHandler { [weak self] in
-            self?.sample()
+            Task { @MainActor in
+                self?.sample()
+            }
         }
         self.timer = timer
         timer.resume()
@@ -58,22 +62,21 @@ final class NetworkSpeedMonitor: ObservableObject {
             object: nil,
             queue: nil
         ) { [weak self] _ in
-            self?.handleWake()
+            Task { @MainActor in
+                self?.handleWake()
+            }
         }
         #endif
     }
 
     private func handleWake() {
-        queue.async { [weak self] in
-            guard let self else { return }
-            self.lastSampleDate = nil
-            self.lastTotals = nil
-            if let timer = self.timer {
-                timer.cancel()
-                self.timer = nil
-            }
-            self.start()
+        lastSampleDate = nil
+        lastTotals = nil
+        if let timer {
+            timer.cancel()
+            self.timer = nil
         }
+        start()
     }
 
     func setRefreshInterval(_ interval: TimeInterval) {
@@ -81,15 +84,13 @@ final class NetworkSpeedMonitor: ObservableObject {
         guard abs(clamped - refreshInterval) > 0.1 else { return }
         refreshInterval = clamped
 
-        queue.async { [weak self] in
-            guard let self, let timer = self.timer else { return }
-            let milliseconds = max(Int(self.refreshInterval * 1000), 500)
-            timer.schedule(
-                deadline: .now(),
-                repeating: .milliseconds(milliseconds),
-                leeway: .milliseconds(200)
-            )
-        }
+        guard let timer else { return }
+        let milliseconds = max(Int(refreshInterval * 1000), 500)
+        timer.schedule(
+            deadline: .now(),
+            repeating: .milliseconds(milliseconds),
+            leeway: .milliseconds(200)
+        )
     }
 
     private func sample() {
@@ -112,10 +113,8 @@ final class NetworkSpeedMonitor: ObservableObject {
         lastSampleDate = now
         lastTotals = totals
 
-        DispatchQueue.main.async {
-            self.snapshot = snapshot
-            self.usage = usage
-        }
+        self.snapshot = snapshot
+        self.usage = usage
     }
 
     private static func readInterfaceTotals() -> InterfaceTotals {
