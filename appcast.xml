@@ -1,53 +1,22 @@
-<?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0"
-     xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"
-     xmlns:dc="http://purl.org/dc/elements/1.1/">
-  <channel>
-    <title>NewNet Updates</title>
-    <link>https://github.com/sfdcnaveen/NewNet/releases</link>
-    <description>NewNet release feed</description>
-    <language>en</language>
-
-    <item>
-      <title>Version 1.1.8</title>
-      <sparkle:version>118</sparkle:version>
-      <sparkle:shortVersionString>1.1.8</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-      <pubDate>Sat, 09 May 2026 12:44:21 +0530</pubDate>
-      <sparkle:releaseNotesLink>https://github.com/sfdcnaveen/NewNet/releases/tag/v1.1.8</sparkle:releaseNotesLink>
-      <enclosure
-        url="https://github.com/sfdcnaveen/NewNet/releases/download/v1.1.8/NewNet-1.1.8.dmg"
-        sparkle:edSignature="mkdIhCvdK0/2UhqVQxQ1IXYkxoFvg+IZzODB1PW0OG30aWGNL3OmlULT8FWhy5TQUAoUQqpmzxl+AnoUxPe/BA=="
-        length="47261181"
-        type="application/octet-stream" />
-    </item>
-
-    <item>
-      <title>Version 1.1.7</title>
-      <sparkle:version>117</sparkle:version>
-      <sparkle:shortVersionString>1.1.7</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-      <pubDate>Fri, 24 Apr 2026 11:30:00 +0530</pubDate>
-      <sparkle:releaseNotesLink>https://github.com/sfdcnaveen/NewNet/releases/tag/v1.1.7</sparkle:releaseNotesLink>
-      <enclosure
-        url="https://github.com/sfdcnaveen/NewNet/releases/download/v1.1.7/NewNet-1.1.7.dmg"
-        sparkle:edSignature="UIYTz0N1hXhCjCRUW/1+hnEe5Y0krYmTrBCFXz+Z5cmZpaQTcoO1tZNjgokCXjfDDw8CHhmR0ORSACNNngcqCA=="
-        length="47220971"
-        type="application/octet-stream" />
-    </item>
-
-    <item>
-      <title>Version 1.1.6</title>
-      <sparkle:version>116</sparkle:version>
-      <sparkle:shortVersionString>1.1.6</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-      <pubDate>Thu, 16 Apr 2026 12:00:00 +0000</pubDate>
-      <sparkle:releaseNotesLink>https://github.com/sfdcnaveen/NewNet/releases/tag/v1.1.6</sparkle:releaseNotesLink>
-      <enclosure
-        url="https://github.com/sfdcnaveen/NewNet/releases/download/v1.1.6/NewNet-1.1.6.dmg"
-        sparkle:edSignature="7FnA+EQcCg5Kxy6MsMxR0MiZwZvdHNGsyulH0bRG9TUJg7Ek93SjS9hD6BGWRgxDZbhmDdCHd412DsHCEHAYBw=="
-        length="46709700"
-        type="application/octet-stream" />
-    </item>
-  </channel>
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>NewNet</title>
+        <item>
+            <title>1.2.1</title>
+            <pubDate>Thu, 27 Aug 2026 19:35:41 +0530</pubDate>
+            <sparkle:version>121</sparkle:version>
+            <sparkle:shortVersionString>1.2.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.2</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/sfdcnaveen/NewNet/releases/download/v1.2.1/NewNet.dmg" length="47358574" type="application/octet-stream" sparkle:edSignature="U3z3BKGE/+yPNARlyJEf9wT/Z6uvvKb1VL+y/OVsFl+o28I55dHlDcGFfZDcX7Hd8kV3xaZ1Qcl+5IYKULoRBg=="/>
+        </item>
+        <item>
+            <title>1.1.7</title>
+            <pubDate>Fri, 24 Apr 2026 11:24:37 +0530</pubDate>
+            <sparkle:version>117</sparkle:version>
+            <sparkle:shortVersionString>1.1.7</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.2</sparkle:minimumSystemVersion>
+            <enclosure url="NewNet-1.1.7.dmg" length="47220971" type="application/octet-stream"/>
+        </item>
+    </channel>
 </rss>
