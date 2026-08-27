@@ -3,6 +3,14 @@
     <channel>
         <title>NewNet</title>
         <item>
+            <title>1.2.2</title>
+            <pubDate>Thu, 27 Aug 2026 20:39:00 +0530</pubDate>
+            <sparkle:version>122</sparkle:version>
+            <sparkle:shortVersionString>1.2.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.2</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/sfdcnaveen/NewNet/releases/download/v1.2.2/NewNet.dmg" length="47356720" type="application/octet-stream" sparkle:edSignature="7MGLVz+N/VPL9g2QNQ9BCBPHQbkzdmIej/bYcnpXdJ5w3fvfdTGT4WWBef91ywm4sKE0y5JI7TehhmC247F7AQ=="/>
+        </item>
+        <item>
             <title>1.2.1</title>
             <pubDate>Thu, 27 Aug 2026 19:35:41 +0530</pubDate>
             <sparkle:version>121</sparkle:version>
