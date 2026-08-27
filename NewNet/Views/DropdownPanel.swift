@@ -141,26 +141,23 @@ struct DropdownPanel: View {
                     Button {
                         downloadManagerViewModel.submitURL()
                     } label: {
-                        ZStack {
-                            Circle()
-                                .fill(Color.accentColor.opacity(0.15))
-                                .frame(width: 24, height: 24)
+                        Group {
                             if downloadManagerViewModel.isInspectingURL {
                                 ProgressView()
-                                    .controlSize(.mini)
+                                    .controlSize(.small)
+                                    .frame(width: 44, height: 20)
                             } else {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 13, weight: .bold))
-                                    .foregroundStyle(Color.accentColor)
+                                Text("Add")
                             }
                         }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(AddButtonStyle())
                     .padding(.trailing, 6)
                     .disabled(
                         downloadManagerViewModel.isInspectingURL ||
                         downloadManagerViewModel.urlField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     )
+                    .accessibilityLabel("Add download")
                 }
                 .onSubmit {
                     downloadManagerViewModel.submitURL()
@@ -684,5 +681,29 @@ private struct FlowLayout<Content: View>: View {
     var body: some View {
         content
             .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct AddButtonStyle: ButtonStyle {
+    @State private var isHovering = false
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 12, weight: .bold))
+            .foregroundStyle(Color.accentColor)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 4)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.accentColor.opacity(isEnabled ? (configuration.isPressed ? 0.3 : (isHovering ? 0.2 : 0.15)) : 0.05))
+            )
+            .opacity(isEnabled ? 1.0 : 0.5)
+            .onHover { hovering in
+                isHovering = hovering
+            }
+            .animation(DesignTokens.Animation.hover, value: isHovering)
+            .animation(DesignTokens.Animation.hover, value: configuration.isPressed)
+            .animation(DesignTokens.Animation.hover, value: isEnabled)
     }
 }

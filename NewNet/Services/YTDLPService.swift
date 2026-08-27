@@ -28,8 +28,10 @@ actor YTDLPInstaller {
     private let fileManager = FileManager.default
     private var installTask: Task<URL, Error>?
 
-    func ensureInstalled(targetURL: URL, downloadURL: URL) async throws -> URL {
-        if fileManager.isExecutableFile(atPath: targetURL.path(percentEncoded: false)) {
+    func ensureInstalled(targetURL: URL, downloadURL: URL, releaseTag: String) async throws -> URL {
+        if fileManager.isExecutableFile(atPath: targetURL.path(percentEncoded: false)),
+           installedReleaseTag(for: targetURL) == releaseTag
+        {
             return targetURL
         }
 
@@ -53,6 +55,8 @@ actor YTDLPInstaller {
                 ofItemAtPath: targetURL.path(percentEncoded: false)
             )
 
+            try releaseTag.write(to: self.versionMarkerURL(for: targetURL), atomically: true, encoding: .utf8)
+
             return targetURL
         }
 
@@ -66,6 +70,15 @@ actor YTDLPInstaller {
             installTask = nil
             throw error
         }
+    }
+
+    private func installedReleaseTag(for targetURL: URL) -> String? {
+        try? String(contentsOf: versionMarkerURL(for: targetURL), encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func versionMarkerURL(for targetURL: URL) -> URL {
+        targetURL.deletingLastPathComponent().appendingPathComponent(".ytdlp-release")
     }
 }
 
@@ -161,7 +174,8 @@ nonisolated final class YTDLPRunningTask: @unchecked Sendable {
 }
 
 final class YTDLPService {
-    private static let releaseBinaryURL = URL(string: "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos")!
+    private static let ytDLPReleaseTag = "2026.08.19"
+    private static let releaseBinaryURL = URL(string: "https://github.com/yt-dlp/yt-dlp/releases/download/\(ytDLPReleaseTag)/yt-dlp_macos")!
     private static let ffmpegReleaseTag = "b6.1.1"
     private static let ffmpegDownloadBaseURL = URL(
         string: "https://github.com/eugeneware/ffmpeg-static/releases/download/\(ffmpegReleaseTag)/"
@@ -279,16 +293,34 @@ final class YTDLPService {
     }
 
     func ensureInstalled(settings: AppSettings) async throws -> URL {
-        if let binaryURL = resolvedBinaryURL(settings: settings) {
-            return binaryURL
+        let customPath = settings.ytDLPPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !customPath.isEmpty, FileManager.default.isExecutableFile(atPath: customPath) {
+            return URL(fileURLWithPath: customPath)
+        }
+
+        let bundledPaths = [
+            Bundle.main.path(forAuxiliaryExecutable: "yt-dlp") ?? "",
+            Bundle.main.resourceURL?.appendingPathComponent("yt-dlp").path(percentEncoded: false) ?? ""
+        ]
+
+        for path in bundledPaths where !path.isEmpty {
+            if FileManager.default.isExecutableFile(atPath: path) {
+                return URL(fileURLWithPath: path)
+            }
         }
 
         do {
             return try await Self.installer.ensureInstalled(
                 targetURL: Self.managedBinaryURL,
-                downloadURL: Self.releaseBinaryURL
+                downloadURL: Self.releaseBinaryURL,
+                releaseTag: Self.ytDLPReleaseTag
             )
         } catch {
+            for path in Self.commonBinaryPaths where path != Self.managedBinaryURL.path(percentEncoded: false) {
+                if FileManager.default.isExecutableFile(atPath: path) {
+                    return URL(fileURLWithPath: path)
+                }
+            }
             throw YTDLPServiceError.installFailed(
                 "NewNet could not automatically install the media engine. Check your connection and try again."
             )

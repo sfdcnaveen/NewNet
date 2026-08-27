@@ -100,8 +100,9 @@ struct DownloadRow: View {
                         Text(ByteCountFormatter.compactFileSize(item.downloadedBytes))
                             .foregroundStyle(.secondary)
                     } else if item.state == .failed {
-                        Text("Needs attention")
-                            .foregroundStyle(.red)
+                        Text(item.errorDescription ?? "Failed to download")
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
                 }
                 .font(.system(size: 11, weight: .medium))

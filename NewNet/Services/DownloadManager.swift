@@ -2,6 +2,7 @@ import AppKit
 import Combine
 import Foundation
 import UserNotifications
+import os
 
 enum DownloadSubmissionResult {
     case accepted
@@ -153,6 +154,7 @@ final class DownloadManager: ObservableObject {
     private let fileStore = SegmentFileStore()
     private let limiter = TransferLimiter()
     private let ytDLPService = YTDLPService()
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.newnet", category: "DownloadManager")
 
     private var segmentTasks: [UUID: [Int: Task<Void, Never>]] = [:]
     private var preparationTasks: [UUID: Task<Void, Never>] = [:]
@@ -510,6 +512,7 @@ final class DownloadManager: ObservableObject {
             let wasPaused = ytDLPPausedIDs.remove(id) != nil
 
             if wasPaused {
+                logger.info("yt-dlp download paused for id: \(id.uuidString)")
                 items[index].state = .paused
                 items[index].errorDescription = nil
                 scheduleSave()
@@ -517,6 +520,7 @@ final class DownloadManager: ObservableObject {
             }
 
             if exitCode == 0 {
+                logger.info("yt-dlp download completed for id: \(id.uuidString)")
                 syncFileMetrics(for: index)
 
                 if items[index].totalBytesExpected < items[index].downloadedBytes {
@@ -532,7 +536,12 @@ final class DownloadManager: ObservableObject {
                 scheduleSave()
                 sendCompletionNotification(for: items[index])
             } else {
-                markFailed(id: id, message: message ?? "yt-dlp exited with status \(exitCode).")
+                var errorMessage = "Media engine exited unexpectedly."
+                if let message = message, !message.isEmpty {
+                    errorMessage = message.replacingOccurrences(of: "ERROR: ", with: "")
+                }
+                logger.error("yt-dlp download failed for id: \(id.uuidString). Exit code: \(exitCode). Message: \(errorMessage)")
+                markFailed(id: id, message: errorMessage)
             }
         }
     }
