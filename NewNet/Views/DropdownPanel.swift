@@ -29,14 +29,7 @@ struct DropdownPanel: View {
                     .font(.system(size: 11, weight: .semibold))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(glassFill(light: 0.78, dark: 0.12))
-                    )
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .strokeBorder(glassStroke(light: 0.12, dark: 0.08), lineWidth: 1)
-                    )
+                    .liquidGlassControl()
                     .padding(20)
                     .transition(.opacity)
             }
@@ -46,7 +39,7 @@ struct DropdownPanel: View {
         .onDrop(of: [.url, .fileURL, .text], isTargeted: $isDropTarget) { providers in
             downloadManagerViewModel.handleDrop(providers: providers)
         }
-        .animation(.easeOut(duration: 0.18), value: isDropTarget)
+        .animation(DesignTokens.Animation.transition, value: isDropTarget)
     }
 
     private var mainPanel: some View {
@@ -65,9 +58,7 @@ struct DropdownPanel: View {
 
     private func panelCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
-            .background(menuBackground)
-            .overlay(menuOutline)
-            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .liquidGlassPanel()
     }
 
     private var usageSection: some View {
@@ -87,14 +78,7 @@ struct DropdownPanel: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.secondary)
                     .frame(width: 26, height: 26)
-                    .background(
-                        Circle()
-                            .fill(glassFill(light: 0.9, dark: 0.1))
-                    )
-                    .overlay(
-                        Circle()
-                            .strokeBorder(glassStroke(light: 0.1, dark: 0.1), lineWidth: 1)
-                    )
+                    .liquidGlassControl()
             }
             .buttonStyle(.plain)
             .padding(.top, 4)
@@ -151,7 +135,7 @@ struct DropdownPanel: View {
                 .padding(.leading, 12)
                 .padding(.trailing, 36)
                 .padding(.vertical, 10)
-                .background(inputBackground)
+                .liquidGlassControl()
                 .disabled(downloadManagerViewModel.isInspectingURL)
                 .overlay(alignment: .trailing) {
                     Button {
@@ -166,7 +150,7 @@ struct DropdownPanel: View {
                                     .controlSize(.mini)
                             } else {
                                 Image(systemName: "plus")
-                                    .font(.system(size: 12, weight: .semibold))
+                                    .font(.system(size: 13, weight: .bold))
                                     .foregroundStyle(Color.accentColor)
                             }
                         }
@@ -224,7 +208,7 @@ struct DropdownPanel: View {
             }
         }
         .padding(.vertical, 8)
-        .animation(.easeOut(duration: 0.18), value: downloadManagerViewModel.isInspectingURL)
+        .animation(DesignTokens.Animation.transition, value: downloadManagerViewModel.isInspectingURL)
     }
 
     private var downloadsSection: some View {
@@ -279,71 +263,12 @@ struct DropdownPanel: View {
         .padding(.vertical, 8)
     }
 
-    private var menuBackground: some View {
-        RoundedRectangle(cornerRadius: 28, style: .continuous)
-            .fill(.ultraThinMaterial)
-            .background(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: menuGradientStops,
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            )
-            .shadow(color: menuShadowColor, radius: 24, x: 0, y: 12)
-    }
-
-    private var menuOutline: some View {
-        RoundedRectangle(cornerRadius: 28, style: .continuous)
-            .strokeBorder(glassStroke(light: 0.08, dark: 0.12), lineWidth: 1)
-    }
-
-    private var inputBackground: some View {
-        RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .fill(.ultraThinMaterial)
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(glassFill(light: 0.88, dark: 0.1))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(glassStroke(light: 0.14, dark: 0.1), lineWidth: 1)
-            )
-    }
-
-
-
-    private var statusCapsule: some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(activeIndicatorColor)
-                .frame(width: 8, height: 8)
-
-            Text(activeDownloadCount == 0 ? "Idle" : "\(activeDownloadCount) Active")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .background(
-            Capsule(style: .continuous)
-                .fill(glassFill(light: 0.82, dark: 0.08))
-        )
-    }
-
     private var activeDownloadCount: Int {
         downloadManagerViewModel.activeDownloads.count
     }
 
     private var activeIndicatorColor: Color {
         activeDownloadCount == 0 ? .secondary : .accentColor
-    }
-
-    private var menuDivider: some View {
-        Divider()
-            .overlay(glassStroke(light: 0.08, dark: 0.08))
     }
 
     private func sectionTitle(_ title: String) -> some View {
@@ -372,14 +297,7 @@ struct DropdownPanel: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
         .padding(.vertical, 11)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(glassFill(light: 0.72, dark: 0.04))
-                )
-        )
+        .liquidGlassControl()
     }
 
     private func actionRow(title: String, systemImage: String, role: ButtonRole? = nil, action: @escaping () -> Void) -> some View {
@@ -399,32 +317,6 @@ struct DropdownPanel: View {
         .buttonStyle(.plain)
         .foregroundStyle(role == .destructive ? .red : .primary)
         .menuItemBackground()
-    }
-
-    private var menuGradientStops: [Color] {
-        if colorScheme == .dark {
-            return [
-                Color.black.opacity(0.94),
-                Color(nsColor: .windowBackgroundColor).opacity(0.98)
-            ]
-        }
-
-        return [
-            Color.white.opacity(0.9),
-            Color.white.opacity(0.68)
-        ]
-    }
-
-    private var menuShadowColor: Color {
-        colorScheme == .dark ? Color.black.opacity(0.45) : Color.black.opacity(0.18)
-    }
-
-    private func glassFill(light: Double, dark: Double) -> Color {
-        colorScheme == .dark ? Color.white.opacity(dark) : Color.white.opacity(light)
-    }
-
-    private func glassStroke(light: Double, dark: Double) -> Color {
-        colorScheme == .dark ? Color.white.opacity(dark) : Color.black.opacity(light)
     }
 }
 
@@ -496,10 +388,7 @@ private struct MediaFormatSelectionScreen: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .contentShape(Rectangle())
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(glassFill(light: 0.8, dark: 0.06))
-                )
+                .liquidGlassControl()
 
                 Spacer()
 
@@ -544,10 +433,7 @@ private struct MediaFormatSelectionScreen: View {
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(.primary)
                     .frame(width: 30, height: 30)
-                    .background(
-                        Circle()
-                            .fill(glassFill(light: 0.84, dark: 0.08))
-                    )
+                    .liquidGlassControl()
             }
             .buttonStyle(.plain)
 
@@ -574,14 +460,7 @@ private struct MediaFormatSelectionScreen: View {
             } placeholder: {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(
-                        LinearGradient(
-                            colors: [
-                                glassFill(light: 0.7, dark: 0.05),
-                                glassFill(light: 0.5, dark: 0.02)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+                        Color.primary.opacity(0.05)
                     )
                     .overlay(
                         Image(systemName: "play.rectangle.fill")
@@ -593,7 +472,7 @@ private struct MediaFormatSelectionScreen: View {
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(glassStroke(light: 0.1, dark: 0.15), lineWidth: 1)
+                    .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
             )
             .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.15), radius: 8, x: 0, y: 4)
 
@@ -647,7 +526,7 @@ private struct MediaFormatSelectionScreen: View {
 
     private var divider: some View {
         Divider()
-            .overlay(glassStroke(light: 0.08, dark: 0.08))
+            .overlay(Color.primary.opacity(0.1))
     }
 
     private func infoChip(text: String) -> some View {
@@ -656,10 +535,7 @@ private struct MediaFormatSelectionScreen: View {
             .foregroundStyle(.secondary)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(glassFill(light: 0.8, dark: 0.06))
-            )
+            .background(Capsule(style: .continuous).fill(Color.primary.opacity(0.1)))
     }
 
     private func durationString(for duration: TimeInterval) -> String {
@@ -668,14 +544,6 @@ private struct MediaFormatSelectionScreen: View {
         formatter.unitsStyle = .positional
         formatter.zeroFormattingBehavior = [.pad]
         return formatter.string(from: duration) ?? ""
-    }
-
-    private func glassFill(light: Double, dark: Double) -> Color {
-        colorScheme == .dark ? Color.white.opacity(dark) : Color.white.opacity(light)
-    }
-
-    private func glassStroke(light: Double, dark: Double) -> Color {
-        colorScheme == .dark ? Color.white.opacity(dark) : Color.black.opacity(light)
     }
 }
 
@@ -705,18 +573,7 @@ private struct DownloadPreferenceControl: View {
             }
         }
         .padding(4)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(glassFill(light: 0.78, dark: 0.06))
-                )
-        )
-    }
-
-    private func glassFill(light: Double, dark: Double) -> Color {
-        colorScheme == .dark ? Color.white.opacity(dark) : Color.white.opacity(light)
+        .liquidGlassControl()
     }
 }
 
@@ -732,7 +589,7 @@ private struct MediaFormatOptionRow: View {
             HStack(alignment: .top, spacing: 12) {
                 ZStack {
                     Circle()
-                        .fill(isSelected ? Color.accentColor.opacity(0.16) : glassFill(light: 0.78, dark: 0.06))
+                        .fill(isSelected ? Color.accentColor.opacity(0.16) : Color.primary.opacity(0.1))
                         .frame(width: 28, height: 28)
 
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
@@ -767,8 +624,8 @@ private struct MediaFormatOptionRow: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovering = $0 }
-        .animation(.easeOut(duration: 0.15), value: isHovering)
-        .animation(.easeOut(duration: 0.2), value: isSelected)
+        .animation(DesignTokens.Animation.hover, value: isHovering)
+        .animation(DesignTokens.Animation.transition, value: isSelected)
     }
 
     private var background: some View {
@@ -779,22 +636,14 @@ private struct MediaFormatOptionRow: View {
                     .fill(
                         isSelected 
                             ? Color.accentColor.opacity(isHovering ? 0.2 : 0.15) 
-                            : glassFill(light: isHovering ? 0.8 : 0.65, dark: isHovering ? 0.08 : 0.02)
+                            : Color.primary.opacity(isHovering ? 0.08 : 0.04)
                     )
             )
     }
 
     private var border: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .strokeBorder(isSelected ? Color.accentColor.opacity(0.7) : glassStroke(light: isHovering ? 0.15 : 0.1, dark: isHovering ? 0.12 : 0.08), lineWidth: 1)
-    }
-
-    private func glassFill(light: Double, dark: Double) -> Color {
-        colorScheme == .dark ? Color.white.opacity(dark) : Color.white.opacity(light)
-    }
-
-    private func glassStroke(light: Double, dark: Double) -> Color {
-        colorScheme == .dark ? Color.white.opacity(dark) : Color.black.opacity(light)
+            .strokeBorder(isSelected ? Color.accentColor.opacity(0.7) : Color.primary.opacity(0.1), lineWidth: 1)
     }
 }
 
@@ -835,41 +684,5 @@ private struct FlowLayout<Content: View>: View {
     var body: some View {
         content
             .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-private extension View {
-    func menuItemBackground() -> some View {
-        modifier(MenuItemGlassBackground())
-    }
-}
-
-private struct MenuItemGlassBackground: ViewModifier {
-    @Environment(\.colorScheme) private var colorScheme
-
-    func body(content: Content) -> some View {
-        content
-            .padding(.horizontal, 10)
-            .padding(.vertical, 9)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(glassFill(light: 0.72, dark: 0.04))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .strokeBorder(glassStroke(light: 0.1, dark: 0.08), lineWidth: 1)
-                    )
-            )
-    }
-
-    private func glassFill(light: Double, dark: Double) -> Color {
-        colorScheme == .dark ? Color.white.opacity(dark) : Color.white.opacity(light)
-    }
-
-    private func glassStroke(light: Double, dark: Double) -> Color {
-        colorScheme == .dark ? Color.white.opacity(dark) : Color.black.opacity(light)
     }
 }

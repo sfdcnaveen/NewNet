@@ -216,7 +216,7 @@ private struct MenuBarPanelHost: View {
                 VStack(spacing: 0) {
                     HStack {
                         Button {
-                            withAnimation(.easeOut(duration: 0.15)) {
+                            withAnimation(DesignTokens.Animation.transition) {
                                 showingSettings = false
                             }
                         } label: {
@@ -224,37 +224,27 @@ private struct MenuBarPanelHost: View {
                                 .font(.system(size: 13, weight: .bold))
                                 .foregroundStyle(.primary)
                                 .frame(width: 28, height: 28)
-                                .background(
-                                    Circle()
-                                        .fill(Color.primary.opacity(0.1))
-                                )
+                                .liquidGlassControl()
+                                .clipShape(Circle())
                         }
                         .buttonStyle(.plain)
                         
                         Text("Settings")
                             .font(.system(size: 15, weight: .semibold))
-                            .padding(.leading, 8)
+                            .padding(.leading, DesignTokens.Spacing.small)
                         
                         Spacer()
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 14)
-                    .padding(.bottom, 8)
+                    .padding(.horizontal, DesignTokens.Spacing.large)
+                    .padding(.top, DesignTokens.Spacing.large)
+                    .padding(.bottom, DesignTokens.Spacing.small)
                     
                     Divider()
                     
                     SettingsView(settings: settings)
                         .padding(.top, -12)
                 }
-                .background(
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
-                        )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                .liquidGlassPanel()
                 .transition(.move(edge: .trailing).combined(with: .opacity))
             } else {
                 DropdownPanel(
@@ -262,7 +252,7 @@ private struct MenuBarPanelHost: View {
                     downloadManagerViewModel: downloadManagerViewModel,
                     settings: settings,
                     onSettingsTapped: {
-                        withAnimation(.easeOut(duration: 0.15)) {
+                        withAnimation(DesignTokens.Animation.transition) {
                             showingSettings = true
                         }
                     }
@@ -275,6 +265,6 @@ private struct MenuBarPanelHost: View {
             height: StatusBarController.basePopoverSize.height * settings.menuBarPanelScale
         )
         .preferredColorScheme(settings.appTheme.colorScheme)
-        .animation(.easeOut(duration: 0.15), value: showingSettings)
+        .animation(DesignTokens.Animation.transition, value: showingSettings)
     }
 }

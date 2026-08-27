@@ -147,38 +147,6 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Section("External Tools") {
-                ForEach(ExternalTool.allCases.filter { $0 != .ytDLP }) { tool in
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(alignment: .firstTextBaseline) {
-                            Text(tool.title)
-                            Spacer()
-                            TextField(
-                                tool.defaultPaths.first ?? "/opt/homebrew/bin/\(tool.rawValue)",
-                                text: overridePathBinding(for: tool)
-                            )
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 220)
-                        }
-
-                        HStack {
-                            Text("Resolved")
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Text(externalToolsService.status(for: tool, settings: settings).description)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                        }
-                        .font(.system(size: 11, weight: .medium))
-                    }
-                }
-
-                Text("These tools are optional. NewNet detects them from your override path first, then common Homebrew/system locations. Note: yt-dlp-aria2c and yt-dlp-ffmpeg are yt-dlp modes, not separate binaries.")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
-            }
-
             Section("Smart Features") {
                 Toggle("Detect links copied to clipboard", isOn: clipboardBinding)
                 Toggle("Battery saver mode", isOn: powerSavingBinding)
@@ -284,13 +252,6 @@ struct SettingsView: View {
         )
     }
 
-    private func overridePathBinding(for tool: ExternalTool) -> Binding<String> {
-        Binding(
-            get: { settings.overridePath(for: tool) },
-            set: { settings.setOverridePath($0, for: tool) }
-        )
-    }
-
     private var preferredMediaBinding: Binding<DownloadContentPreference> {
         Binding(
             get: { settings.preferredMediaType },
@@ -305,6 +266,8 @@ struct SettingsView: View {
         )
     }
 }
+
+
 
 private extension NumberFormatter {
     static let integerFormatter: NumberFormatter = {
