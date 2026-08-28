@@ -490,7 +490,15 @@ final class DownloadManager: ObservableObject {
 
         case .progress(let downloadedBytes, let totalBytes):
             var item = items[index]
-            item.downloadedBytes = max(item.downloadedBytes, downloadedBytes)
+            
+            // Detect if a new stream started (e.g. video finished, audio starting)
+            // If the reported downloaded bytes drop significantly, we reset our tracker.
+            if downloadedBytes < item.downloadedBytes && (item.downloadedBytes - downloadedBytes) > 1024 * 1024 {
+                item.downloadedBytes = downloadedBytes
+            } else {
+                item.downloadedBytes = max(item.downloadedBytes, downloadedBytes)
+            }
+            
             if let totalBytes, totalBytes > 0 {
                 item.totalBytesExpected = totalBytes
             } else if item.totalBytesExpected < item.downloadedBytes {

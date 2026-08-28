@@ -540,6 +540,7 @@ final class YTDLPService {
         let downloadsDirectory = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
         var arguments = [
             "--newline",
+            "--progress",
             "--continue",
             "--no-playlist",
             "--paths",
