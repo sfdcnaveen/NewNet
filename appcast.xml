@@ -1,14 +1,14 @@
-<?xml version="1.0" standalone="yes"?>
+<?xml version='1.0' encoding='utf-8'?>
 <rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
     <channel>
         <title>NewNet</title>
-        <item>
+        <item><title>1.2.3</title><pubDate>Fri, 28 Aug 2026 08:49:39 +0530</pubDate><sparkle:version>123</sparkle:version><sparkle:shortVersionString>1.2.3</sparkle:shortVersionString><sparkle:minimumSystemVersion>26.2</sparkle:minimumSystemVersion><enclosure url="https://github.com/sfdcnaveen/NewNet/releases/download/v1.2.3/NewNet.dmg" length="47326419" type="application/octet-stream" sparkle:edSignature="ngE8L7qkS9kgi9/DlkfRUAiThlhGh0pJJcneotLV5fv3IPKwMwYiG/978zO5b/W66B8L+NQl373udor+ii6aAg==" /></item><item>
             <title>1.2.2</title>
             <pubDate>Thu, 27 Aug 2026 20:39:00 +0530</pubDate>
             <sparkle:version>122</sparkle:version>
             <sparkle:shortVersionString>1.2.2</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>26.2</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/sfdcnaveen/NewNet/releases/download/v1.2.2/NewNet.dmg" length="47356720" type="application/octet-stream" sparkle:edSignature="7MGLVz+N/VPL9g2QNQ9BCBPHQbkzdmIej/bYcnpXdJ5w3fvfdTGT4WWBef91ywm4sKE0y5JI7TehhmC247F7AQ=="/>
+            <enclosure url="https://github.com/sfdcnaveen/NewNet/releases/download/v1.2.2/NewNet.dmg" length="47356720" type="application/octet-stream" sparkle:edSignature="7MGLVz+N/VPL9g2QNQ9BCBPHQbkzdmIej/bYcnpXdJ5w3fvfdTGT4WWBef91ywm4sKE0y5JI7TehhmC247F7AQ==" />
         </item>
         <item>
             <title>1.2.1</title>
@@ -16,7 +16,7 @@
             <sparkle:version>121</sparkle:version>
             <sparkle:shortVersionString>1.2.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>26.2</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/sfdcnaveen/NewNet/releases/download/v1.2.1/NewNet.dmg" length="47358574" type="application/octet-stream" sparkle:edSignature="U3z3BKGE/+yPNARlyJEf9wT/Z6uvvKb1VL+y/OVsFl+o28I55dHlDcGFfZDcX7Hd8kV3xaZ1Qcl+5IYKULoRBg=="/>
+            <enclosure url="https://github.com/sfdcnaveen/NewNet/releases/download/v1.2.1/NewNet.dmg" length="47358574" type="application/octet-stream" sparkle:edSignature="U3z3BKGE/+yPNARlyJEf9wT/Z6uvvKb1VL+y/OVsFl+o28I55dHlDcGFfZDcX7Hd8kV3xaZ1Qcl+5IYKULoRBg==" />
         </item>
         <item>
             <title>1.1.7</title>
@@ -24,7 +24,7 @@
             <sparkle:version>117</sparkle:version>
             <sparkle:shortVersionString>1.1.7</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>26.2</sparkle:minimumSystemVersion>
-            <enclosure url="NewNet-1.1.7.dmg" length="47220971" type="application/octet-stream"/>
+            <enclosure url="NewNet-1.1.7.dmg" length="47220971" type="application/octet-stream" />
         </item>
     </channel>
 </rss>
