@@ -730,14 +730,14 @@ private struct AddButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 12, weight: .bold))
-            .foregroundStyle(Color.accentColor)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 4)
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 5)
             .background(
                 Capsule(style: .continuous)
-                    .fill(Color.accentColor.opacity(isEnabled ? (configuration.isPressed ? 0.3 : (isHovering ? 0.2 : 0.15)) : 0.05))
+                    .fill(Color.accentColor.opacity(isEnabled ? (configuration.isPressed ? 0.8 : (isHovering ? 0.9 : 1.0)) : 0.4))
             )
-            .opacity(isEnabled ? 1.0 : 0.5)
+            .opacity(isEnabled ? 1.0 : 0.6)
             .onHover { hovering in
                 isHovering = hovering
             }
