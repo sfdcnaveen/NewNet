@@ -78,10 +78,16 @@ struct DropdownPanel: View {
 
             Spacer()
 
-            Button("Install") {
-                updateManager.installUpdate()
+            if updateManager.isDownloadingUpdate {
+                ProgressView(value: updateManager.updateDownloadProgress)
+                    .progressViewStyle(.circular)
+                    .controlSize(.small)
+            } else {
+                Button("Install") {
+                    updateManager.installUpdate()
+                }
+                .buttonStyle(AddButtonStyle())
             }
-            .buttonStyle(AddButtonStyle())
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
