@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
+import Sparkle
 
 struct DropdownPanel: View {
     @ObservedObject var menuBarViewModel: MenuBarViewModel
@@ -8,6 +9,7 @@ struct DropdownPanel: View {
     @ObservedObject var settings: AppSettings
     var onSettingsTapped: (() -> Void)?
 
+    @StateObject private var updateManager = UpdateManager.shared
     @Environment(\.colorScheme) private var colorScheme
     @State private var isDropTarget = false
 
@@ -45,6 +47,10 @@ struct DropdownPanel: View {
     private var mainPanel: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
+                if let update = updateManager.availableUpdate {
+                    updateBanner(item: update)
+                }
+                
                 usageSection
                 addDownloadSection
                 downloadsSection
@@ -54,6 +60,39 @@ struct DropdownPanel: View {
             .padding(.vertical, 10)
         }
         .scrollIndicators(.hidden)
+    }
+
+    private func updateBanner(item: SUAppcastItem) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "arrow.down.app.fill")
+                .font(.system(size: 20))
+                .foregroundStyle(Color.accentColor)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Update Available")
+                    .font(.system(size: 13, weight: .semibold))
+                Text("Version \(item.displayVersionString) is ready to install")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button("Install") {
+                updateManager.installUpdate()
+            }
+            .buttonStyle(AddButtonStyle())
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.accentColor.opacity(0.1))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color.accentColor.opacity(0.2), lineWidth: 1)
+        )
     }
 
     private func panelCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {

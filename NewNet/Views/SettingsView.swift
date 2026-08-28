@@ -5,7 +5,6 @@ struct SettingsView: View {
     private let ytDLPService = YTDLPService()
     private let externalToolsService = ExternalToolsService()
     @StateObject private var updateManager = UpdateManager.shared
-    @StateObject private var githubUpdater = GitHubUpdateService()
     @State private var loginErrorMessage: String?
     @State private var showLoginError = false
 
@@ -75,49 +74,6 @@ struct SettingsView: View {
                     updateManager.checkForUpdatesManually()
                 }
                 .disabled(!updateManager.canCheckForUpdates)
-                
-                Divider()
-                
-                VStack(alignment: .leading, spacing: 10) {
-                    Button("Check for Updates (GitHub)…") {
-                        githubUpdater.checkForUpdates()
-                    }
-                    .disabled(githubUpdater.state == .checking)
-                    
-                    switch githubUpdater.state {
-                    case .idle:
-                        EmptyView()
-                    case .checking:
-                        HStack(spacing: 6) {
-                            ProgressView()
-                                .controlSize(.small)
-                            Text("Checking...")
-                                .font(.system(size: 12))
-                                .foregroundStyle(.secondary)
-                        }
-                    case .upToDate(let version):
-                        Text("You are using the latest version (\(version)).")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
-                    case .updateAvailable(let version, let notes, let url):
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Version \(version) is available!")
-                                .font(.system(size: 12, weight: .semibold))
-                            Text(notes)
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(3)
-                            Button("Download Update") {
-                                githubUpdater.openReleasePage(url: url)
-                            }
-                            .buttonStyle(.link)
-                        }
-                    case .error(let msg):
-                        Text("Error: \(msg)")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.red)
-                    }
-                }
             }
 
             Section("yt-dlp") {
