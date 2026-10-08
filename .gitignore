@@ -10,3 +10,6 @@ build/
 
 # Cloudflare worker local deps
 cloudflare/analytics-worker/node_modules/
+
+# Salesforce CLI
+.sf/
