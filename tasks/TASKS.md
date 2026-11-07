@@ -57,3 +57,14 @@
    Done by: CODEX
    Done at: 2026-11-07T05:07:54Z
 
+6. update-notifications-network-monitoring
+   Id: 6-update-notifications-network-monitoring
+   Scope: Sparkle update state, native network monitoring, speed test, and dashboard integration
+   Files: NewNet/Services/UpdateManager.swift,NewNet/Services/NetworkSpeedMonitor.swift,NewNet/Services/SpeedTestService.swift,NewNet/Views/DropdownPanel.swift,NewNet/Views/SettingsView.swift,NewNetTests
+   Note: Implemented shared Sparkle update state with launch/foreground/periodic checks, native notifications, dismiss/postpone handling, 64-bit interface monitoring, history graph, active-interface status, opt-in nettop process attribution, Cloudflare speed test with persisted results, dashboard/settings integration, and NewNetTests. make diagnose/build/test pass; 2 tests pass; existing Info.plist warning remains.
+   Detail: tasks/details/6-update-notifications-network-monitoring.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-07T05:39:37Z
+   Done by: CODEX
+   Done at: 2026-11-07T05:53:30Z
+

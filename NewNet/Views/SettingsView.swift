@@ -1,14 +1,18 @@
 import SwiftUI
+import Sparkle
 
 struct SettingsView: View {
     @ObservedObject var settings: AppSettings
+    @ObservedObject var updateManager: UpdateManager
+    @ObservedObject var networkMonitor: NetworkSpeedMonitor
+    @ObservedObject var speedTestService: SpeedTestService
     private let ytDLPService = YTDLPService()
     private let externalToolsService = ExternalToolsService()
-    @StateObject private var updateManager = UpdateManager.shared
     @State private var loginErrorMessage: String?
     @State private var showLoginError = false
     @State private var isUpdatingYTDLP = false
     @State private var ytdlpUpdateMessage: String?
+    @State private var installedYTDLPVersion: String?
 
     var body: some View {
         Form {
@@ -71,11 +75,73 @@ struct SettingsView: View {
                 }
             }
 
+            Section("Network Monitoring") {
+                LabeledContent("Status") {
+                    Text(networkMonitor.connectionStatus.title)
+                        .foregroundStyle(.secondary)
+                }
+                LabeledContent("Active interface") {
+                    Text(networkMonitor.activeInterfaceName ?? "None")
+                        .foregroundStyle(.secondary)
+                }
+                Toggle("Measure active applications", isOn: activeApplicationsBinding)
+                    .onChange(of: settings.showActiveApplications) { _, enabled in
+                        networkMonitor.setProcessMonitoringEnabled(enabled)
+                    }
+            }
+
             Section("Updates") {
+                if let update = updateManager.availableUpdate, !updateManager.isUpdateNotificationSuppressed {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("Version \(update.displayVersionString) is available", systemImage: "arrow.down.app.fill")
+                            .font(.headline)
+
+                        if updateManager.isDownloadingUpdate {
+                            ProgressView(value: updateManager.updateDownloadProgress)
+                        }
+
+                        HStack {
+                            Button(updateManager.isDownloadingUpdate ? "Installing…" : "Install Update") {
+                                updateManager.installUpdate()
+                            }
+                            .disabled(updateManager.isDownloadingUpdate)
+
+                            Button("Dismiss") {
+                                updateManager.dismissAvailableUpdate()
+                            }
+                            .buttonStyle(.link)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                } else if updateManager.isCheckingForUpdates {
+                    Label("Checking for updates…", systemImage: "arrow.triangle.2.circlepath")
+                        .foregroundStyle(.secondary)
+                } else if let error = updateManager.lastErrorMessage {
+                    Label(error, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else if updateManager.isUpdateNotificationSuppressed {
+                    HStack {
+                        Text("Update postponed")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Show Again") {
+                            updateManager.showDismissedUpdateAgain()
+                        }
+                        .buttonStyle(.link)
+                    }
+                }
+
                 Button("Check for Updates (System)…") {
                     updateManager.checkForUpdatesManually()
                 }
-                .disabled(!updateManager.canCheckForUpdates)
+                .disabled(!updateManager.canCheckForUpdates || updateManager.isCheckingForUpdates)
+
+                if let lastCheckDate = updateManager.lastCheckDate {
+                    Text("Last checked \(lastCheckDate.formatted(date: .omitted, time: .shortened))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section("yt-dlp") {
@@ -93,20 +159,14 @@ struct SettingsView: View {
                     }
                 }
 
-                LabeledContent("Resolved binary") {
-                    Text(ytDLPService.discoveredBinaryDescription(settings: settings))
+                LabeledContent("Installed version") {
+                    Text(installedYTDLPVersion ?? "Not installed")
                         .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.trailing)
+                        .monospacedDigit()
                 }
 
                 HStack {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Media engine")
-                        Text("Download the latest yt-dlp release into NewNet’s managed tools folder.")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(.secondary)
-                    }
+                    Text("yt-dlp")
 
                     Spacer()
 
@@ -129,9 +189,6 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Text("Install yt-dlp from the prompt shown when social-media downloads are unavailable, or provide an existing executable path above. NewNet never downloads it without your approval.")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
             }
 
             Section("Smart Features") {
@@ -139,15 +196,13 @@ struct SettingsView: View {
                 Toggle("Battery saver mode", isOn: powerSavingBinding)
             }
 
-            Section {
-                Text("NewNet keeps transfers lightweight by adapting background sampling based on activity, persists downloads in Application Support, and uses yt-dlp for supported social-media links. Download only content you are authorized to save.")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
-            }
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
         .padding(10)
+        .task {
+            installedYTDLPVersion = await ytDLPService.installedVersion(settings: settings)
+        }
         .alert("Unable to Update Login Item", isPresented: $showLoginError) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -220,14 +275,27 @@ struct SettingsView: View {
         )
     }
 
+    private var activeApplicationsBinding: Binding<Bool> {
+        Binding(
+            get: { settings.showActiveApplications },
+            set: { settings.showActiveApplications = $0 }
+        )
+    }
+
     private func updateYTDLP() {
         isUpdatingYTDLP = true
         ytdlpUpdateMessage = nil
 
         Task { @MainActor in
             do {
-                _ = try await ytDLPService.update(settings: settings)
-                ytdlpUpdateMessage = "yt-dlp is up to date."
+                let latestVersion = try await ytDLPService.latestVersion()
+                if installedYTDLPVersion == latestVersion {
+                    ytdlpUpdateMessage = "yt-dlp \(latestVersion) is up to date."
+                } else {
+                    _ = try await ytDLPService.update(settings: settings)
+                    installedYTDLPVersion = await ytDLPService.installedVersion(settings: settings) ?? latestVersion
+                    ytdlpUpdateMessage = "yt-dlp updated to \(installedYTDLPVersion ?? latestVersion)."
+                }
             } catch {
                 ytdlpUpdateMessage = error.localizedDescription
             }

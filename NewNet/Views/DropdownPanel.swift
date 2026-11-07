@@ -7,12 +7,20 @@ struct DropdownPanel: View {
     @ObservedObject var menuBarViewModel: MenuBarViewModel
     @ObservedObject var downloadManagerViewModel: DownloadManagerViewModel
     @ObservedObject var settings: AppSettings
+    @ObservedObject var updateManager: UpdateManager
+    @ObservedObject var networkMonitor: NetworkSpeedMonitor
+    @ObservedObject var speedTestService: SpeedTestService
     var onSettingsTapped: (() -> Void)?
 
-    @StateObject private var updateManager = UpdateManager.shared
     @Environment(\.colorScheme) private var colorScheme
     @State private var isDropTarget = false
     @State private var shouldShowYTDLPPrompt = false
+    @State private var selectedTab: PanelTab = .network
+
+    private enum PanelTab: Hashable {
+        case network
+        case ytdlp
+    }
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -59,11 +67,15 @@ struct DropdownPanel: View {
     private var mainPanel: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                if let update = updateManager.availableUpdate {
+                topToolbar
+
+                if let update = updateManager.availableUpdate, !updateManager.isUpdateNotificationSuppressed {
                     updateBanner(item: update)
                 }
 
-                if downloadManagerViewModel.isInstallingYTDLP {
+                tabPicker
+
+                if selectedTab == .ytdlp, downloadManagerViewModel.isInstallingYTDLP {
                     HStack(spacing: 10) {
                         ProgressView()
                             .controlSize(.small)
@@ -73,7 +85,7 @@ struct DropdownPanel: View {
                     }
                     .padding(12)
                     .liquidGlassControl()
-                } else if let error = downloadManagerViewModel.ytdlpInstallError {
+                } else if selectedTab == .ytdlp, let error = downloadManagerViewModel.ytdlpInstallError {
                     HStack(alignment: .top, spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(.orange)
@@ -85,15 +97,89 @@ struct DropdownPanel: View {
                     .liquidGlassControl()
                 }
                 
-                usageSection
-                addDownloadSection
-                downloadsSection
-                menuActions
+                if selectedTab == .network {
+                    NetworkDashboardView(
+                        settings: settings,
+                        networkMonitor: networkMonitor,
+                        speedTestService: speedTestService
+                    )
+                } else {
+                    addDownloadSection
+                    downloadsSection
+                }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
         }
         .scrollIndicators(.hidden)
+    }
+
+    private var topToolbar: some View {
+        ZStack {
+            if let icon = NSApp.applicationIconImage {
+                Image(nsImage: icon)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(width: 30, height: 30)
+                    .accessibilityLabel("NewNet")
+            }
+
+            HStack(spacing: 8) {
+                Spacer()
+
+                Button {
+                    onSettingsTapped?()
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 13, weight: .medium))
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .liquidGlassControl()
+                .accessibilityLabel("Settings")
+
+                Button(role: .destructive) {
+                    NSApplication.shared.terminate(nil)
+                } label: {
+                    Image(systemName: "power")
+                        .font(.system(size: 13, weight: .medium))
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .liquidGlassControl()
+                .accessibilityLabel("Quit NewNet")
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 30)
+        .padding(.horizontal, 4)
+    }
+
+    private var tabPicker: some View {
+        HStack(spacing: 18) {
+            tabButton(systemImage: "globe", tab: .network, label: "Network")
+            tabButton(systemImage: "arrow.down.circle", tab: .ytdlp, label: "yt-dlp")
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("NewNet sections")
+    }
+
+    private func tabButton(systemImage: String, tab: PanelTab, label: String) -> some View {
+        Button {
+            selectedTab = tab
+        } label: {
+            Image(systemName: systemImage)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(selectedTab == tab ? Color.accentColor : .secondary)
+                .frame(width: 38, height: 30)
+        }
+        .buttonStyle(.plain)
+        .liquidGlassControl(isActive: selectedTab == tab)
+        .help(label)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
     }
 
     private func updateBanner(item: SUAppcastItem) -> some View {
@@ -138,44 +224,6 @@ struct DropdownPanel: View {
     private func panelCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
             .liquidGlassPanel()
-    }
-
-    private var usageSection: some View {
-        HStack(alignment: .top, spacing: 20) {
-            minimalUsageMetric(title: "Download", amount: ByteCountFormatter.compactFileSize(menuBarViewModel.usage.receivedBytes))
-            
-            minimalUsageMetric(title: "Upload", amount: ByteCountFormatter.compactFileSize(menuBarViewModel.usage.sentBytes))
-            
-            minimalUsageMetric(title: "Total", amount: ByteCountFormatter.compactFileSize(menuBarViewModel.usage.totalBytes))
-            
-            Spacer()
-            
-            Button {
-                onSettingsTapped?()
-            } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 26, height: 26)
-                    .liquidGlassControl()
-            }
-            .buttonStyle(.plain)
-            .padding(.top, 4)
-        }
-        .padding(.horizontal, 4)
-        .padding(.vertical, 4)
-    }
-
-    private func minimalUsageMetric(title: String, amount: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary)
-            
-            Text(amount)
-                .font(.system(size: 13, weight: .semibold))
-                .monospacedDigit()
-        }
     }
 
     private var addDownloadSection: some View {
@@ -321,19 +369,6 @@ struct DropdownPanel: View {
                         )
                     }
                 }
-            }
-        }
-        .padding(.vertical, 8)
-    }
-
-    private var menuActions: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            actionRow(title: "Open Downloads Folder", systemImage: "folder") {
-                downloadManagerViewModel.openDownloadsFolder()
-            }
-
-            actionRow(title: "Quit NewNet", systemImage: "power", role: .destructive) {
-                NSApplication.shared.terminate(nil)
             }
         }
         .padding(.vertical, 8)

@@ -8,10 +8,13 @@
 
 /* Begin PBXBuildFile section */
 		B10000012F70000000000001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = B10000012F70000000000003 /* Sparkle */; };
+		D10000012F70000000000001 /* NetworkMonitoringTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000012F70000000000002 /* NetworkMonitoringTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		AC5C2D912F66A36F0006CA8D /* NewNet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NewNet.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D10000012F70000000000003 /* NewNetTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NewNetTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D10000012F70000000000002 /* NetworkMonitoringTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitoringTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -38,6 +41,7 @@
 			isa = PBXGroup;
 			children = (
 				AC5C2D932F66A36F0006CA8D /* NewNet */,
+				D10000012F70000000000004 /* NewNetTests */,
 				AC5C2D922F66A36F0006CA8D /* Products */,
 			);
 			sourceTree = "<group>";
@@ -46,8 +50,17 @@
 			isa = PBXGroup;
 			children = (
 				AC5C2D912F66A36F0006CA8D /* NewNet.app */,
+				D10000012F70000000000003 /* NewNetTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		D10000012F70000000000004 /* NewNetTests */ = {
+			isa = PBXGroup;
+			children = (
+				D10000012F70000000000002 /* NetworkMonitoringTests.swift */,
+			);
+			path = NewNetTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -75,6 +88,24 @@
 			productName = NewNet;
 			productReference = AC5C2D912F66A36F0006CA8D /* NewNet.app */;
 			productType = "com.apple.product-type.application";
+		};
+		D10000012F70000000000005 /* NewNetTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D10000012F7000000000000B /* Build configuration list for PBXNativeTarget "NewNetTests" */;
+			buildPhases = (
+				D10000012F70000000000006 /* Sources */,
+				D10000012F70000000000007 /* Frameworks */,
+				D10000012F70000000000008 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D10000012F70000000000009 /* PBXTargetDependency */,
+			);
+			name = NewNetTests;
+			productName = NewNetTests;
+			productReference = D10000012F70000000000003 /* NewNetTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -109,6 +140,7 @@
 			projectRoot = "";
 			targets = (
 				AC5C2D902F66A36F0006CA8D /* NewNet */,
+				D10000012F70000000000005 /* NewNetTests */,
 			);
 		};
 /* End PBXProject section */
@@ -131,7 +163,53 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D10000012F70000000000006 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D10000012F70000000000001 /* NetworkMonitoringTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXFrameworksBuildPhase section additions */
+		D10000012F70000000000007 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section additions */
+
+/* Begin PBXResourcesBuildPhase additions */
+		D10000012F70000000000008 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase additions */
+
+/* Begin PBXTargetDependency section */
+		D10000012F70000000000009 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AC5C2D902F66A36F0006CA8D /* NewNet */;
+			targetProxy = D10000012F7000000000000A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXContainerItemProxy section */
+		D10000012F7000000000000A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AC5C2D892F66A36F0006CA8D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AC5C2D902F66A36F0006CA8D;
+			remoteInfo = NewNet;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin XCBuildConfiguration section */
 		AC5C2D9A2F66A3700006CA8D /* Debug */ = {
@@ -267,7 +345,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 127;
+				CURRENT_PROJECT_VERSION = 128;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_APP_SANDBOX = NO;
@@ -289,7 +367,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.2.7;
+				MARKETING_VERSION = 1.2.8;
 				PRODUCT_BUNDLE_IDENTIFIER = NihanviBuilds.NewNet;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -311,7 +389,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 127;
+				CURRENT_PROJECT_VERSION = 128;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_APP_SANDBOX = NO;
@@ -333,7 +411,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.2.7;
+				MARKETING_VERSION = 1.2.8;
 				PRODUCT_BUNDLE_IDENTIFIER = NihanviBuilds.NewNet;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -343,6 +421,38 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		D10000012F7000000000000C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				PRODUCT_BUNDLE_IDENTIFIER = NihanviBuilds.NewNetTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NewNet.app/Contents/MacOS/NewNet";
+			};
+			name = Debug;
+		};
+		D10000012F7000000000000D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				PRODUCT_BUNDLE_IDENTIFIER = NihanviBuilds.NewNetTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NewNet.app/Contents/MacOS/NewNet";
 			};
 			name = Release;
 		};
@@ -363,6 +473,15 @@
 			buildConfigurations = (
 				AC5C2D9D2F66A3700006CA8D /* Debug */,
 				AC5C2D9E2F66A3700006CA8D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D10000012F7000000000000B /* Build configuration list for PBXNativeTarget "NewNetTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D10000012F7000000000000C /* Debug */,
+				D10000012F7000000000000D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

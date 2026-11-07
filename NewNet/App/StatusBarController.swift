@@ -4,7 +4,7 @@ import SwiftUI
 
 @MainActor
 final class StatusBarController: NSObject, NSPopoverDelegate {
-    fileprivate static let basePopoverSize = NSSize(width: 420, height: 620)
+    fileprivate static let basePopoverSize = NSSize(width: 420, height: 500)
 
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let indicatorView = MenuBarSpeedIndicator(frame: .zero)
@@ -16,14 +16,20 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     init(
         menuBarViewModel: MenuBarViewModel,
         downloadManagerViewModel: DownloadManagerViewModel,
-        settings: AppSettings
+        settings: AppSettings,
+        updateManager: UpdateManager,
+        networkMonitor: NetworkSpeedMonitor,
+        speedTestService: SpeedTestService
     ) {
         super.init()
         configureStatusItem()
         configurePopover(
             menuBarViewModel: menuBarViewModel,
             downloadManagerViewModel: downloadManagerViewModel,
-            settings: settings
+            settings: settings,
+            updateManager: updateManager,
+            networkMonitor: networkMonitor,
+            speedTestService: speedTestService
         )
         bindSnapshot(menuBarViewModel)
         bindSettings(settings)
@@ -56,7 +62,10 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private func configurePopover(
         menuBarViewModel: MenuBarViewModel,
         downloadManagerViewModel: DownloadManagerViewModel,
-        settings: AppSettings
+        settings: AppSettings,
+        updateManager: UpdateManager,
+        networkMonitor: NetworkSpeedMonitor,
+        speedTestService: SpeedTestService
     ) {
         popover.delegate = self
         popover.behavior = .transient
@@ -66,7 +75,10 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             rootView: MenuBarPanelHost(
                 menuBarViewModel: menuBarViewModel,
                 downloadManagerViewModel: downloadManagerViewModel,
-                settings: settings
+                settings: settings,
+                updateManager: updateManager,
+                networkMonitor: networkMonitor,
+                speedTestService: speedTestService
             )
         )
     }
@@ -199,15 +211,24 @@ private struct MenuBarPanelHost: View {
     let menuBarViewModel: MenuBarViewModel
     let downloadManagerViewModel: DownloadManagerViewModel
     @State private var showingSettings = false
+    @ObservedObject var updateManager: UpdateManager
+    @ObservedObject var networkMonitor: NetworkSpeedMonitor
+    @ObservedObject var speedTestService: SpeedTestService
 
     init(
         menuBarViewModel: MenuBarViewModel,
         downloadManagerViewModel: DownloadManagerViewModel,
-        settings: AppSettings
+        settings: AppSettings,
+        updateManager: UpdateManager,
+        networkMonitor: NetworkSpeedMonitor,
+        speedTestService: SpeedTestService
     ) {
         self.menuBarViewModel = menuBarViewModel
         self.downloadManagerViewModel = downloadManagerViewModel
         self.settings = settings
+        self.updateManager = updateManager
+        self.networkMonitor = networkMonitor
+        self.speedTestService = speedTestService
     }
 
     var body: some View {
@@ -241,7 +262,7 @@ private struct MenuBarPanelHost: View {
                     
                     Divider()
                     
-                    SettingsView(settings: settings)
+                    SettingsView(settings: settings, updateManager: updateManager, networkMonitor: networkMonitor, speedTestService: speedTestService)
                         .padding(.top, -12)
                 }
                 .liquidGlassPanel()
@@ -251,6 +272,9 @@ private struct MenuBarPanelHost: View {
                     menuBarViewModel: menuBarViewModel,
                     downloadManagerViewModel: downloadManagerViewModel,
                     settings: settings,
+                    updateManager: updateManager,
+                    networkMonitor: networkMonitor,
+                    speedTestService: speedTestService,
                     onSettingsTapped: {
                         withAnimation(DesignTokens.Animation.transition) {
                             showingSettings = true

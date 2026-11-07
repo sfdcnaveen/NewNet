@@ -336,6 +336,48 @@ final class YTDLPService {
         return try await updateManagedBinary()
     }
 
+    func installedVersion(settings: AppSettings) async -> String? {
+        guard let binaryURL = resolvedBinaryURL(settings: settings) else { return nil }
+
+        if binaryURL.standardizedFileURL == Self.managedBinaryURL.standardizedFileURL {
+            let markerURL = Self.managedBinaryURL.deletingLastPathComponent().appendingPathComponent(".ytdlp-release")
+            if let marker = try? String(contentsOf: markerURL, encoding: .utf8) {
+                let trimmed = marker.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { return trimmed }
+            }
+        }
+
+        return executableVersion(at: binaryURL)
+    }
+
+    func latestVersion() async throws -> String {
+        let release = try await latestRelease()
+        let version = release.tagName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !version.isEmpty else { throw YTDLPServiceError.inspectionFailed("The yt-dlp release did not include a version.") }
+        return version
+    }
+
+    private func executableVersion(at url: URL) -> String? {
+        let process = Process()
+        let output = Pipe()
+        process.executableURL = url
+        process.arguments = ["--version"]
+        process.standardOutput = output
+        process.standardError = Pipe()
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+            guard process.terminationStatus == 0 else { return nil }
+            let data = output.fileHandleForReading.readDataToEndOfFile()
+            let version = String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return version?.isEmpty == false ? version : nil
+        } catch {
+            return nil
+        }
+    }
+
     private func updateManagedBinary() async throws -> URL {
         do {
             let release = try await latestRelease()

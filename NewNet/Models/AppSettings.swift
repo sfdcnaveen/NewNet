@@ -30,6 +30,7 @@ final class AppSettings: ObservableObject {
         static let ytDLPPath = "settings.ytDLPPath"
         static let preferredMediaType = "settings.preferredMediaType"
         static let appTheme = "settings.appTheme"
+        static let showActiveApplications = "settings.showActiveApplications"
     }
 
     private let defaults: UserDefaults
@@ -109,6 +110,12 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    @Published var showActiveApplications: Bool {
+        didSet {
+            defaults.set(showActiveApplications, forKey: Keys.showActiveApplications)
+        }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
 
@@ -130,6 +137,7 @@ final class AppSettings: ObservableObject {
         appTheme = AppTheme(
             rawValue: defaults.string(forKey: Keys.appTheme) ?? ""
         ) ?? .system
+        showActiveApplications = defaults.object(forKey: Keys.showActiveApplications) as? Bool ?? true
     }
 
 

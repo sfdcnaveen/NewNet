@@ -7,6 +7,7 @@ struct NewNetApp: App {
     @StateObject private var updateManager: UpdateManager
     @StateObject private var settings: AppSettings
     @StateObject private var networkMonitor: NetworkSpeedMonitor
+    @StateObject private var speedTestService: SpeedTestService
     @StateObject private var clipboardMonitor: ClipboardMonitor
     @StateObject private var downloadManager: DownloadManager
     @StateObject private var menuBarViewModel: MenuBarViewModel
@@ -19,6 +20,7 @@ struct NewNetApp: App {
         let settings = AppSettings()
         let usageStore = NetworkUsageStore()
         let networkMonitor = NetworkSpeedMonitor(usageStore: usageStore)
+        let speedTestService = SpeedTestService()
         let clipboardMonitor = ClipboardMonitor(settings: settings)
         let downloadManager = DownloadManager(settings: settings)
         let menuBarViewModel = MenuBarViewModel(
@@ -32,7 +34,10 @@ struct NewNetApp: App {
         let statusBarController = StatusBarController(
             menuBarViewModel: menuBarViewModel,
             downloadManagerViewModel: downloadManagerViewModel,
-            settings: settings
+            settings: settings,
+            updateManager: updateManager,
+            networkMonitor: networkMonitor,
+            speedTestService: speedTestService
         )
         let performanceCoordinator = PerformanceCoordinator(
             settings: settings,
@@ -44,6 +49,7 @@ struct NewNetApp: App {
         _updateManager = StateObject(wrappedValue: updateManager)
         _settings = StateObject(wrappedValue: settings)
         _networkMonitor = StateObject(wrappedValue: networkMonitor)
+        _speedTestService = StateObject(wrappedValue: speedTestService)
         _clipboardMonitor = StateObject(wrappedValue: clipboardMonitor)
         _downloadManager = StateObject(wrappedValue: downloadManager)
         _menuBarViewModel = StateObject(wrappedValue: menuBarViewModel)
@@ -58,7 +64,7 @@ struct NewNetApp: App {
 
     var body: some Scene {
         Settings {
-            SettingsView(settings: settings)
+            SettingsView(settings: settings, updateManager: updateManager, networkMonitor: networkMonitor, speedTestService: speedTestService)
                 .frame(width: 420, height: 360)
         }
         .commands {

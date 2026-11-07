@@ -77,9 +77,13 @@ echo "Creating writable DMG..."
 rm -f "$DMG_TEMP" "$DMG_PATH"
 hdiutil create -size 220m -fs HFS+ -volname "$DMG_NAME" -type SPARSE "$DMG_TEMP"
 
-ATTACH_INFO=$(hdiutil attach -readwrite -noverify -noautoopen "$DMG_TEMP")
+MOUNT_DIR="$BUILD_DIR/dmg-mount"
+rm -rf "$MOUNT_DIR"
+mkdir -p "$MOUNT_DIR"
+
+ATTACH_INFO=$(hdiutil attach -readwrite -noverify -noautoopen -mountpoint "$MOUNT_DIR" "$DMG_TEMP")
 DEVICE=$(echo "$ATTACH_INFO" | awk '/^\/dev\// {print $1; exit}')
-VOLUME=$(echo "$ATTACH_INFO" | awk '/\/Volumes\// {print $3; exit}')
+VOLUME="$MOUNT_DIR"
 
 if [[ -z "$DEVICE" || -z "$VOLUME" ]]; then
   echo "Failed to mount DMG."
@@ -138,4 +142,3 @@ hdiutil convert "$DMG_TEMP" -format UDZO -imagekey zlib-level=9 -o "$DMG_PATH"
 rm -f "$DMG_TEMP"
 
 echo "DMG created at: $DMG_PATH"
-MOUNT_DIR="$BUILD_DIR/dmg-mount"
