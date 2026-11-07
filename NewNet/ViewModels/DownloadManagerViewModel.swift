@@ -7,11 +7,15 @@ struct PendingMediaSelection: Identifiable, Hashable {
     let mediaInfo: YTDLPMediaInfo
     var selectedPreference: DownloadContentPreference
     var selectedOptionID: String
+    var gifStart: TimeInterval = 0
+    var gifEnd: TimeInterval = 5
 
     var availableOptions: [YTDLPDownloadOption] {
         switch selectedPreference {
         case .audio:
             return mediaInfo.audioOptions
+        case .gif:
+            return mediaInfo.videoOptions.map(makeGIFOption)
         case .auto, .video:
             return mediaInfo.videoOptions
         }
@@ -19,6 +23,33 @@ struct PendingMediaSelection: Identifiable, Hashable {
 
     var selectedOption: YTDLPDownloadOption? {
         availableOptions.first(where: { $0.id == selectedOptionID })
+    }
+
+    var gifDuration: TimeInterval {
+        max(0.5, gifEnd - gifStart)
+    }
+
+    private func makeGIFOption(from option: YTDLPDownloadOption) -> YTDLPDownloadOption {
+        var configuration = option.configuration
+        configuration.formatExpression = option.configuration.formatExpression.split(separator: "+", maxSplits: 1).first.map(String.init) ?? option.configuration.formatExpression
+        configuration.displayName = "GIF • \(qualityLabel(for: option.label))"
+        configuration.detailText = "Animated GIF • \(option.label)"
+        configuration.contentPreference = .gif
+        configuration.extractAudio = false
+        configuration.audioFormat = nil
+        configuration.mergeOutputFormat = nil
+
+        return YTDLPDownloadOption(
+            id: option.id,
+            label: configuration.displayName,
+            detail: configuration.detailText,
+            estimatedBytes: option.estimatedBytes,
+            configuration: configuration
+        )
+    }
+
+    private func qualityLabel(for label: String) -> String {
+        label.split(separator: "•", maxSplits: 1).first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? label
     }
 }
 
@@ -30,14 +61,19 @@ final class DownloadManagerViewModel: ObservableObject {
     @Published var contentPreference: DownloadContentPreference
     @Published var isInspectingURL = false
     @Published var pendingMediaSelection: PendingMediaSelection?
+    @Published private(set) var isYTDLPInstalled: Bool
+    @Published private(set) var isInstallingYTDLP = false
+    @Published var ytdlpInstallError: String?
 
     private let downloadManager: DownloadManager
     private let settings: AppSettings
+    private let ytDLPService = YTDLPService()
     private var cancellables: Set<AnyCancellable> = []
 
     init(downloadManager: DownloadManager, settings: AppSettings) {
         self.downloadManager = downloadManager
         self.settings = settings
+        isYTDLPInstalled = ytDLPService.isInstalled(settings: settings)
         contentPreference = settings.preferredMediaType
 
         downloadManager.$items
@@ -98,7 +134,13 @@ final class DownloadManagerViewModel: ObservableObject {
     func setPendingPreference(_ preference: DownloadContentPreference) {
         guard var pendingMediaSelection else { return }
 
-        let normalizedPreference: DownloadContentPreference = preference == .audio ? .audio : .video
+        let hasVideo = !pendingMediaSelection.mediaInfo.videoOptions.isEmpty
+        let hasAudio = !pendingMediaSelection.mediaInfo.audioOptions.isEmpty
+        let normalizedPreference: DownloadContentPreference = {
+            if preference == .audio, hasAudio { return .audio }
+            if preference == .gif, hasVideo { return .gif }
+            return hasVideo ? .video : .audio
+        }()
         pendingMediaSelection.selectedPreference = normalizedPreference
 
         let availableOptions = pendingMediaSelection.availableOptions
@@ -121,13 +163,60 @@ final class DownloadManagerViewModel: ObservableObject {
             return
         }
 
-        switch downloadManager.confirmMediaDownload(mediaInfo: pendingMediaSelection.mediaInfo, option: option) {
+        var selectedOption = option
+        if pendingMediaSelection.selectedPreference == .gif {
+            var configuration = option.configuration
+            configuration.contentPreference = .gif
+            configuration.clipStart = pendingMediaSelection.gifStart
+            configuration.clipEnd = pendingMediaSelection.gifEnd
+            selectedOption = YTDLPDownloadOption(
+                id: "gif-\(option.id)-\(Int(pendingMediaSelection.gifStart))-\(Int(pendingMediaSelection.gifEnd))",
+                label: "GIF • \(durationString(pendingMediaSelection.gifDuration))",
+                detail: "Animated clip • \(option.label)",
+                estimatedBytes: option.estimatedBytes,
+                configuration: configuration
+            )
+        }
+
+        switch downloadManager.confirmMediaDownload(mediaInfo: pendingMediaSelection.mediaInfo, option: selectedOption) {
         case .accepted:
             validationMessage = nil
             urlField = ""
             self.pendingMediaSelection = nil
         case .rejected(let message):
             validationMessage = message
+        }
+    }
+
+    func setGIFRange(start: TimeInterval, end: TimeInterval) {
+        guard var pendingMediaSelection else { return }
+        let maxDuration = pendingMediaSelection.mediaInfo.duration ?? 86_400
+        let clampedStart = min(max(start, 0), maxDuration)
+        let clampedEnd = min(max(end, clampedStart + 0.5), maxDuration)
+        pendingMediaSelection.gifStart = clampedStart
+        pendingMediaSelection.gifEnd = clampedEnd
+        self.pendingMediaSelection = pendingMediaSelection
+    }
+
+    func applyGIFPreset(_ duration: TimeInterval) {
+        guard let pendingMediaSelection else { return }
+        let maxDuration = pendingMediaSelection.mediaInfo.duration ?? duration
+        setGIFRange(start: pendingMediaSelection.gifStart, end: min(pendingMediaSelection.gifStart + duration, maxDuration))
+    }
+
+    func installYTDLP() {
+        guard !isInstallingYTDLP else { return }
+        isInstallingYTDLP = true
+        ytdlpInstallError = nil
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                _ = try await ytDLPService.install(settings: settings)
+                isYTDLPInstalled = true
+            } catch {
+                ytdlpInstallError = error.localizedDescription
+            }
+            isInstallingYTDLP = false
         }
     }
 
@@ -230,6 +319,8 @@ final class DownloadManagerViewModel: ObservableObject {
         switch contentPreference {
         case .audio:
             preferredSelection = mediaInfo.audioOptions.isEmpty ? .video : .audio
+        case .gif:
+            preferredSelection = mediaInfo.videoOptions.isEmpty ? .audio : .gif
         case .auto, .video:
             preferredSelection = mediaInfo.videoOptions.isEmpty ? .audio : .video
         }
@@ -238,7 +329,7 @@ final class DownloadManagerViewModel: ObservableObject {
             switch preferredSelection {
             case .audio:
                 return mediaInfo.audioOptions.first?.id
-            case .auto, .video:
+            case .auto, .video, .gif:
                 return mediaInfo.videoOptions.first?.id
             }
         }() ?? ""
@@ -246,7 +337,13 @@ final class DownloadManagerViewModel: ObservableObject {
         return PendingMediaSelection(
             mediaInfo: mediaInfo,
             selectedPreference: preferredSelection,
-            selectedOptionID: selectedOptionID
+            selectedOptionID: selectedOptionID,
+            gifEnd: min(5, mediaInfo.duration ?? 5)
         )
+    }
+
+    private func durationString(_ duration: TimeInterval) -> String {
+        let totalSeconds = Int(duration.rounded())
+        return "\(totalSeconds / 60):\(String(format: "%02d", totalSeconds % 60))"
     }
 }

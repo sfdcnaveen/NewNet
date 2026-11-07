@@ -21,7 +21,7 @@ NewNet is a lightweight, natively built macOS menu-bar utility designed for quic
 - **Resumable Downloads:** Direct download support with robust resumption capabilities.
 - **Live Progress Tracking:** Monitor speeds, progress, and statuses directly in the app.
 - **In-App Auto Updates:** Never miss a release. Powered by Sparkle, NewNet updates itself automatically.
-- **Privacy First:** Built-in telemetry is anonymous and easily opt-outable in Settings.
+- **Privacy First:** NewNet contains no anonymous usage analytics or telemetry.
 
 ## 🚀 Installation
 
@@ -41,7 +41,7 @@ brew install --cask newnet
 
 1. Click the NewNet icon in your macOS menu bar.
 2. Paste any supported media link (YouTube, Twitter, Vimeo, etc.).
-3. Choose **Video** or **Audio**, then select your preferred format and quality from the dropdown.
+3. Choose **Video**, **Audio**, or **GIF**. GIF downloads offer 3, 5, and 10 second presets plus custom start/end times.
 4. Click **Download**! The file will be saved directly to your Downloads folder.
 
 ## 💻 Development & Building

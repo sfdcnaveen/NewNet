@@ -28,6 +28,7 @@ enum DownloadContentPreference: String, Codable, CaseIterable, Identifiable {
     case auto
     case video
     case audio
+    case gif
 
     var id: String { rawValue }
 
@@ -39,6 +40,8 @@ enum DownloadContentPreference: String, Codable, CaseIterable, Identifiable {
             return "Video"
         case .audio:
             return "Audio"
+        case .gif:
+            return "GIF"
         }
     }
     
@@ -47,6 +50,7 @@ enum DownloadContentPreference: String, Codable, CaseIterable, Identifiable {
         case .auto: return "wand.and.stars"
         case .video: return "play.rectangle"
         case .audio: return "music.note"
+        case .gif: return "film.stack"
         }
     }
 }
@@ -59,6 +63,8 @@ struct YTDLPDownloadConfiguration: Codable, Hashable, Sendable {
     var extractAudio: Bool
     var audioFormat: String?
     var mergeOutputFormat: String?
+    var clipStart: TimeInterval? = nil
+    var clipEnd: TimeInterval? = nil
 }
 
 struct YTDLPDownloadOption: Identifiable, Hashable, Sendable {

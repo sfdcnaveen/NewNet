@@ -7,6 +7,8 @@ struct SettingsView: View {
     @StateObject private var updateManager = UpdateManager.shared
     @State private var loginErrorMessage: String?
     @State private var showLoginError = false
+    @State private var isUpdatingYTDLP = false
+    @State private var ytdlpUpdateMessage: String?
 
     var body: some View {
         Form {
@@ -98,7 +100,36 @@ struct SettingsView: View {
                         .multilineTextAlignment(.trailing)
                 }
 
-                Text("NewNet downloads yt-dlp automatically when a supported social-media link is added. Leave the override empty unless you want to force a specific binary.")
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Media engine")
+                        Text("Download the latest yt-dlp release into NewNet’s managed tools folder.")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Button {
+                        updateYTDLP()
+                    } label: {
+                        if isUpdatingYTDLP {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Text("Update yt-dlp")
+                        }
+                    }
+                    .disabled(isUpdatingYTDLP)
+                }
+
+                if let ytdlpUpdateMessage {
+                    Text(ytdlpUpdateMessage)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+
+                Text("Install yt-dlp from the prompt shown when social-media downloads are unavailable, or provide an existing executable path above. NewNet never downloads it without your approval.")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
             }
@@ -106,13 +137,6 @@ struct SettingsView: View {
             Section("Smart Features") {
                 Toggle("Detect links copied to clipboard", isOn: clipboardBinding)
                 Toggle("Battery saver mode", isOn: powerSavingBinding)
-            }
-
-            Section("Privacy") {
-                Toggle("Share anonymous usage analytics", isOn: analyticsBinding)
-                Text("Tracked events: app_installed, app_opened, and feature_used. NewNet stores a random anonymous ID locally. No personal data, no device fingerprinting, and no content metadata are collected.")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
             }
 
             Section {
@@ -182,18 +206,6 @@ struct SettingsView: View {
         )
     }
 
-    private var analyticsBinding: Binding<Bool> {
-        Binding(
-            get: { settings.analyticsEnabled },
-            set: { newValue in
-                settings.analyticsEnabled = newValue
-                Task {
-                    await AnalyticsClient.shared.setEnabled(newValue)
-                }
-            }
-        )
-    }
-
     private var menuBarPanelScaleBinding: Binding<Double> {
         Binding(
             get: { settings.menuBarPanelScale },
@@ -206,6 +218,21 @@ struct SettingsView: View {
             get: { settings.ytDLPPath },
             set: { settings.ytDLPPath = $0 }
         )
+    }
+
+    private func updateYTDLP() {
+        isUpdatingYTDLP = true
+        ytdlpUpdateMessage = nil
+
+        Task { @MainActor in
+            do {
+                _ = try await ytDLPService.update(settings: settings)
+                ytdlpUpdateMessage = "yt-dlp is up to date."
+            } catch {
+                ytdlpUpdateMessage = error.localizedDescription
+            }
+            isUpdatingYTDLP = false
+        }
     }
 
     private var preferredMediaBinding: Binding<DownloadContentPreference> {

@@ -2,6 +2,8 @@
 
 NewNet uses [Sparkle](https://sparkle-project.org) for outside-App-Store updates.
 
+The checked-in app is configured to read `appcast.xml` from the repository's GitHub raw URL, uses the checked-in Ed25519 public key, checks silently at launch, and exposes a manual update check. A GitHub release reaches existing users only when its signed archive is added to the appcast with a higher `sparkle:version`.
+
 ## Configure Once
 
 1. Generate an Ed25519 keypair:

@@ -42,7 +42,12 @@ struct DownloadRow: View {
                         
                         if let formatSummary = item.ytDLPConfiguration?.displayName, item.engine == .ytDLP {
                             HStack(spacing: 4) {
-                                Image(systemName: "film")
+                                if item.ytDLPConfiguration?.contentPreference == .gif {
+                                    Text("GIF")
+                                        .font(.system(size: 8, weight: .black))
+                                } else {
+                                    Image(systemName: "film")
+                                }
                                 Text(formatSummary)
                             }
                             .font(.system(size: 9, weight: .bold))
@@ -168,6 +173,7 @@ struct DownloadRow: View {
         switch item.state {
         case .preparing, .downloading, .completing: return "pause.fill"
         case .completed: return "folder.fill"
+        case .failed: return "arrow.clockwise"
         default: return "play.fill"
         }
     }

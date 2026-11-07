@@ -210,6 +210,26 @@ final class YTDLPService {
     private static let installer = YTDLPInstaller()
     private static let ffmpegInstaller = FFmpegInstaller()
 
+    private struct LatestRelease: Decodable {
+        let tagName: String
+        let assets: [Asset]
+
+        struct Asset: Decodable {
+            let name: String
+            let browserDownloadURL: URL
+
+            enum CodingKeys: String, CodingKey {
+                case name
+                case browserDownloadURL = "browser_download_url"
+            }
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case tagName = "tag_name"
+            case assets
+        }
+    }
+
     private static var managedBinaryURL: URL {
         let supportURL = (try? FileManager.default.url(
             for: .applicationSupportDirectory,
@@ -275,13 +295,7 @@ final class YTDLPService {
     }
 
     func resolvedBinaryURL(settings: AppSettings) -> URL? {
-        let candidatePaths = [
-            settings.ytDLPPath.trimmingCharacters(in: .whitespacesAndNewlines),
-            Bundle.main.path(forAuxiliaryExecutable: "yt-dlp") ?? "",
-            Bundle.main.resourceURL?
-                .appendingPathComponent("yt-dlp")
-                .path(percentEncoded: false) ?? ""
-        ] + Self.commonBinaryPaths
+        let candidatePaths = [settings.ytDLPPath.trimmingCharacters(in: .whitespacesAndNewlines)] + Self.commonBinaryPaths
 
         for path in candidatePaths where !path.isEmpty {
             if FileManager.default.isExecutableFile(atPath: path) {
@@ -298,33 +312,56 @@ final class YTDLPService {
             return URL(fileURLWithPath: customPath)
         }
 
-        let bundledPaths = [
-            Bundle.main.path(forAuxiliaryExecutable: "yt-dlp") ?? "",
-            Bundle.main.resourceURL?.appendingPathComponent("yt-dlp").path(percentEncoded: false) ?? ""
-        ]
-
-        for path in bundledPaths where !path.isEmpty {
-            if FileManager.default.isExecutableFile(atPath: path) {
-                return URL(fileURLWithPath: path)
-            }
+        if let installedURL = resolvedBinaryURL(settings: settings) {
+            return installedURL
         }
 
+        throw YTDLPServiceError.binaryNotFound
+    }
+
+    func isInstalled(settings: AppSettings) -> Bool {
+        resolvedBinaryURL(settings: settings) != nil
+    }
+
+    func install(settings: AppSettings) async throws -> URL {
+        if let binaryURL = resolvedBinaryURL(settings: settings) {
+            return binaryURL
+        }
+
+        return try await updateManagedBinary()
+    }
+
+    func update(settings: AppSettings) async throws -> URL {
+        _ = settings
+        return try await updateManagedBinary()
+    }
+
+    private func updateManagedBinary() async throws -> URL {
         do {
+            let release = try await latestRelease()
+            let downloadURL = release.assets.first(where: { $0.name == "yt-dlp_macos" })?.browserDownloadURL
+                ?? Self.releaseBinaryURL
+            let releaseTag = release.tagName.isEmpty ? Self.ytDLPReleaseTag : release.tagName
             return try await Self.installer.ensureInstalled(
                 targetURL: Self.managedBinaryURL,
-                downloadURL: Self.releaseBinaryURL,
-                releaseTag: Self.ytDLPReleaseTag
+                downloadURL: downloadURL,
+                releaseTag: releaseTag
             )
         } catch {
-            for path in Self.commonBinaryPaths where path != Self.managedBinaryURL.path(percentEncoded: false) {
-                if FileManager.default.isExecutableFile(atPath: path) {
-                    return URL(fileURLWithPath: path)
-                }
-            }
             throw YTDLPServiceError.installFailed(
-                "NewNet could not automatically install the media engine. Check your connection and try again."
+                "NewNet could not download the latest yt-dlp release. Check your connection and try again."
             )
         }
+    }
+
+    private func latestRelease() async throws -> LatestRelease {
+        var request = URLRequest(url: URL(string: "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest")!)
+        request.setValue("NewNet", forHTTPHeaderField: "User-Agent")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+        return try JSONDecoder().decode(LatestRelease.self, from: data)
     }
 
     func ensureFFmpegInstalled() async throws -> URL {
@@ -371,11 +408,14 @@ final class YTDLPService {
             return binaryURL.path(percentEncoded: false)
         }
 
-        return "Auto-installs on first social-media download"
+        return "Not installed — use the download prompt"
     }
 
     func requiresFFmpeg(for item: DownloadItem) -> Bool {
         guard let configuration = item.ytDLPConfiguration else { return false }
+        if configuration.contentPreference == .gif {
+            return true
+        }
         if configuration.formatExpression.contains("+") {
             return true
         }
@@ -448,8 +488,8 @@ final class YTDLPService {
             throw YTDLPServiceError.binaryNotFound
         }
 
-        if let configuration = item.ytDLPConfiguration,
-           configuration.formatExpression.contains("+"),
+        if item.ytDLPConfiguration != nil,
+           requiresFFmpeg(for: item),
            resolvedFFmpegURL() == nil
         {
             throw YTDLPServiceError.installFailed(
@@ -570,6 +610,14 @@ final class YTDLPService {
         if let configuration = item.ytDLPConfiguration {
             arguments += ["-f", configuration.formatExpression]
 
+            if configuration.contentPreference == .gif {
+                if let clipStart = configuration.clipStart, let clipEnd = configuration.clipEnd {
+                    arguments += ["--download-sections", "*\(max(0, clipStart))-\(max(clipStart + 0.5, clipEnd))"]
+                }
+                arguments += ["--recode-video", "gif"]
+                arguments += ["--postprocessor-args", "VideoConvertor+ffmpeg_o:-an"]
+            }
+
             if configuration.extractAudio {
                 arguments.append("--extract-audio")
                 if let audioFormat = configuration.audioFormat, !audioFormat.isEmpty {
@@ -577,7 +625,9 @@ final class YTDLPService {
                 }
             }
 
-            if let mergeOutputFormat = configuration.mergeOutputFormat, !mergeOutputFormat.isEmpty {
+            if configuration.contentPreference != .gif,
+               let mergeOutputFormat = configuration.mergeOutputFormat,
+               !mergeOutputFormat.isEmpty {
                 arguments += ["--merge-output-format", mergeOutputFormat]
             }
         } else {
@@ -588,6 +638,8 @@ final class YTDLPService {
                 arguments += ["-f", "bestvideo*+bestaudio/best"]
             case .audio:
                 arguments += ["-f", "bestaudio/best"]
+            case .gif:
+                arguments += ["-f", "bestvideo*+bestaudio/best", "--recode-video", "gif"]
             }
         }
 

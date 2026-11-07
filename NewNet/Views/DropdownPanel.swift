@@ -12,6 +12,7 @@ struct DropdownPanel: View {
     @StateObject private var updateManager = UpdateManager.shared
     @Environment(\.colorScheme) private var colorScheme
     @State private var isDropTarget = false
+    @State private var shouldShowYTDLPPrompt = false
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -41,6 +42,17 @@ struct DropdownPanel: View {
         .onDrop(of: [.url, .fileURL, .text], isTargeted: $isDropTarget) { providers in
             downloadManagerViewModel.handleDrop(providers: providers)
         }
+        .onAppear {
+            shouldShowYTDLPPrompt = !downloadManagerViewModel.isYTDLPInstalled
+        }
+        .alert("Download yt-dlp to enable social-media downloads?", isPresented: $shouldShowYTDLPPrompt) {
+            Button("Download yt-dlp") {
+                downloadManagerViewModel.installYTDLP()
+            }
+            Button("Not Now", role: .cancel) {}
+        } message: {
+            Text("NewNet uses the open-source yt-dlp command-line tool to download media from supported platforms. It is stored in your user Application Support folder.")
+        }
         .animation(DesignTokens.Animation.transition, value: isDropTarget)
     }
 
@@ -49,6 +61,28 @@ struct DropdownPanel: View {
             VStack(alignment: .leading, spacing: 14) {
                 if let update = updateManager.availableUpdate {
                     updateBanner(item: update)
+                }
+
+                if downloadManagerViewModel.isInstallingYTDLP {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Downloading yt-dlp…")
+                            .font(.system(size: 12, weight: .medium))
+                        Spacer()
+                    }
+                    .padding(12)
+                    .liquidGlassControl()
+                } else if let error = downloadManagerViewModel.ytdlpInstallError {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                        Text(error)
+                            .font(.system(size: 11, weight: .medium))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(12)
+                    .liquidGlassControl()
                 }
                 
                 usageSection
@@ -384,6 +418,14 @@ private struct MediaFormatSelectionScreen: View {
                     options: availablePreferenceOptions
                 )
 
+                if pendingSelection.selectedPreference == .gif {
+                    GIFClipEditor(
+                        pendingSelection: pendingSelection,
+                        onChange: downloadManagerViewModel.setGIFRange,
+                        onPreset: downloadManagerViewModel.applyGIFPreset
+                    )
+                }
+
                 ScrollView {
                     LazyVStack(spacing: 10) {
                         ForEach(pendingSelection.availableOptions) { option in
@@ -397,10 +439,12 @@ private struct MediaFormatSelectionScreen: View {
                     }
                     .padding(.vertical, 2)
                 }
+                .frame(maxHeight: .infinity)
                 .scrollIndicators(.hidden)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 16)
+            .frame(maxHeight: .infinity, alignment: .top)
 
             if let validationMessage = downloadManagerViewModel.validationMessage {
                 HStack(alignment: .top, spacing: 8) {
@@ -552,6 +596,7 @@ private struct MediaFormatSelectionScreen: View {
         var options: [DownloadContentPreference] = []
         if !pendingSelection.mediaInfo.videoOptions.isEmpty {
             options.append(.video)
+            options.append(.gif)
         }
         if !pendingSelection.mediaInfo.audioOptions.isEmpty {
             options.append(.audio)
@@ -561,7 +606,7 @@ private struct MediaFormatSelectionScreen: View {
 
     private var preferenceBinding: Binding<DownloadContentPreference> {
         Binding(
-            get: { pendingSelection.selectedPreference == .audio ? .audio : .video },
+            get: { pendingSelection.selectedPreference },
             set: { downloadManagerViewModel.setPendingPreference($0) }
         )
     }
@@ -589,6 +634,90 @@ private struct MediaFormatSelectionScreen: View {
     }
 }
 
+private struct GIFClipEditor: View {
+    let pendingSelection: PendingMediaSelection
+    let onChange: @MainActor @Sendable (TimeInterval, TimeInterval) -> Void
+    let onPreset: @MainActor @Sendable (TimeInterval) -> Void
+
+    private let presets: [TimeInterval] = [3, 5, 10]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                HStack(spacing: 6) {
+                    Text("GIF")
+                        .font(.system(size: 9, weight: .black))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(Color.accentColor.opacity(0.16)))
+                        .foregroundStyle(Color.accentColor)
+                    Text("GIF clip")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                Spacer()
+                Text("5 seconds is a good default")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 6) {
+                ForEach(presets, id: \.self) { preset in
+                    Button("\(Int(preset)) sec") {
+                        onPreset(preset)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(isPresetSelected(preset) ? Color.white : Color.secondary)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .fill(isPresetSelected(preset) ? Color.accentColor : Color.primary.opacity(0.06))
+                    )
+                }
+                Spacer()
+            }
+
+            HStack(spacing: 10) {
+                timeField(title: "From", value: pendingSelection.gifStart) { value in
+                    onChange(value, pendingSelection.gifEnd)
+                }
+                timeField(title: "To", value: pendingSelection.gifEnd) { value in
+                    onChange(pendingSelection.gifStart, value)
+                }
+                Text(durationString(pendingSelection.gifDuration))
+                    .font(.system(size: 11, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(12)
+        .liquidGlassControl()
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("GIF clip range")
+    }
+
+    private func timeField(title: String, value: TimeInterval, onCommit: @escaping @MainActor @Sendable (TimeInterval) -> Void) -> some View {
+        HStack(spacing: 5) {
+            Text(title)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+            TextField("0.0", value: Binding(get: { value }, set: onCommit), format: .number.precision(.fractionLength(1)))
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 58)
+                .accessibilityLabel(title)
+        }
+    }
+
+    private func isPresetSelected(_ preset: TimeInterval) -> Bool {
+        abs(pendingSelection.gifDuration - preset) < 0.05
+    }
+
+    private func durationString(_ duration: TimeInterval) -> String {
+        let totalSeconds = Int(duration.rounded())
+        return "\(totalSeconds / 60):\(String(format: "%02d", totalSeconds % 60))"
+    }
+}
+
 private struct DownloadPreferenceControl: View {
     @Binding var selection: DownloadContentPreference
     let options: [DownloadContentPreference]
@@ -600,8 +729,15 @@ private struct DownloadPreferenceControl: View {
                 Button {
                     selection = option
                 } label: {
-                    Image(systemName: option.icon)
-                        .font(.system(size: 16, weight: .medium))
+                    Group {
+                        if option == .gif {
+                            Text("GIF")
+                                .font(.system(size: 12, weight: .black))
+                        } else {
+                            Image(systemName: option.icon)
+                                .font(.system(size: 16, weight: .medium))
+                        }
+                    }
                         .foregroundStyle(selection == option ? Color.white : Color.secondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 9)

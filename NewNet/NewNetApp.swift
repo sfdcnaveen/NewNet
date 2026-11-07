@@ -15,13 +15,12 @@ struct NewNetApp: App {
     private let performanceCoordinator: PerformanceCoordinator
 
     init() {
-        let analytics = AnalyticsClient.shared
         let updateManager = UpdateManager.shared
         let settings = AppSettings()
         let usageStore = NetworkUsageStore()
         let networkMonitor = NetworkSpeedMonitor(usageStore: usageStore)
         let clipboardMonitor = ClipboardMonitor(settings: settings)
-        let downloadManager = DownloadManager(settings: settings, analytics: analytics)
+        let downloadManager = DownloadManager(settings: settings)
         let menuBarViewModel = MenuBarViewModel(
             networkMonitor: networkMonitor,
             clipboardMonitor: clipboardMonitor
@@ -54,9 +53,6 @@ struct NewNetApp: App {
 
         Task { @MainActor in
             updateManager.checkForUpdatesOnLaunch()
-            await analytics.setEnabled(settings.analyticsEnabled)
-            await analytics.trackInstallIfNeeded()
-            await analytics.trackAppOpened()
         }
     }
 

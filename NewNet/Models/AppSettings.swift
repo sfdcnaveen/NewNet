@@ -26,7 +26,6 @@ final class AppSettings: ObservableObject {
         static let autoResumeDownloads = "settings.autoResumeDownloads"
         static let launchAtLogin = "settings.launchAtLogin"
         static let powerSavingEnabled = "settings.powerSavingEnabled"
-        static let analyticsEnabled = "settings.analyticsEnabled"
         static let menuBarPanelScale = "settings.menuBarPanelScale"
         static let ytDLPPath = "settings.ytDLPPath"
         static let preferredMediaType = "settings.preferredMediaType"
@@ -81,12 +80,6 @@ final class AppSettings: ObservableObject {
         }
     }
 
-    @Published var analyticsEnabled: Bool {
-        didSet {
-            defaults.set(analyticsEnabled, forKey: Keys.analyticsEnabled)
-        }
-    }
-
     @Published var menuBarPanelScale: Double {
         didSet {
             let clamped = min(max(menuBarPanelScale, 0.85), 1.25)
@@ -128,7 +121,6 @@ final class AppSettings: ObservableObject {
         autoResumeDownloads = defaults.object(forKey: Keys.autoResumeDownloads) as? Bool ?? true
         launchAtLogin = defaults.object(forKey: Keys.launchAtLogin) as? Bool ?? LaunchAtLoginManager.isEnabled
         powerSavingEnabled = defaults.object(forKey: Keys.powerSavingEnabled) as? Bool ?? true
-        analyticsEnabled = defaults.object(forKey: Keys.analyticsEnabled) as? Bool ?? true
         let storedMenuBarPanelScale = defaults.object(forKey: Keys.menuBarPanelScale) as? Double ?? 1.0
         menuBarPanelScale = min(max(storedMenuBarPanelScale, 0.85), 1.25)
         ytDLPPath = defaults.string(forKey: Keys.ytDLPPath) ?? ""

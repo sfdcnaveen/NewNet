@@ -148,7 +148,6 @@ final class DownloadManager: ObservableObject {
     }
 
     private let settings: AppSettings
-    private let analytics: AnalyticsClient
     private let store: DownloadStore
     private let session: URLSession
     private let fileStore = SegmentFileStore()
@@ -162,9 +161,8 @@ final class DownloadManager: ObservableObject {
     private var ytDLPPausedIDs: Set<UUID> = []
     private var saveTask: Task<Void, Never>?
 
-    init(settings: AppSettings, analytics: AnalyticsClient, store: DownloadStore? = nil) {
+    init(settings: AppSettings, store: DownloadStore? = nil) {
         self.settings = settings
-        self.analytics = analytics
         self.store = store ?? DownloadStore()
 
         let configuration = URLSessionConfiguration.default
@@ -347,15 +345,6 @@ final class DownloadManager: ObservableObject {
         scheduleSave()
         resume(id: id)
 
-        Task {
-            await analytics.trackFeatureUsed(
-                "download_queued",
-                metadata: [
-                    "engine": engine.rawValue,
-                    "content_preference": contentPreference.rawValue
-                ]
-            )
-        }
     }
 
     private func defaultFileName(for url: URL, engine: DownloadEngine, preferredFileName: String?) -> String {
