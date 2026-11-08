@@ -142,8 +142,25 @@ struct DropdownPanel: View {
 
             Spacer()
 
-            // Right section: Settings and Quit buttons
+            // Right section: Theme toggle, Settings, and Quit buttons
             HStack(spacing: 6) {
+                let isDark = settings.appTheme == .dark || (settings.appTheme == .system && colorScheme == .dark)
+
+                Button {
+                    withAnimation(DesignTokens.Animation.transition) {
+                        settings.appTheme = isDark ? .light : .dark
+                    }
+                } label: {
+                    Image(systemName: isDark ? "sun.max.fill" : "moon.fill")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(isDark ? Color.yellow : Color.primary)
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .liquidGlassControl()
+                .help(isDark ? "Switch to Light Mode" : "Switch to Dark Mode")
+                .accessibilityLabel("Toggle Appearance")
+
                 Button {
                     onSettingsTapped?()
                 } label: {

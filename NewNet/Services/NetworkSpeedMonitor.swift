@@ -90,9 +90,6 @@ final class NetworkSpeedMonitor: ObservableObject {
         processMonitoringEnabled = enabled
         processTimer?.cancel()
         processTimer = nil
-        processUsage = []
-        lastProcessSampleDate = nil
-        lastProcessCounters = [:]
         guard enabled else { return }
         guard FileManager.default.isExecutableFile(atPath: "/usr/bin/nettop") else {
             isProcessMonitoringAvailable = false
@@ -101,37 +98,60 @@ final class NetworkSpeedMonitor: ObservableObject {
         }
 
         isProcessMonitoringAvailable = true
-        processMonitoringMessage = nil
+        processMonitoringMessage = processUsage.isEmpty ? "Measuring application network activity…" : nil
         let timer = DispatchSource.makeTimerSource(queue: processQueue)
-        timer.schedule(deadline: .now(), repeating: .seconds(5), leeway: .milliseconds(500))
+        timer.schedule(deadline: .now(), repeating: .seconds(2), leeway: .milliseconds(250))
         timer.setEventHandler { [weak self] in
-            let samples = Self.readProcessSamples()
-            Task { @MainActor in
-                guard let self, self.processMonitoringEnabled else { return }
-                if let samples {
-                    let now = Date()
-                    let elapsed = max(now.timeIntervalSince(self.lastProcessSampleDate ?? now), 0.001)
-                    let rates = samples.compactMap { sample -> NetworkProcessUsage? in
-                        guard let previous = self.lastProcessCounters[sample.id] else { return nil }
-                        let down = sample.downloadBytesPerSecond >= previous.downloadBytesPerSecond
-                            ? (sample.downloadBytesPerSecond - previous.downloadBytesPerSecond) / elapsed : 0
-                        let up = sample.uploadBytesPerSecond >= previous.uploadBytesPerSecond
-                            ? (sample.uploadBytesPerSecond - previous.uploadBytesPerSecond) / elapsed : 0
-                        guard down > 0 || up > 0 else { return nil }
-                        return NetworkProcessUsage(id: sample.id, name: sample.name, downloadBytesPerSecond: down, uploadBytesPerSecond: up)
-                    }
-                    self.processUsage = Array(rates.sorted { $0.totalBytesPerSecond > $1.totalBytesPerSecond }.prefix(8))
-                    self.processMonitoringMessage = rates.isEmpty ? "Measuring application network activity…" : nil
-                    self.lastProcessSampleDate = now
-                    self.lastProcessCounters = Dictionary(uniqueKeysWithValues: samples.map { ($0.id, $0) })
-                } else {
-                    self.isProcessMonitoringAvailable = false
-                    self.processMonitoringMessage = "macOS did not expose per-process network flows."
-                }
-            }
+            self?.triggerProcessSample()
         }
         processTimer = timer
         timer.resume()
+
+        if lastProcessCounters.isEmpty {
+            processQueue.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.triggerProcessSample()
+            }
+        }
+    }
+
+    nonisolated private func triggerProcessSample() {
+        processQueue.async { [weak self] in
+            guard let samples = Self.readProcessSamples() else {
+                Task { @MainActor in
+                    guard let self, self.processMonitoringEnabled else { return }
+                    self.isProcessMonitoringAvailable = false
+                    self.processMonitoringMessage = "macOS did not expose per-process network flows."
+                }
+                return
+            }
+
+            Task { @MainActor in
+                self?.applyProcessSamples(samples)
+            }
+        }
+    }
+
+    private func applyProcessSamples(_ samples: [NetworkProcessUsage]) {
+        guard processMonitoringEnabled else { return }
+        let now = Date()
+        let elapsed = max(now.timeIntervalSince(lastProcessSampleDate ?? now), 0.001)
+        let rates = samples.compactMap { sample -> NetworkProcessUsage? in
+            guard let previous = lastProcessCounters[sample.id] else { return nil }
+            let down = sample.downloadBytesPerSecond >= previous.downloadBytesPerSecond
+                ? (sample.downloadBytesPerSecond - previous.downloadBytesPerSecond) / elapsed : 0
+            let up = sample.uploadBytesPerSecond >= previous.uploadBytesPerSecond
+                ? (sample.uploadBytesPerSecond - previous.uploadBytesPerSecond) / elapsed : 0
+            guard down > 0 || up > 0 else { return nil }
+            return NetworkProcessUsage(id: sample.id, name: sample.name, downloadBytesPerSecond: down, uploadBytesPerSecond: up)
+        }
+        lastProcessSampleDate = now
+        lastProcessCounters = Dictionary(uniqueKeysWithValues: samples.map { ($0.id, $0) })
+        if !rates.isEmpty {
+            processUsage = Array(rates.sorted { $0.totalBytesPerSecond > $1.totalBytesPerSecond }.prefix(8))
+            processMonitoringMessage = nil
+        } else if processUsage.isEmpty {
+            processMonitoringMessage = "Measuring application network activity…"
+        }
     }
 
     private func sample() {
@@ -230,7 +250,7 @@ final class NetworkSpeedMonitor: ObservableObject {
         let process = Process()
         let pipe = Pipe()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/nettop")
-        process.arguments = ["-P", "-d", "-x", "-t", "external", "-J", "bytes_in,bytes_out", "-L", "1", "-s", "1"]
+        process.arguments = ["-n", "-P", "-d", "-x", "-t", "external", "-J", "bytes_in,bytes_out", "-L", "1"]
         process.standardOutput = pipe
         process.standardError = FileHandle.nullDevice
         do { try process.run(); process.waitUntilExit() } catch { return nil }

@@ -1,5 +1,6 @@
 import SwiftUI
 import Sparkle
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @ObservedObject var settings: AppSettings
@@ -20,17 +21,10 @@ struct SettingsView: View {
     @State private var inputListenBrainzToken = ""
     @State private var isValidatingListenBrainz = false
     @State private var listenBrainzError: String?
+    @State private var draggedTab: NewNetTab?
 
     var body: some View {
         Form {
-            Section("Appearance") {
-                Picker("Theme", selection: themeBinding) {
-                    ForEach(AppTheme.allCases) { theme in
-                        Text(theme.rawValue).tag(theme)
-                    }
-                }
-            }
-            
             Section("Download Engine") {
                 Stepper(value: maxSegmentsBinding, in: 1...8) {
                     HStack {
@@ -155,9 +149,11 @@ struct SettingsView: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text("Override path")
                     Spacer()
-                    TextField("/opt/homebrew/bin/yt-dlp", text: ytDLPPathBinding)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 220)
+                    RightAlignedTextField(
+                        placeholder: "/opt/homebrew/bin/yt-dlp",
+                        text: ytDLPPathBinding
+                    )
+                    .frame(width: 220, height: 22)
                 }
 
                 Picker("Default social-media mode", selection: preferredMediaBinding) {
@@ -205,12 +201,18 @@ struct SettingsView: View {
 
             Section("Navigation & Tab Ordering") {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Reorder tabs to customize their appearance in the menu bar panel:")
+                    Text("Drag or use arrows to customize tab order in the menu bar:")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
 
                     ForEach(Array(settings.tabOrder.enumerated()), id: \.element.id) { index, tab in
                         HStack(spacing: 10) {
+                            Image(systemName: "line.3.horizontal")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(.secondary.opacity(0.8))
+                                .frame(width: 16)
+                                .help("Drag to reorder")
+
                             Image(systemName: tab.systemImage)
                                 .font(.system(size: 13, weight: .semibold))
                                 .frame(width: 20)
@@ -241,15 +243,22 @@ struct SettingsView: View {
                             .disabled(index == settings.tabOrder.count - 1)
                             .help("Move down")
                         }
-                        .padding(.vertical, 4)
-                        .padding(.horizontal, 8)
-                        .liquidGlassControl()
+                        .padding(.vertical, 6)
+                        .padding(.horizontal, 10)
+                        .liquidGlassControl(isActive: draggedTab == tab)
+                        .onDrag {
+                            draggedTab = tab
+                            return NSItemProvider(object: tab.rawValue as NSString)
+                        }
+                        .onDrop(of: [.text], delegate: TabDropDelegate(destinationTab: tab, settings: settings, draggedTab: $draggedTab))
                     }
 
                     HStack {
                         Spacer()
                         Button("Restore Default Order") {
-                            settings.restoreDefaultTabOrder()
+                            withAnimation {
+                                settings.restoreDefaultTabOrder()
+                            }
                         }
                         .controlSize(.small)
                     }
@@ -258,93 +267,127 @@ struct SettingsView: View {
             }
 
             Section("Music Scrobbling") {
-                Toggle("Scrobble to Last.fm", isOn: lastFMEnabledBinding)
-                    .disabled(!scrobbleCoordinator.lastFMStatus.isConnected && !settings.isLastFMEnabled)
-
-                if scrobbleCoordinator.lastFMStatus.isConnected {
-                    LabeledContent("Last.fm Account") {
+                VStack(spacing: 10) {
+                    // Last.fm Card
+                    VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text(scrobbleCoordinator.lastFMStatus.username ?? settings.lastFMUsername)
-                                .foregroundStyle(.secondary)
-                            Button("Disconnect") {
-                                scrobbleCoordinator.disconnectLastFM()
-                            }
-                            .buttonStyle(.link)
-                            .controlSize(.small)
-                        }
-                    }
-                } else {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Connect Last.fm")
-                            .font(.system(size: 11, weight: .semibold))
-                        HStack {
-                            TextField("Username", text: $inputLastFMUsername)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 110)
-                            SecureField("Session Key", text: $inputLastFMSessionKey)
-                                .textFieldStyle(.roundedBorder)
-                            Button("Connect") {
-                                connectLastFM()
-                            }
-                            .disabled(inputLastFMUsername.isEmpty || inputLastFMSessionKey.isEmpty)
-                        }
-                        Text("Credentials are saved securely in your macOS Keychain.")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                Divider()
-
-                Toggle("Scrobble to ListenBrainz", isOn: listenBrainzEnabledBinding)
-                    .disabled(!scrobbleCoordinator.listenBrainzStatus.isConnected && !settings.isListenBrainzEnabled)
-
-                if scrobbleCoordinator.listenBrainzStatus.isConnected {
-                    LabeledContent("ListenBrainz Account") {
-                        HStack {
-                            Text(scrobbleCoordinator.listenBrainzStatus.username ?? settings.listenBrainzUsername)
-                                .foregroundStyle(.secondary)
-                            Button("Disconnect") {
-                                scrobbleCoordinator.disconnectListenBrainz()
-                            }
-                            .buttonStyle(.link)
-                            .controlSize(.small)
-                        }
-                    }
-                } else {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Connect ListenBrainz")
-                            .font(.system(size: 11, weight: .semibold))
-                        HStack {
-                            SecureField("User Token", text: $inputListenBrainzToken)
-                                .textFieldStyle(.roundedBorder)
-                            Button(isValidatingListenBrainz ? "Connecting…" : "Connect") {
-                                connectListenBrainz()
-                            }
-                            .disabled(inputListenBrainzToken.isEmpty || isValidatingListenBrainz)
-                        }
-                        if let error = listenBrainzError {
-                            Text(error)
-                                .font(.system(size: 10))
+                            Image(systemName: "music.note")
+                                .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(.red)
+                            Text("Last.fm")
+                                .font(.system(size: 12, weight: .semibold))
+                            Spacer()
+                            Toggle("", isOn: lastFMEnabledBinding)
+                                .labelsHidden()
+                                .toggleStyle(.switch)
+                                .controlSize(.small)
+                                .disabled(!scrobbleCoordinator.lastFMStatus.isConnected && !settings.isLastFMEnabled)
                         }
-                        Text("Find your User Token in your ListenBrainz profile.")
-                            .font(.system(size: 10))
+
+                        if scrobbleCoordinator.lastFMStatus.isConnected {
+                            HStack {
+                                Text("Account")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(scrobbleCoordinator.lastFMStatus.username ?? settings.lastFMUsername)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(.primary)
+                                Button("Disconnect") {
+                                    scrobbleCoordinator.disconnectLastFM()
+                                }
+                                .buttonStyle(.link)
+                                .font(.system(size: 11))
+                            }
+                        } else {
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    TextField("Username", text: $inputLastFMUsername)
+                                        .textFieldStyle(.roundedBorder)
+                                        .frame(width: 110)
+                                    SecureField("Session Key", text: $inputLastFMSessionKey)
+                                        .textFieldStyle(.roundedBorder)
+                                    Button("Connect") {
+                                        connectLastFM()
+                                    }
+                                    .disabled(inputLastFMUsername.isEmpty || inputLastFMSessionKey.isEmpty)
+                                }
+                                Text("Credentials are saved securely in macOS Keychain.")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .liquidGlassControl()
+
+                    // ListenBrainz Card
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: "headphones")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.orange)
+                            Text("ListenBrainz")
+                                .font(.system(size: 12, weight: .semibold))
+                            Spacer()
+                            Toggle("", isOn: listenBrainzEnabledBinding)
+                                .labelsHidden()
+                                .toggleStyle(.switch)
+                                .controlSize(.small)
+                                .disabled(!scrobbleCoordinator.listenBrainzStatus.isConnected && !settings.isListenBrainzEnabled)
+                        }
+
+                        if scrobbleCoordinator.listenBrainzStatus.isConnected {
+                            HStack {
+                                Text("Account")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(scrobbleCoordinator.listenBrainzStatus.username ?? settings.listenBrainzUsername)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(.primary)
+                                Button("Disconnect") {
+                                    scrobbleCoordinator.disconnectListenBrainz()
+                                }
+                                .buttonStyle(.link)
+                                .font(.system(size: 11))
+                            }
+                        } else {
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    SecureField("User Token", text: $inputListenBrainzToken)
+                                        .textFieldStyle(.roundedBorder)
+                                    Button(isValidatingListenBrainz ? "Connecting…" : "Connect") {
+                                        connectListenBrainz()
+                                    }
+                                    .disabled(inputListenBrainzToken.isEmpty || isValidatingListenBrainz)
+                                }
+                                if let error = listenBrainzError {
+                                    Text(error)
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(.red)
+                                }
+                                Text("Find your User Token in your ListenBrainz profile.")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .liquidGlassControl()
+
+                    // Privacy notice: Simple, concise, legible in dark mode
+                    HStack(spacing: 6) {
+                        Image(systemName: "lock.shield.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                        Text("Privacy focused, no telemetry, no analytics")
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
-                    .padding(.vertical, 4)
+                    .padding(.top, 2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Label("Privacy First", systemImage: "lock.shield")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                    Text("API tokens and session keys are stored securely in macOS Keychain. Listening activity is only transmitted to your connected services. No telemetry, no analytics.")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.tertiary)
-                }
-                .padding(.top, 4)
             }
         }
         .formStyle(.grouped)
@@ -460,13 +503,6 @@ struct SettingsView: View {
         )
     }
 
-    private var themeBinding: Binding<AppTheme> {
-        Binding(
-            get: { settings.appTheme },
-            set: { settings.appTheme = $0 }
-        )
-    }
-
     private var lastFMEnabledBinding: Binding<Bool> {
         Binding(
             get: { settings.isLastFMEnabled },
@@ -531,4 +567,84 @@ private extension NumberFormatter {
         formatter.maximum = 999_999
         return formatter
     }()
+}
+
+struct TabDropDelegate: DropDelegate {
+    let destinationTab: NewNetTab
+    let settings: AppSettings
+    @Binding var draggedTab: NewNetTab?
+
+    func dropEntered(info: DropInfo) {
+        guard let dragged = draggedTab,
+              dragged != destinationTab,
+              let from = settings.tabOrder.firstIndex(of: dragged),
+              let to = settings.tabOrder.firstIndex(of: destinationTab) else { return }
+
+        withAnimation(.easeInOut(duration: 0.2)) {
+            settings.tabOrder.swapAt(from, to)
+        }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggedTab = nil
+        return true
+    }
+}
+
+struct RightAlignedTextField: NSViewRepresentable {
+    var placeholder: String
+    @Binding var text: String
+
+    func makeNSView(context: Context) -> NSTextField {
+        let textField = NSTextField()
+        textField.alignment = .right
+        textField.isBordered = true
+        textField.bezelStyle = .roundedBezel
+        textField.delegate = context.coordinator
+        textField.font = .systemFont(ofSize: NSFont.systemFontSize(for: .regular))
+        applyPlaceholder(to: textField)
+        textField.stringValue = text
+        return textField
+    }
+
+    func updateNSView(_ nsView: NSTextField, context: Context) {
+        if nsView.stringValue != text {
+            nsView.stringValue = text
+        }
+        applyPlaceholder(to: nsView)
+    }
+
+    private func applyPlaceholder(to textField: NSTextField) {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .right
+        textField.placeholderAttributedString = NSAttributedString(
+            string: placeholder,
+            attributes: [
+                .foregroundColor: NSColor.placeholderTextColor,
+                .paragraphStyle: paragraph,
+                .font: NSFont.systemFont(ofSize: NSFont.systemFontSize(for: .regular))
+            ]
+        )
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    final class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: RightAlignedTextField
+
+        init(_ parent: RightAlignedTextField) {
+            self.parent = parent
+        }
+
+        func controlTextDidChange(_ obj: Notification) {
+            guard let textField = obj.object as? NSTextField else { return }
+            parent.text = textField.stringValue
+        }
+    }
 }
