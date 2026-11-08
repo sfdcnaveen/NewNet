@@ -98,19 +98,22 @@ final class LastFMService: LastFMServiceProtocol, Sendable {
     }
 
     func scrobble(track: TrackMetadata, timestamp: Date, apiKey: String, apiSecret: String, sessionKey: String) async throws {
+        // Clamp timestamp to at least 15 seconds in the past to prevent Last.fm "Timestamp too new / in future" (Ignored Code 4)
+        let safeTimestamp = min(timestamp, Date().addingTimeInterval(-15))
+
         var params: [String: String] = [
             "method": "track.scrobble",
-            "artist[0]": track.artist,
-            "track[0]": track.title,
-            "timestamp[0]": "\(Int(timestamp.timeIntervalSince1970))",
+            "artist": track.artist,
+            "track": track.title,
+            "timestamp": "\(Int(safeTimestamp.timeIntervalSince1970))",
             "api_key": apiKey,
             "sk": sessionKey
         ]
         if let album = track.album, !album.isEmpty {
-            params["album[0]"] = album
+            params["album"] = album
         }
         if track.duration > 0 {
-            params["duration[0]"] = "\(Int(track.duration))"
+            params["duration"] = "\(Int(track.duration))"
         }
 
         params["api_sig"] = Self.calculateSignature(parameters: params, secret: apiSecret)
@@ -131,12 +134,10 @@ final class LastFMService: LastFMServiceProtocol, Sendable {
     private func post(parameters: [String: String]) async throws -> Data {
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/x-www-form-urlencoded; charset=utf-8", forHTTPHeaderField: "Content-Type")
 
         let bodyString = parameters.map { key, val in
-            let escapedKey = key.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? key
-            let escapedVal = val.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? val
-            return "\(escapedKey)=\(escapedVal)"
+            "\(key.urlFormEncoded)=\(val.urlFormEncoded)"
         }.joined(separator: "&")
 
         request.httpBody = bodyString.data(using: .utf8)
@@ -158,6 +159,50 @@ final class LastFMService: LastFMServiceProtocol, Sendable {
         if let err = try? JSONDecoder().decode(ErrorResponse.self, from: data), let code = err.error, let msg = err.message {
             throw LastFMError.apiError(code: code, message: msg)
         }
+
+        struct ScrobblesResponse: Decodable {
+            struct ScrobblesBody: Decodable {
+                struct Attr: Decodable {
+                    let accepted: Int?
+                    let ignored: Int?
+                }
+                struct ScrobbleEntry: Decodable {
+                    struct IgnoredMsg: Decodable {
+                        let code: String?
+                        let text: String?
+                        enum CodingKeys: String, CodingKey {
+                            case code
+                            case text = "#text"
+                        }
+                    }
+                    let ignoredMessage: IgnoredMsg?
+                }
+                let attr: Attr?
+                let scrobble: ScrobbleEntry?
+                enum CodingKeys: String, CodingKey {
+                    case attr = "@attr"
+                    case scrobble
+                }
+            }
+            let scrobbles: ScrobblesBody?
+        }
+
+        if let scrobbleRes = try? JSONDecoder().decode(ScrobblesResponse.self, from: data),
+           let scrobbles = scrobbleRes.scrobbles {
+            if let attr = scrobbles.attr, (attr.accepted ?? 0) == 0 && (attr.ignored ?? 0) > 0 {
+                let code = scrobbles.scrobble?.ignoredMessage?.code ?? "unknown"
+                let text = scrobbles.scrobble?.ignoredMessage?.text ?? "Track was ignored by Last.fm"
+                throw LastFMError.apiError(code: Int(code) ?? 0, message: "\(text) (Last.fm code \(code))")
+            }
+        }
+    }
+}
+
+private extension String {
+    var urlFormEncoded: String {
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "-._~")
+        return self.addingPercentEncoding(withAllowedCharacters: allowed) ?? self
     }
 }
 

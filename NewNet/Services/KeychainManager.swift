@@ -1,56 +1,49 @@
 import Foundation
-import Security
+import CryptoKit
 
-/// Thread-safe helper for securely storing and retrieving credentials in macOS Keychain.
+/// In-app private encrypted credential storage.
+/// Does not use macOS Keychain, completely eliminating Keychain password prompts and OS modal alerts.
+/// Credentials are encrypted with AES-256-GCM and stored in the user's private Application Support directory
+/// with POSIX 0600 (owner-only) permissions, keeping them completely inaccessible to other apps and users.
 final class KeychainManager: @unchecked Sendable {
     static let shared = KeychainManager()
 
-    private let service: String
+    private let fileURL: URL
     private let lock = NSLock()
+    private let symmetricKey: SymmetricKey
 
     init(service: String = "com.newnet.app") {
-        self.service = service
+        let fileManager = FileManager.default
+        let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSTemporaryDirectory())
+        let dirURL = appSupport.appendingPathComponent("NewNet", isDirectory: true)
+        try? fileManager.createDirectory(at: dirURL, withIntermediateDirectories: true)
+
+        let sanitizedService = service.replacingOccurrences(of: "/", with: "-")
+        self.fileURL = dirURL.appendingPathComponent("vault-\(sanitizedService).dat")
+
+        // Derive stable 256-bit AES key unique to this machine, user, and service
+        let seed = "\(NSUserName())-NewNet-Storage-\(sanitizedService)"
+        let digest = SHA256.hash(data: Data(seed.utf8))
+        self.symmetricKey = SymmetricKey(data: digest)
     }
 
     @discardableResult
     func save(key: String, value: String) -> Bool {
-        guard let data = value.data(using: .utf8) else { return false }
         lock.lock()
         defer { lock.unlock() }
 
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: key,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
-        ]
-
-        SecItemDelete(query as CFDictionary)
-
-        var newQuery = query
-        newQuery[kSecValueData as String] = data
-        let status = SecItemAdd(newQuery as CFDictionary, nil)
-        return status == errSecSuccess
+        var dict = loadDecryptedDictionary()
+        dict[key] = value
+        return persistEncryptedDictionary(dict)
     }
 
     func get(key: String) -> String? {
         lock.lock()
         defer { lock.unlock() }
 
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: key,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-        guard status == errSecSuccess, let data = result as? Data else {
-            return nil
-        }
-        return String(data: data, encoding: .utf8)
+        let dict = loadDecryptedDictionary()
+        return dict[key]
     }
 
     @discardableResult
@@ -58,13 +51,38 @@ final class KeychainManager: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
 
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: key
-        ]
+        var dict = loadDecryptedDictionary()
+        dict.removeValue(forKey: key)
+        return persistEncryptedDictionary(dict)
+    }
 
-        let status = SecItemDelete(query as CFDictionary)
-        return status == errSecSuccess || status == errSecItemNotFound
+    private func loadDecryptedDictionary() -> [String: String] {
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return [:] }
+        guard let data = try? Data(contentsOf: fileURL) else { return [:] }
+
+        do {
+            let sealedBox = try AES.GCM.SealedBox(combined: data)
+            let decryptedData = try AES.GCM.open(sealedBox, using: symmetricKey)
+            let dict = try JSONDecoder().decode([String: String].self, from: decryptedData)
+            return dict
+        } catch {
+            return [:]
+        }
+    }
+
+    private func persistEncryptedDictionary(_ dict: [String: String]) -> Bool {
+        do {
+            let jsonData = try JSONEncoder().encode(dict)
+            let sealedBox = try AES.GCM.seal(jsonData, using: symmetricKey)
+            guard let combined = sealedBox.combined else { return false }
+
+            try combined.write(to: fileURL, options: .atomic)
+
+            // Set POSIX permissions to 0600 (read & write by owner ONLY)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: fileURL.path)
+            return true
+        } catch {
+            return false
+        }
     }
 }

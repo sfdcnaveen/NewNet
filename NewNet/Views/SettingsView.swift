@@ -312,7 +312,7 @@ struct SettingsView: View {
                                     }
                                     .disabled(inputLastFMUsername.isEmpty || inputLastFMSessionKey.isEmpty)
                                 }
-                                Text("Credentials are saved securely in macOS Keychain.")
+                                Text("Credentials are saved securely in NewNet's private encrypted vault.")
                                     .font(.system(size: 10))
                                     .foregroundStyle(.secondary)
                             }

@@ -111,11 +111,21 @@ final class ScrobbleCoordinator: ObservableObject {
         }
 
         // Same track continuing
+        currentTrack = detectedTrack
         playbackState = result.state
+
+        let currentPos = result.state.position
+
+        // Handle loop / replay of the same track
+        if currentPos < 5.0 && lastObservedPosition > 20.0 {
+            hasScrobbledCurrentTrack = false
+            accumulatedPlayTime = currentPos
+            trackStartedAt = now
+        }
 
         guard result.state.isPlaying else {
             // Paused
-            lastObservedPosition = result.state.position
+            lastObservedPosition = currentPos
             return
         }
 
@@ -124,7 +134,6 @@ final class ScrobbleCoordinator: ObservableObject {
         }
 
         // Calculate delta playback
-        let currentPos = result.state.position
         let posDelta = currentPos - lastObservedPosition
         let timeDelta = lastPollDate != nil ? now.timeIntervalSince(lastPollDate!) : 2.0
 
@@ -148,12 +157,13 @@ final class ScrobbleCoordinator: ObservableObject {
         if hasScrobbledCurrentTrack {
             submissionStatus = .scrobbled
         } else {
-            let remaining = max(0, threshold - accumulatedPlayTime)
+            let effectivePlayTime = max(accumulatedPlayTime, currentPos)
+            let remaining = max(0, threshold - effectivePlayTime)
             if remaining > 0 {
                 submissionStatus = .waitingForEligibility(remainingSeconds: remaining)
             } else {
                 // Eligible to scrobble!
-                scrobbleTrack(detectedTrack, at: trackStartedAt ?? now)
+                scrobbleTrack(detectedTrack, at: trackStartedAt ?? now.addingTimeInterval(-effectivePlayTime))
             }
         }
     }
@@ -201,15 +211,15 @@ final class ScrobbleCoordinator: ObservableObject {
     }
 
     private func scrobbleTrack(_ track: TrackMetadata, at timestamp: Date) {
-        hasScrobbledCurrentTrack = true
-        submissionStatus = .scrobbled
-
         let lastFMActive = settings.isLastFMEnabled && lastFMStatus.isConnected
         let listenBrainzActive = settings.isListenBrainzEnabled && listenBrainzStatus.isConnected
 
         guard lastFMActive || listenBrainzActive else {
             return
         }
+
+        // Clamp timestamp to safely be in the past (never in the future)
+        let scrobbleDate = min(timestamp, Date().addingTimeInterval(-20))
 
         Task {
             var lastFMResult: ProviderScrobbleResult?
@@ -222,7 +232,7 @@ final class ScrobbleCoordinator: ObservableObject {
                     do {
                         try await lastFMService.scrobble(
                             track: track,
-                            timestamp: timestamp,
+                            timestamp: scrobbleDate,
                             apiKey: apiKey,
                             apiSecret: apiSecret,
                             sessionKey: sk
@@ -239,7 +249,7 @@ final class ScrobbleCoordinator: ObservableObject {
                     do {
                         try await listenBrainzService.scrobble(
                             track: track,
-                            timestamp: timestamp,
+                            timestamp: scrobbleDate,
                             token: token
                         )
                         listenBrainzResult = ProviderScrobbleResult(success: true, message: nil)
@@ -250,7 +260,7 @@ final class ScrobbleCoordinator: ObservableObject {
             }
 
             let historyItem = ScrobbleHistoryItem(
-                timestamp: timestamp,
+                timestamp: scrobbleDate,
                 track: track,
                 lastFMResult: lastFMResult,
                 listenBrainzResult: listenBrainzResult
@@ -267,8 +277,10 @@ final class ScrobbleCoordinator: ObservableObject {
                 let hasSuccess = (lastFMResult?.success == true) || (listenBrainzResult?.success == true)
 
                 if hasSuccess {
+                    self.hasScrobbledCurrentTrack = true
                     self.submissionStatus = .scrobbled
                 } else if hasFailure {
+                    self.hasScrobbledCurrentTrack = false
                     let errMsg = lastFMResult?.message ?? listenBrainzResult?.message ?? "Submission failed"
                     self.submissionStatus = .failed(reason: errMsg)
                 }
@@ -344,8 +356,8 @@ final class ScrobbleCoordinator: ObservableObject {
 
     private func restoreProviderSessions() {
         if let username = keychain.get(key: Self.keyLastFMUsername),
-           let _ = keychain.get(key: Self.keyLastFMSessionKey),
-           !username.isEmpty {
+           let sk = keychain.get(key: Self.keyLastFMSessionKey),
+           !username.isEmpty, !sk.isEmpty {
             lastFMStatus = .connected(username: username)
             settings.lastFMUsername = username
         } else {
@@ -353,8 +365,8 @@ final class ScrobbleCoordinator: ObservableObject {
         }
 
         if let username = keychain.get(key: Self.keyListenBrainzUsername),
-           let _ = keychain.get(key: Self.keyListenBrainzToken),
-           !username.isEmpty {
+           let token = keychain.get(key: Self.keyListenBrainzToken),
+           !username.isEmpty, !token.isEmpty {
             listenBrainzStatus = .connected(username: username)
             settings.listenBrainzUsername = username
         } else {
