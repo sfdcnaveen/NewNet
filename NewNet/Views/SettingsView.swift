@@ -6,6 +6,7 @@ struct SettingsView: View {
     @ObservedObject var updateManager: UpdateManager
     @ObservedObject var networkMonitor: NetworkSpeedMonitor
     @ObservedObject var speedTestService: SpeedTestService
+    @ObservedObject var scrobbleCoordinator: ScrobbleCoordinator
     private let ytDLPService = YTDLPService()
     private let externalToolsService = ExternalToolsService()
     @State private var loginErrorMessage: String?
@@ -13,6 +14,12 @@ struct SettingsView: View {
     @State private var isUpdatingYTDLP = false
     @State private var ytdlpUpdateMessage: String?
     @State private var installedYTDLPVersion: String?
+
+    @State private var inputLastFMUsername = ""
+    @State private var inputLastFMSessionKey = ""
+    @State private var inputListenBrainzToken = ""
+    @State private var isValidatingListenBrainz = false
+    @State private var listenBrainzError: String?
 
     var body: some View {
         Form {
@@ -196,6 +203,149 @@ struct SettingsView: View {
                 Toggle("Battery saver mode", isOn: powerSavingBinding)
             }
 
+            Section("Navigation & Tab Ordering") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Reorder tabs to customize their appearance in the menu bar panel:")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+
+                    ForEach(Array(settings.tabOrder.enumerated()), id: \.element.id) { index, tab in
+                        HStack(spacing: 10) {
+                            Image(systemName: tab.systemImage)
+                                .font(.system(size: 13, weight: .semibold))
+                                .frame(width: 20)
+                                .foregroundStyle(Color.accentColor)
+
+                            Text(tab.title)
+                                .font(.system(size: 12, weight: .medium))
+
+                            Spacer()
+
+                            Button {
+                                moveTabUp(at: index)
+                            } label: {
+                                Image(systemName: "chevron.up")
+                                    .font(.system(size: 11, weight: .bold))
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(index == 0)
+                            .help("Move up")
+
+                            Button {
+                                moveTabDown(at: index)
+                            } label: {
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 11, weight: .bold))
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(index == settings.tabOrder.count - 1)
+                            .help("Move down")
+                        }
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 8)
+                        .liquidGlassControl()
+                    }
+
+                    HStack {
+                        Spacer()
+                        Button("Restore Default Order") {
+                            settings.restoreDefaultTabOrder()
+                        }
+                        .controlSize(.small)
+                    }
+                    .padding(.top, 4)
+                }
+            }
+
+            Section("Music Scrobbling") {
+                Toggle("Scrobble to Last.fm", isOn: lastFMEnabledBinding)
+                    .disabled(!scrobbleCoordinator.lastFMStatus.isConnected && !settings.isLastFMEnabled)
+
+                if scrobbleCoordinator.lastFMStatus.isConnected {
+                    LabeledContent("Last.fm Account") {
+                        HStack {
+                            Text(scrobbleCoordinator.lastFMStatus.username ?? settings.lastFMUsername)
+                                .foregroundStyle(.secondary)
+                            Button("Disconnect") {
+                                scrobbleCoordinator.disconnectLastFM()
+                            }
+                            .buttonStyle(.link)
+                            .controlSize(.small)
+                        }
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Connect Last.fm")
+                            .font(.system(size: 11, weight: .semibold))
+                        HStack {
+                            TextField("Username", text: $inputLastFMUsername)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 110)
+                            SecureField("Session Key", text: $inputLastFMSessionKey)
+                                .textFieldStyle(.roundedBorder)
+                            Button("Connect") {
+                                connectLastFM()
+                            }
+                            .disabled(inputLastFMUsername.isEmpty || inputLastFMSessionKey.isEmpty)
+                        }
+                        Text("Credentials are saved securely in your macOS Keychain.")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                }
+
+                Divider()
+
+                Toggle("Scrobble to ListenBrainz", isOn: listenBrainzEnabledBinding)
+                    .disabled(!scrobbleCoordinator.listenBrainzStatus.isConnected && !settings.isListenBrainzEnabled)
+
+                if scrobbleCoordinator.listenBrainzStatus.isConnected {
+                    LabeledContent("ListenBrainz Account") {
+                        HStack {
+                            Text(scrobbleCoordinator.listenBrainzStatus.username ?? settings.listenBrainzUsername)
+                                .foregroundStyle(.secondary)
+                            Button("Disconnect") {
+                                scrobbleCoordinator.disconnectListenBrainz()
+                            }
+                            .buttonStyle(.link)
+                            .controlSize(.small)
+                        }
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Connect ListenBrainz")
+                            .font(.system(size: 11, weight: .semibold))
+                        HStack {
+                            SecureField("User Token", text: $inputListenBrainzToken)
+                                .textFieldStyle(.roundedBorder)
+                            Button(isValidatingListenBrainz ? "Connecting…" : "Connect") {
+                                connectListenBrainz()
+                            }
+                            .disabled(inputListenBrainzToken.isEmpty || isValidatingListenBrainz)
+                        }
+                        if let error = listenBrainzError {
+                            Text(error)
+                                .font(.system(size: 10))
+                                .foregroundStyle(.red)
+                        }
+                        Text("Find your User Token in your ListenBrainz profile.")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Privacy First", systemImage: "lock.shield")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                    Text("API tokens and session keys are stored securely in macOS Keychain. Listening activity is only transmitted to your connected services. No telemetry, no analytics.")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.top, 4)
+            }
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
@@ -315,6 +465,59 @@ struct SettingsView: View {
             get: { settings.appTheme },
             set: { settings.appTheme = $0 }
         )
+    }
+
+    private var lastFMEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { settings.isLastFMEnabled },
+            set: { settings.isLastFMEnabled = $0 }
+        )
+    }
+
+    private var listenBrainzEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { settings.isListenBrainzEnabled },
+            set: { settings.isListenBrainzEnabled = $0 }
+        )
+    }
+
+    private func moveTabUp(at index: Int) {
+        guard index > 0 else { return }
+        var order = settings.tabOrder
+        order.swapAt(index, index - 1)
+        settings.tabOrder = order
+    }
+
+    private func moveTabDown(at index: Int) {
+        guard index < settings.tabOrder.count - 1 else { return }
+        var order = settings.tabOrder
+        order.swapAt(index, index + 1)
+        settings.tabOrder = order
+    }
+
+    private func connectLastFM() {
+        let username = inputLastFMUsername.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sessionKey = inputLastFMSessionKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !username.isEmpty, !sessionKey.isEmpty else { return }
+        scrobbleCoordinator.connectLastFMWithSession(username: username, sessionKey: sessionKey)
+        inputLastFMSessionKey = ""
+    }
+
+    private func connectListenBrainz() {
+        let token = inputListenBrainzToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !token.isEmpty else { return }
+        isValidatingListenBrainz = true
+        listenBrainzError = nil
+
+        Task { @MainActor in
+            do {
+                _ = try await scrobbleCoordinator.connectListenBrainz(token: token)
+                inputListenBrainzToken = ""
+            } catch {
+                listenBrainzError = error.localizedDescription
+            }
+            isValidatingListenBrainz = false
+        }
     }
 }
 

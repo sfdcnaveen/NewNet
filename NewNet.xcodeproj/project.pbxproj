@@ -11,10 +11,20 @@
 		D10000012F70000000000001 /* NetworkMonitoringTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000012F70000000000002 /* NetworkMonitoringTests.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		D10000012F7000000000000A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AC5C2D892F66A36F0006CA8D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AC5C2D902F66A36F0006CA8D;
+			remoteInfo = NewNet;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		AC5C2D912F66A36F0006CA8D /* NewNet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NewNet.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		D10000012F70000000000003 /* NewNetTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NewNetTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D10000012F70000000000002 /* NetworkMonitoringTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitoringTests.swift; sourceTree = "<group>"; };
+		D10000012F70000000000003 /* NewNetTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NewNetTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -31,6 +41,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				B10000012F70000000000001 /* Sparkle in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D10000012F70000000000007 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -153,6 +170,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D10000012F70000000000008 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -173,26 +197,6 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
-/* Begin PBXFrameworksBuildPhase section additions */
-		D10000012F70000000000007 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section additions */
-
-/* Begin PBXResourcesBuildPhase additions */
-		D10000012F70000000000008 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase additions */
-
 /* Begin PBXTargetDependency section */
 		D10000012F70000000000009 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -200,16 +204,6 @@
 			targetProxy = D10000012F7000000000000A /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
-
-/* Begin PBXContainerItemProxy section */
-		D10000012F7000000000000A /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = AC5C2D892F66A36F0006CA8D /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = AC5C2D902F66A36F0006CA8D;
-			remoteInfo = NewNet;
-		};
-/* End PBXContainerItemProxy section */
 
 /* Begin XCBuildConfiguration section */
 		AC5C2D9A2F66A3700006CA8D /* Debug */ = {

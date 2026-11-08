@@ -31,6 +31,11 @@ final class AppSettings: ObservableObject {
         static let preferredMediaType = "settings.preferredMediaType"
         static let appTheme = "settings.appTheme"
         static let showActiveApplications = "settings.showActiveApplications"
+        static let tabOrder = "settings.tabOrder"
+        static let isLastFMEnabled = "settings.isLastFMEnabled"
+        static let isListenBrainzEnabled = "settings.isListenBrainzEnabled"
+        static let lastFMUsername = "settings.lastFMUsername"
+        static let listenBrainzUsername = "settings.listenBrainzUsername"
     }
 
     private let defaults: UserDefaults
@@ -116,6 +121,41 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    @Published var tabOrder: [NewNetTab] {
+        didSet {
+            let normalized = Self.normalizedTabOrder(tabOrder)
+            if tabOrder != normalized {
+                tabOrder = normalized
+                return
+            }
+            defaults.set(normalized.map(\.rawValue), forKey: Keys.tabOrder)
+        }
+    }
+
+    @Published var isLastFMEnabled: Bool {
+        didSet {
+            defaults.set(isLastFMEnabled, forKey: Keys.isLastFMEnabled)
+        }
+    }
+
+    @Published var isListenBrainzEnabled: Bool {
+        didSet {
+            defaults.set(isListenBrainzEnabled, forKey: Keys.isListenBrainzEnabled)
+        }
+    }
+
+    @Published var lastFMUsername: String {
+        didSet {
+            defaults.set(lastFMUsername, forKey: Keys.lastFMUsername)
+        }
+    }
+
+    @Published var listenBrainzUsername: String {
+        didSet {
+            defaults.set(listenBrainzUsername, forKey: Keys.listenBrainzUsername)
+        }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
 
@@ -138,6 +178,31 @@ final class AppSettings: ObservableObject {
             rawValue: defaults.string(forKey: Keys.appTheme) ?? ""
         ) ?? .system
         showActiveApplications = defaults.object(forKey: Keys.showActiveApplications) as? Bool ?? true
+        let storedTabOrder = defaults.stringArray(forKey: Keys.tabOrder) ?? []
+        tabOrder = Self.normalizedTabOrder(storedTabOrder.compactMap(NewNetTab.init(rawValue:)))
+        isLastFMEnabled = defaults.bool(forKey: Keys.isLastFMEnabled)
+        isListenBrainzEnabled = defaults.bool(forKey: Keys.isListenBrainzEnabled)
+        lastFMUsername = defaults.string(forKey: Keys.lastFMUsername) ?? ""
+        listenBrainzUsername = defaults.string(forKey: Keys.listenBrainzUsername) ?? ""
+    }
+
+    func restoreDefaultTabOrder() {
+        tabOrder = NewNetTab.defaultOrder
+    }
+
+    func moveTab(from source: IndexSet, to destination: Int) {
+        tabOrder.move(fromOffsets: source, toOffset: destination)
+    }
+
+    private static func normalizedTabOrder(_ order: [NewNetTab]) -> [NewNetTab] {
+        var result: [NewNetTab] = []
+        for tab in order where !result.contains(tab) {
+            result.append(tab)
+        }
+        for tab in NewNetTab.defaultOrder where !result.contains(tab) {
+            result.append(tab)
+        }
+        return result
     }
 
 

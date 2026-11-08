@@ -12,6 +12,7 @@ struct NewNetApp: App {
     @StateObject private var downloadManager: DownloadManager
     @StateObject private var menuBarViewModel: MenuBarViewModel
     @StateObject private var downloadManagerViewModel: DownloadManagerViewModel
+    @StateObject private var scrobbleCoordinator: ScrobbleCoordinator
     private let statusBarController: StatusBarController
     private let performanceCoordinator: PerformanceCoordinator
 
@@ -23,6 +24,7 @@ struct NewNetApp: App {
         let speedTestService = SpeedTestService()
         let clipboardMonitor = ClipboardMonitor(settings: settings)
         let downloadManager = DownloadManager(settings: settings)
+        let scrobbleCoordinator = ScrobbleCoordinator(settings: settings)
         let menuBarViewModel = MenuBarViewModel(
             networkMonitor: networkMonitor,
             clipboardMonitor: clipboardMonitor
@@ -37,7 +39,8 @@ struct NewNetApp: App {
             settings: settings,
             updateManager: updateManager,
             networkMonitor: networkMonitor,
-            speedTestService: speedTestService
+            speedTestService: speedTestService,
+            scrobbleCoordinator: scrobbleCoordinator
         )
         let performanceCoordinator = PerformanceCoordinator(
             settings: settings,
@@ -54,18 +57,28 @@ struct NewNetApp: App {
         _downloadManager = StateObject(wrappedValue: downloadManager)
         _menuBarViewModel = StateObject(wrappedValue: menuBarViewModel)
         _downloadManagerViewModel = StateObject(wrappedValue: downloadManagerViewModel)
+        _scrobbleCoordinator = StateObject(wrappedValue: scrobbleCoordinator)
         self.statusBarController = statusBarController
         self.performanceCoordinator = performanceCoordinator
 
-        Task { @MainActor in
-            updateManager.checkForUpdatesOnLaunch()
+        let isTesting = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil || NSClassFromString("XCTestCase") != nil
+        if !isTesting {
+            Task { @MainActor in
+                updateManager.checkForUpdatesOnLaunch()
+            }
         }
     }
 
     var body: some Scene {
         Settings {
-            SettingsView(settings: settings, updateManager: updateManager, networkMonitor: networkMonitor, speedTestService: speedTestService)
-                .frame(width: 420, height: 360)
+            SettingsView(
+                settings: settings,
+                updateManager: updateManager,
+                networkMonitor: networkMonitor,
+                speedTestService: speedTestService,
+                scrobbleCoordinator: scrobbleCoordinator
+            )
+            .frame(width: 440, height: 480)
         }
         .commands {
             CommandGroup(after: .appInfo) {

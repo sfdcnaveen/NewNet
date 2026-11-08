@@ -32,5 +32,7 @@
     <string>https://raw.githubusercontent.com/sfdcnaveen/NewNet/main/appcast.xml</string>
     <key>SUPublicEDKey</key>
     <string>raryb/jIq3YKdDk0/tvuGavhR/7WqbJkVld+ubnZ/h0=</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>NewNet requires automation permission to detect currently playing music from Apple Music and Spotify for scrobbling.</string>
 </dict>
 </plist>
