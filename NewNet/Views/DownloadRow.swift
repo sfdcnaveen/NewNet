@@ -4,7 +4,8 @@ struct DownloadRow: View {
     let item: DownloadItem
     let onPause: () -> Void
     let onResume: () -> Void
-    let onOpen: () -> Void
+    let onPlay: () -> Void
+    let onShowInFinder: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var isHovering = false
@@ -61,13 +62,35 @@ struct DownloadRow: View {
                 
                 Spacer(minLength: DesignTokens.Spacing.small)
                 
-                Button(action: action) {
-                    Image(systemName: actionSymbol)
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(item.state == .completed ? Color.primary : Color.accentColor)
-                        .frame(width: 26, height: 26)
+                if item.state == .completed {
+                    HStack(spacing: 6) {
+                        Button(action: onPlay) {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(Color.accentColor)
+                                .frame(width: 22, height: 22)
+                        }
+                        .buttonStyle(LiquidGlassButtonStyle(cornerRadius: 10, horizontalPadding: 7, verticalPadding: 5))
+                        .help("Play in default player")
+                        
+                        Button(action: onShowInFinder) {
+                            Image(systemName: "folder.fill")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(Color.primary)
+                                .frame(width: 22, height: 22)
+                        }
+                        .buttonStyle(LiquidGlassButtonStyle(cornerRadius: 10, horizontalPadding: 7, verticalPadding: 5))
+                        .help("Open in Finder")
+                    }
+                } else {
+                    Button(action: action) {
+                        Image(systemName: actionSymbol)
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(Color.accentColor)
+                            .frame(width: 26, height: 26)
+                    }
+                    .buttonStyle(LiquidGlassButtonStyle(cornerRadius: 13))
                 }
-                .buttonStyle(LiquidGlassButtonStyle(cornerRadius: 13))
             }
             
             if item.isActive {
@@ -168,16 +191,13 @@ struct DownloadRow: View {
     private var actionSymbol: String {
         switch item.state {
         case .preparing, .downloading, .completing: return "pause.fill"
-        case .completed: return "folder.fill"
         case .failed: return "arrow.clockwise"
         default: return "play.fill"
         }
     }
 
     private func action() {
-        if item.state == .completed {
-            onOpen()
-        } else if item.state == .downloading || item.state == .preparing || item.state == .completing {
+        if item.state == .downloading || item.state == .preparing || item.state == .completing {
             onPause()
         } else {
             onResume()

@@ -267,6 +267,8 @@ struct LiquidGlassButtonStyle: ButtonStyle {
     var isProminent: Bool = false
     var cornerRadius: CGFloat = DesignTokens.Radius.small
     var isCircular: Bool = false
+    var horizontalPadding: CGFloat = 10
+    var verticalPadding: CGFloat = 6
     
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -290,8 +292,8 @@ struct LiquidGlassButtonStyle: ButtonStyle {
                 let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 configuration.label
                     .foregroundStyle(isProminent ? Color.white : (tint ?? Color.primary))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, horizontalPadding)
+                    .padding(.vertical, verticalPadding)
                     .glassEffect(
                         isProminent
                             ? .regular.interactive().tint(tint ?? Color.accentColor)

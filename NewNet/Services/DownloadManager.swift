@@ -262,6 +262,10 @@ final class DownloadManager: ObservableObject {
         open(id: item.id)
     }
 
+    func showInFinder(_ item: DownloadItem) {
+        showInFinder(id: item.id)
+    }
+
     func pause(id: UUID) {
         guard let index = indexOfItem(id: id) else { return }
 
@@ -817,6 +821,20 @@ final class DownloadManager: ObservableObject {
 
         if FileManager.default.fileExists(atPath: destinationPath) {
             NSWorkspace.shared.open(destinationURL)
+            return
+        }
+
+        NSWorkspace.shared.open(downloadsDirectory)
+    }
+
+    private func showInFinder(id: UUID) {
+        guard let index = indexOfItem(id: id) else { return }
+
+        let destinationURL = items[index].destinationURL
+        let destinationPath = destinationURL.path(percentEncoded: false)
+
+        if FileManager.default.fileExists(atPath: destinationPath) {
+            NSWorkspace.shared.activateFileViewerSelecting([destinationURL])
             return
         }
 
