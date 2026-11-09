@@ -104,7 +104,8 @@ if [[ -f "$ICON_ICNS" ]]; then
 fi
 
 echo "Setting Finder layout..."
-osascript <<EOF
+sleep 2
+osascript <<EOF || true
 tell application "Finder"
   tell disk "$DMG_NAME"
     open

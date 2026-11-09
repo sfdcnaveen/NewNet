@@ -19,7 +19,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         settings: AppSettings,
         updateManager: UpdateManager,
         networkMonitor: NetworkSpeedMonitor,
-        speedTestService: SpeedTestService
+        speedTestService: SpeedTestService,
+        scrobbleCoordinator: ScrobbleCoordinator
     ) {
         super.init()
         configureStatusItem()
@@ -29,7 +30,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             settings: settings,
             updateManager: updateManager,
             networkMonitor: networkMonitor,
-            speedTestService: speedTestService
+            speedTestService: speedTestService,
+            scrobbleCoordinator: scrobbleCoordinator
         )
         bindSnapshot(menuBarViewModel)
         bindSettings(settings)
@@ -65,7 +67,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         settings: AppSettings,
         updateManager: UpdateManager,
         networkMonitor: NetworkSpeedMonitor,
-        speedTestService: SpeedTestService
+        speedTestService: SpeedTestService,
+        scrobbleCoordinator: ScrobbleCoordinator
     ) {
         popover.delegate = self
         popover.behavior = .transient
@@ -78,7 +81,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 settings: settings,
                 updateManager: updateManager,
                 networkMonitor: networkMonitor,
-                speedTestService: speedTestService
+                speedTestService: speedTestService,
+                scrobbleCoordinator: scrobbleCoordinator
             )
         )
     }
@@ -214,6 +218,7 @@ private struct MenuBarPanelHost: View {
     @ObservedObject var updateManager: UpdateManager
     @ObservedObject var networkMonitor: NetworkSpeedMonitor
     @ObservedObject var speedTestService: SpeedTestService
+    @ObservedObject var scrobbleCoordinator: ScrobbleCoordinator
 
     init(
         menuBarViewModel: MenuBarViewModel,
@@ -221,7 +226,8 @@ private struct MenuBarPanelHost: View {
         settings: AppSettings,
         updateManager: UpdateManager,
         networkMonitor: NetworkSpeedMonitor,
-        speedTestService: SpeedTestService
+        speedTestService: SpeedTestService,
+        scrobbleCoordinator: ScrobbleCoordinator
     ) {
         self.menuBarViewModel = menuBarViewModel
         self.downloadManagerViewModel = downloadManagerViewModel
@@ -229,6 +235,7 @@ private struct MenuBarPanelHost: View {
         self.updateManager = updateManager
         self.networkMonitor = networkMonitor
         self.speedTestService = speedTestService
+        self.scrobbleCoordinator = scrobbleCoordinator
     }
 
     var body: some View {
@@ -262,8 +269,14 @@ private struct MenuBarPanelHost: View {
                     
                     Divider()
                     
-                    SettingsView(settings: settings, updateManager: updateManager, networkMonitor: networkMonitor, speedTestService: speedTestService)
-                        .padding(.top, -12)
+                    SettingsView(
+                        settings: settings,
+                        updateManager: updateManager,
+                        networkMonitor: networkMonitor,
+                        speedTestService: speedTestService,
+                        scrobbleCoordinator: scrobbleCoordinator
+                    )
+                    .padding(.top, -12)
                 }
                 .liquidGlassPanel()
                 .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -275,6 +288,7 @@ private struct MenuBarPanelHost: View {
                     updateManager: updateManager,
                     networkMonitor: networkMonitor,
                     speedTestService: speedTestService,
+                    scrobbleCoordinator: scrobbleCoordinator,
                     onSettingsTapped: {
                         withAnimation(DesignTokens.Animation.transition) {
                             showingSettings = true

@@ -19,9 +19,9 @@
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.2.8</string>
+	<string>1.2.9</string>
 	<key>CFBundleVersion</key>
-	<string>128</string>
+	<string>129</string>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.utilities</string>
     <key>LSMinimumSystemVersion</key>
@@ -32,5 +32,7 @@
     <string>https://raw.githubusercontent.com/sfdcnaveen/NewNet/main/appcast.xml</string>
     <key>SUPublicEDKey</key>
     <string>raryb/jIq3YKdDk0/tvuGavhR/7WqbJkVld+ubnZ/h0=</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>NewNet requires automation permission to detect currently playing music from Apple Music and Spotify for scrobbling.</string>
 </dict>
 </plist>

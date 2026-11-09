@@ -10,17 +10,13 @@ struct DropdownPanel: View {
     @ObservedObject var updateManager: UpdateManager
     @ObservedObject var networkMonitor: NetworkSpeedMonitor
     @ObservedObject var speedTestService: SpeedTestService
+    @ObservedObject var scrobbleCoordinator: ScrobbleCoordinator
     var onSettingsTapped: (() -> Void)?
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var isDropTarget = false
     @State private var shouldShowYTDLPPrompt = false
-    @State private var selectedTab: PanelTab = .network
-
-    private enum PanelTab: Hashable {
-        case network
-        case ytdlp
-    }
+    @State private var selectedTab: NewNetTab = .network
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -66,14 +62,12 @@ struct DropdownPanel: View {
 
     private var mainPanel: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                topToolbar
+            VStack(alignment: .leading, spacing: 12) {
+                headerBar
 
                 if let update = updateManager.availableUpdate, !updateManager.isUpdateNotificationSuppressed {
                     updateBanner(item: update)
                 }
-
-                tabPicker
 
                 if selectedTab == .ytdlp, downloadManagerViewModel.isInstallingYTDLP {
                     HStack(spacing: 10) {
@@ -96,16 +90,23 @@ struct DropdownPanel: View {
                     .padding(12)
                     .liquidGlassControl()
                 }
-                
-                if selectedTab == .network {
+
+                switch selectedTab {
+                case .network:
                     NetworkDashboardView(
                         settings: settings,
                         networkMonitor: networkMonitor,
                         speedTestService: speedTestService
                     )
-                } else {
+                case .ytdlp:
                     addDownloadSection
                     downloadsSection
+                case .music:
+                    MusicDashboardView(
+                        scrobbleCoordinator: scrobbleCoordinator,
+                        settings: settings,
+                        onOpenSettings: onSettingsTapped
+                    )
                 }
             }
             .padding(.horizontal, 14)
@@ -114,19 +115,51 @@ struct DropdownPanel: View {
         .scrollIndicators(.hidden)
     }
 
-    private var topToolbar: some View {
-        ZStack {
+    private var headerBar: some View {
+        HStack(spacing: 12) {
+            // Left section: App Icon
             if let icon = NSApp.applicationIconImage {
                 Image(nsImage: icon)
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
-                    .frame(width: 30, height: 30)
+                    .frame(width: 26, height: 26)
                     .accessibilityLabel("NewNet")
+            } else {
+                Image(systemName: "network")
+                    .font(.system(size: 16, weight: .semibold))
+                    .frame(width: 26, height: 26)
             }
 
+            Spacer()
+
+            // Center section: Tabs ordered according to user customization
             HStack(spacing: 8) {
-                Spacer()
+                ForEach(settings.tabOrder) { tab in
+                    tabButton(tab: tab)
+                }
+            }
+
+            Spacer()
+
+            // Right section: Theme toggle, Settings, and Quit buttons
+            HStack(spacing: 6) {
+                let isDark = settings.appTheme == .dark || (settings.appTheme == .system && colorScheme == .dark)
+
+                Button {
+                    withAnimation(DesignTokens.Animation.transition) {
+                        settings.appTheme = isDark ? .light : .dark
+                    }
+                } label: {
+                    Image(systemName: isDark ? "sun.max.fill" : "moon.fill")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(isDark ? Color.yellow : Color.primary)
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .liquidGlassControl()
+                .help(isDark ? "Switch to Light Mode" : "Switch to Dark Mode")
+                .accessibilityLabel("Toggle Appearance")
 
                 Button {
                     onSettingsTapped?()
@@ -137,6 +170,7 @@ struct DropdownPanel: View {
                 }
                 .buttonStyle(.plain)
                 .liquidGlassControl()
+                .help("Settings")
                 .accessibilityLabel("Settings")
 
                 Button(role: .destructive) {
@@ -148,37 +182,28 @@ struct DropdownPanel: View {
                 }
                 .buttonStyle(.plain)
                 .liquidGlassControl()
+                .help("Quit NewNet")
                 .accessibilityLabel("Quit NewNet")
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 30)
-        .padding(.horizontal, 4)
+        .frame(height: 32)
+        .padding(.horizontal, 2)
     }
 
-    private var tabPicker: some View {
-        HStack(spacing: 18) {
-            tabButton(systemImage: "globe", tab: .network, label: "Network")
-            tabButton(systemImage: "arrow.down.circle", tab: .ytdlp, label: "yt-dlp")
-        }
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("NewNet sections")
-    }
-
-    private func tabButton(systemImage: String, tab: PanelTab, label: String) -> some View {
+    private func tabButton(tab: NewNetTab) -> some View {
         Button {
             selectedTab = tab
         } label: {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .semibold))
+            Image(systemName: tab.systemImage)
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(selectedTab == tab ? Color.accentColor : .secondary)
-                .frame(width: 38, height: 30)
+                .frame(width: 34, height: 28)
         }
         .buttonStyle(.plain)
         .liquidGlassControl(isActive: selectedTab == tab)
-        .help(label)
-        .accessibilityLabel(label)
+        .help(tab.title)
+        .accessibilityLabel(tab.title)
         .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
     }
 
