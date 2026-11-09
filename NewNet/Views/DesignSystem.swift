@@ -42,29 +42,28 @@ struct LiquidGlassPanelModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
+    @ViewBuilder
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: DesignTokens.Radius.panel, style: .continuous)
         
-        content
-            .clipShape(shape)
-            .background {
-                if reduceTransparency {
+        if reduceTransparency {
+            content
+                .background {
                     shape.fill(Color(nsColor: .windowBackgroundColor))
-                } else {
-                    shape
-                        .fill(.ultraThinMaterial)
-                        .glassEffect(in: shape)
                 }
-            }
-            .overlay {
-                shape.strokeBorder(specularGradient, lineWidth: 1)
-            }
-            .shadow(
-                color: colorScheme == .dark ? Color.black.opacity(0.40) : Color.black.opacity(0.12),
-                radius: 24,
-                x: 0,
-                y: 10
-            )
+        } else {
+            content
+                .glassEffect(.regular, in: shape)
+                .overlay {
+                    shape.strokeBorder(specularGradient, lineWidth: 1)
+                }
+                .shadow(
+                    color: colorScheme == .dark ? Color.black.opacity(0.35) : Color.black.opacity(0.12),
+                    radius: 20,
+                    x: 0,
+                    y: 8
+                )
+        }
     }
 
     private var specularGradient: LinearGradient {
@@ -93,27 +92,34 @@ struct LiquidGlassCardModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
+    @ViewBuilder
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         
-        content
-            .background {
-                if reduceTransparency {
+        if reduceTransparency {
+            content
+                .background {
                     shape.fill(opaqueFill)
-                } else {
-                    shape
-                        .fill(cardFill)
                 }
-            }
-            .overlay {
-                shape.strokeBorder(strokeGradient, lineWidth: 0.75)
-            }
-            .shadow(
-                color: Color.black.opacity(isHovered ? (colorScheme == .dark ? 0.25 : 0.08) : 0),
-                radius: isHovered ? 8 : 0,
-                x: 0,
-                y: isHovered ? 3 : 0
-            )
+        } else if let tint = tint {
+            content
+                .glassEffect(.regular.tint(tint.opacity(isActive ? 0.35 : 0.18)), in: shape)
+                .overlay {
+                    shape.strokeBorder(strokeGradient, lineWidth: 0.75)
+                }
+        } else if isActive {
+            content
+                .glassEffect(.regular.tint(Color.accentColor.opacity(0.25)), in: shape)
+                .overlay {
+                    shape.strokeBorder(strokeGradient, lineWidth: 0.75)
+                }
+        } else {
+            content
+                .glassEffect(.clear, in: shape)
+                .overlay {
+                    shape.strokeBorder(strokeGradient, lineWidth: 0.75)
+                }
+        }
     }
 
     private var opaqueFill: Color {
@@ -123,18 +129,6 @@ struct LiquidGlassCardModifier: ViewModifier {
             return Color(nsColor: .controlBackgroundColor).opacity(0.8)
         } else {
             return Color(nsColor: .controlBackgroundColor)
-        }
-    }
-
-    private var cardFill: some ShapeStyle {
-        if let tint = tint {
-            return AnyShapeStyle(tint.opacity(colorScheme == .dark ? (isHovered ? 0.22 : 0.15) : (isHovered ? 0.28 : 0.20)))
-        } else if isActive {
-            return AnyShapeStyle(Color.accentColor.opacity(colorScheme == .dark ? (isHovered ? 0.22 : 0.16) : (isHovered ? 0.30 : 0.22)))
-        } else if isHovered {
-            return AnyShapeStyle(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.28))
-        } else {
-            return AnyShapeStyle(Color.white.opacity(colorScheme == .dark ? 0.06 : 0.18))
         }
     }
 
@@ -183,21 +177,28 @@ struct LiquidGlassControlModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
+    @ViewBuilder
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         
-        content
-            .background {
-                if reduceTransparency {
+        if reduceTransparency {
+            content
+                .background {
                     shape.fill(opaqueFill)
-                } else {
-                    shape
-                        .fill(controlFill)
                 }
-            }
-            .overlay {
-                shape.strokeBorder(strokeColor, lineWidth: 0.75)
-            }
+        } else if isActive {
+            content
+                .glassEffect(.regular.interactive().tint(Color.accentColor.opacity(0.30)), in: shape)
+                .overlay {
+                    shape.strokeBorder(Color.accentColor.opacity(0.60), lineWidth: 0.75)
+                }
+        } else {
+            content
+                .glassEffect(.clear.interactive(), in: shape)
+                .overlay {
+                    shape.strokeBorder(strokeColor, lineWidth: 0.75)
+                }
+        }
     }
     
     private var opaqueFill: Color {
@@ -207,15 +208,6 @@ struct LiquidGlassControlModifier: ViewModifier {
             return Color(nsColor: .controlBackgroundColor).opacity(0.6)
         }
         return Color(nsColor: .controlBackgroundColor)
-    }
-
-    private var controlFill: some ShapeStyle {
-        if isActive {
-            return AnyShapeStyle(Color.accentColor.opacity(colorScheme == .dark ? 0.22 : 0.14))
-        } else if isHovered {
-            return AnyShapeStyle(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.25))
-        }
-        return AnyShapeStyle(Color.white.opacity(colorScheme == .dark ? 0.05 : 0.12))
     }
     
     private var strokeColor: Color {
@@ -237,39 +229,34 @@ struct LiquidGlassPillModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
+    @ViewBuilder
     func body(content: Content) -> some View {
-        let shape = Capsule()
+        let shape = Capsule(style: .continuous)
         
-        content
-            .background {
-                if reduceTransparency {
+        if reduceTransparency {
+            content
+                .background {
                     shape.fill(Color(nsColor: .controlBackgroundColor))
-                } else {
-                    shape
-                        .fill(pillFill)
                 }
-            }
-            .overlay {
-                shape.strokeBorder(pillStroke, lineWidth: 0.75)
-            }
-    }
-
-    private var pillFill: some ShapeStyle {
-        if let tint = tint {
-            return AnyShapeStyle(tint.opacity(colorScheme == .dark ? 0.20 : 0.14))
+        } else if let tint = tint {
+            content
+                .glassEffect(.regular.tint(tint.opacity(isActive ? 0.35 : 0.15)), in: shape)
+                .overlay {
+                    shape.strokeBorder(tint.opacity(0.50), lineWidth: 0.75)
+                }
         } else if isActive {
-            return AnyShapeStyle(Color.accentColor.opacity(colorScheme == .dark ? 0.22 : 0.16))
+            content
+                .glassEffect(.regular.tint(Color.accentColor.opacity(0.28)), in: shape)
+                .overlay {
+                    shape.strokeBorder(Color.accentColor.opacity(0.60), lineWidth: 0.75)
+                }
+        } else {
+            content
+                .glassEffect(.clear, in: shape)
+                .overlay {
+                    shape.strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.15 : 0.40), lineWidth: 0.75)
+                }
         }
-        return AnyShapeStyle(Color.white.opacity(colorScheme == .dark ? 0.07 : 0.18))
-    }
-
-    private var pillStroke: Color {
-        if let tint = tint {
-            return tint.opacity(0.4)
-        } else if isActive {
-            return Color.accentColor.opacity(0.5)
-        }
-        return colorScheme == .dark ? Color.white.opacity(0.15) : Color.white.opacity(0.40)
     }
 }
 
@@ -288,44 +275,35 @@ struct LiquidGlassButtonStyle: ButtonStyle {
         
         configuration.label
             .foregroundStyle(isProminent ? Color.white : (tint ?? Color.primary))
-            .background {
-                shape
-                    .fill(backgroundFill(isPressed: configuration.isPressed))
-            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .glassEffect(
+                isProminent
+                    ? .regular.interactive().tint(tint ?? Color.accentColor)
+                    : .clear.interactive(),
+                in: shape
+            )
             .overlay {
-                shape.strokeBorder(strokeGradient(isPressed: configuration.isPressed), lineWidth: 0.75)
+                shape.strokeBorder(
+                    isProminent
+                        ? LinearGradient(
+                            colors: [Color.white.opacity(0.6), Color.white.opacity(0.15)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        : LinearGradient(
+                            colors: [
+                                colorScheme == .dark ? Color.white.opacity(configuration.isPressed ? 0.35 : 0.18) : Color.white.opacity(0.60),
+                                colorScheme == .dark ? Color.white.opacity(0.06) : Color.white.opacity(0.20)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                    lineWidth: 0.75
+                )
             }
             .scaleEffect(!reduceMotion && configuration.isPressed ? 0.94 : 1.0)
             .animation(DesignTokens.Animation.hover, value: configuration.isPressed)
-    }
-
-    private func backgroundFill(isPressed: Bool) -> some ShapeStyle {
-        if isProminent {
-            let base = tint ?? Color.accentColor
-            return AnyShapeStyle(base.opacity(isPressed ? 0.80 : 0.95))
-        }
-        if isPressed {
-            return AnyShapeStyle(Color.white.opacity(colorScheme == .dark ? 0.25 : 0.45))
-        }
-        return AnyShapeStyle(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.20))
-    }
-
-    private func strokeGradient(isPressed: Bool) -> LinearGradient {
-        if isProminent {
-            return LinearGradient(
-                colors: [Color.white.opacity(0.6), Color.white.opacity(0.15)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-        return LinearGradient(
-            colors: [
-                colorScheme == .dark ? Color.white.opacity(isPressed ? 0.40 : 0.25) : Color.white.opacity(0.75),
-                colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.20)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
     }
 }
 

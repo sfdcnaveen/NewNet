@@ -291,18 +291,20 @@ struct MusicDashboardView: View {
         }
         .padding(.horizontal, 11)
         .padding(.vertical, 8)
-        .background {
+        .glassEffect(
+            enabled && status.isConnected
+                ? .regular.tint(Color.accentColor.opacity(0.18))
+                : .clear,
+            in: RoundedRectangle(cornerRadius: 11, style: .continuous)
+        )
+        .overlay {
             RoundedRectangle(cornerRadius: 11, style: .continuous)
-                .fill(Color.white.opacity(colorScheme == .dark ? 0.07 : 0.22))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 11, style: .continuous)
-                        .strokeBorder(
-                            (enabled && status.isConnected)
-                                ? Color.accentColor.opacity(0.45)
-                                : Color.white.opacity(colorScheme == .dark ? 0.12 : 0.40),
-                            lineWidth: 0.75
-                        )
-                }
+                .strokeBorder(
+                    (enabled && status.isConnected)
+                        ? Color.accentColor.opacity(0.45)
+                        : Color.white.opacity(colorScheme == .dark ? 0.12 : 0.40),
+                    lineWidth: 0.75
+                )
         }
     }
 

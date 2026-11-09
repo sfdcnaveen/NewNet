@@ -42,7 +42,6 @@ struct DropdownPanel: View {
                     .transition(.opacity)
             }
         }
-        .padding(4)
         .contentShape(Rectangle())
         .onDrop(of: [.url, .fileURL, .text], isTargeted: $isDropTarget) { providers in
             downloadManagerViewModel.handleDrop(providers: providers)
@@ -113,6 +112,7 @@ struct DropdownPanel: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
         }
+        .scrollContentBackground(.hidden)
         .scrollIndicators(.hidden)
     }
 
@@ -142,13 +142,10 @@ struct DropdownPanel: View {
                     }
                 }
                 .padding(3)
-                .background {
+                .glassEffect(.clear, in: Capsule(style: .continuous))
+                .overlay {
                     Capsule(style: .continuous)
-                        .fill(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.22))
-                        .overlay {
-                            Capsule(style: .continuous)
-                                .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.15 : 0.40), lineWidth: 0.75)
-                        }
+                        .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.15 : 0.40), lineWidth: 0.75)
                 }
             }
 
@@ -843,13 +840,10 @@ private struct DownloadPreferenceControl: View {
             }
         }
         .padding(3)
-        .background {
+        .glassEffect(.clear, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+        .overlay {
             RoundedRectangle(cornerRadius: 11, style: .continuous)
-                .fill(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.22))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 11, style: .continuous)
-                        .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.15 : 0.45), lineWidth: 0.75)
-                }
+                .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.15 : 0.45), lineWidth: 0.75)
         }
     }
 }
