@@ -9,6 +9,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let indicatorView = MenuBarSpeedIndicator(frame: .zero)
     private let popover = NSPopover()
+    private let settings: AppSettings
     private var cancellables: Set<AnyCancellable> = []
     private var deferredWidth: CGFloat?
     private var globalMouseMonitor: Any?
@@ -22,6 +23,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         speedTestService: SpeedTestService,
         scrobbleCoordinator: ScrobbleCoordinator
     ) {
+        self.settings = settings
         super.init()
         configureStatusItem()
         configurePopover(
@@ -74,7 +76,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         popover.behavior = .transient
         popover.animates = true
         popover.contentSize = Self.popoverSize(for: settings.menuBarPanelScale)
-        popover.contentViewController = NSHostingController(
+        let hostingController = NSHostingController(
             rootView: MenuBarPanelHost(
                 menuBarViewModel: menuBarViewModel,
                 downloadManagerViewModel: downloadManagerViewModel,
@@ -85,11 +87,22 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 scrobbleCoordinator: scrobbleCoordinator
             )
         )
+        hostingController.view.wantsLayer = true
+        hostingController.view.layer?.backgroundColor = NSColor.clear.cgColor
+        popover.contentViewController = hostingController
     }
 
     private func updatePopoverAppearance() {
-        let match = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) ?? .aqua
-        popover.appearance = NSAppearance(named: match)
+        let appearanceName: NSAppearance.Name
+        switch settings.appTheme {
+        case .light:
+            appearanceName = .aqua
+        case .dark:
+            appearanceName = .darkAqua
+        case .system:
+            appearanceName = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) ?? .aqua
+        }
+        popover.appearance = NSAppearance(named: appearanceName)
     }
 
     private func bindSnapshot(_ menuBarViewModel: MenuBarViewModel) {
@@ -111,7 +124,15 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             }
             .store(in: &cancellables)
 
+        settings.$appTheme
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.updatePopoverAppearance()
+            }
+            .store(in: &cancellables)
+
         updatePopoverSize(scale: settings.menuBarPanelScale)
+        updatePopoverAppearance()
     }
 
     private func observeDismissalEvents() {
@@ -189,6 +210,10 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         updatePopoverAppearance()
+        if let window = popover.contentViewController?.view.window {
+            window.isOpaque = false
+            window.backgroundColor = .clear
+        }
         NSApp.activate(ignoringOtherApps: true)
     }
 
@@ -252,10 +277,8 @@ private struct MenuBarPanelHost: View {
                                 .font(.system(size: 13, weight: .bold))
                                 .foregroundStyle(.primary)
                                 .frame(width: 28, height: 28)
-                                .liquidGlassControl()
-                                .clipShape(Circle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(LiquidGlassButtonStyle(cornerRadius: 14))
                         
                         Text("Settings")
                             .font(.system(size: 15, weight: .semibold))
@@ -302,6 +325,7 @@ private struct MenuBarPanelHost: View {
             width: StatusBarController.basePopoverSize.width * settings.menuBarPanelScale,
             height: StatusBarController.basePopoverSize.height * settings.menuBarPanelScale
         )
+        .background(Color.clear)
         .preferredColorScheme(settings.appTheme.colorScheme)
         .animation(DesignTokens.Animation.transition, value: showingSettings)
     }

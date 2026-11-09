@@ -2,6 +2,7 @@ import SwiftUI
 import AppKit
 
 struct MusicDashboardView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var scrobbleCoordinator: ScrobbleCoordinator
     @ObservedObject var settings: AppSettings
     var onOpenSettings: (() -> Void)?
@@ -89,57 +90,72 @@ struct MusicDashboardView: View {
                     }
                     Spacer()
                 }
-                .padding(10)
-                .liquidGlassControl()
+                .padding(12)
+                .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium)
             }
         }
-        .padding(10)
-        .liquidGlassControl()
+        .padding(14)
+        .liquidGlassCard(cornerRadius: DesignTokens.Radius.large)
     }
 
     private var mediaControlsSection: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 24) {
             Spacer()
 
             Button {
                 scrobbleCoordinator.previousTrack()
             } label: {
                 Image(systemName: "backward.fill")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 26, height: 26)
-                    .background(Circle().fill(Color.secondary.opacity(0.12)))
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color.primary.opacity(0.85))
+                    .frame(width: 36, height: 36)
+                    .contentShape(Circle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(MediaControlGlyphButtonStyle())
             .help("Previous Track")
 
             Button {
                 scrobbleCoordinator.togglePlayPause()
             } label: {
                 Image(systemName: scrobbleCoordinator.playbackState.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 30, height: 30)
-                    .background(Circle().fill(Color.secondary.opacity(0.18)))
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 44, height: 44)
+                    .background(
+                        Circle()
+                            .fill(Color.accentColor)
+                            .overlay {
+                                Circle()
+                                    .strokeBorder(
+                                        LinearGradient(
+                                            colors: [Color.white.opacity(0.60), Color.white.opacity(0.15)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 1
+                                    )
+                            }
+                            .shadow(color: Color.accentColor.opacity(0.40), radius: 8, x: 0, y: 3)
+                    )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(ScaleButtonStyle())
             .help(scrobbleCoordinator.playbackState.isPlaying ? "Pause" : "Play")
 
             Button {
                 scrobbleCoordinator.nextTrack()
             } label: {
                 Image(systemName: "forward.fill")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 26, height: 26)
-                    .background(Circle().fill(Color.secondary.opacity(0.12)))
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color.primary.opacity(0.85))
+                    .frame(width: 36, height: 36)
+                    .contentShape(Circle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(MediaControlGlyphButtonStyle())
             .help("Next Track")
 
             Spacer()
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 6)
     }
 
     private var playbackBadge: some View {
@@ -252,29 +268,44 @@ struct MusicDashboardView: View {
         enabled: Bool,
         status: ProviderConnectionStatus
     ) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 11))
-                .foregroundStyle(enabled && status.isConnected ? Color.accentColor : .secondary)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(enabled && status.isConnected ? Color.accentColor : Color.secondary)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(name)
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.primary)
 
                 Text(!enabled ? "Disabled" : (status.username ?? "Not connected"))
-                    .font(.system(size: 9))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 10))
+                    .foregroundStyle(Color.secondary)
                     .lineLimit(1)
             }
             Spacer()
 
             Circle()
                 .fill(enabled && status.isConnected ? Color.green : Color.secondary.opacity(0.4))
-                .frame(width: 6, height: 6)
+                .frame(width: 7, height: 7)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .liquidGlassControl()
+        .padding(.horizontal, 11)
+        .padding(.vertical, 8)
+        .glassEffect(
+            enabled && status.isConnected
+                ? .regular.tint(Color.accentColor.opacity(0.18))
+                : .clear,
+            in: RoundedRectangle(cornerRadius: 11, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .strokeBorder(
+                    (enabled && status.isConnected)
+                        ? Color.accentColor.opacity(0.45)
+                        : Color.white.opacity(colorScheme == .dark ? 0.12 : 0.40),
+                    lineWidth: 0.75
+                )
+        }
     }
 
     private var recentScrobblesSection: some View {
@@ -289,7 +320,7 @@ struct MusicDashboardView: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 12)
-                    .liquidGlassControl()
+                    .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium)
             } else {
                 VStack(spacing: 6) {
                     ForEach(scrobbleCoordinator.scrobbleHistory.prefix(5)) { item in
@@ -331,9 +362,9 @@ struct MusicDashboardView: View {
                                 .foregroundStyle(.tertiary)
                                 .monospacedDigit()
                         }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .liquidGlassControl()
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .liquidGlassCard(cornerRadius: DesignTokens.Radius.small)
                     }
                 }
             }

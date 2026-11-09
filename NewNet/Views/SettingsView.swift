@@ -324,7 +324,7 @@ struct SettingsView: View {
                                     Button(isConnectingLastFM ? "Connecting…" : "Complete Connection") {
                                         completeLastFMAuth()
                                     }
-                                    .buttonStyle(.borderedProminent)
+                                    .buttonStyle(LiquidGlassButtonStyle(tint: .accentColor, isProminent: true, cornerRadius: DesignTokens.Radius.chip))
                                     .controlSize(.small)
                                     .disabled(isConnectingLastFM)
 
@@ -333,6 +333,7 @@ struct SettingsView: View {
                                         isAuthorizingLastFM = false
                                         lastFMErrorMessage = nil
                                     }
+                                    .buttonStyle(LiquidGlassButtonStyle(cornerRadius: DesignTokens.Radius.chip))
                                     .controlSize(.small)
                                 }
 
@@ -364,7 +365,7 @@ struct SettingsView: View {
                                             Text("Connect Last.fm (Browser)")
                                         }
                                     }
-                                    .buttonStyle(.borderedProminent)
+                                    .buttonStyle(LiquidGlassButtonStyle(tint: .accentColor, isProminent: true, cornerRadius: DesignTokens.Radius.chip))
                                     .controlSize(.small)
                                     .disabled(inputLastFMAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || inputLastFMAPISecret.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
@@ -392,6 +393,7 @@ struct SettingsView: View {
                                             Button("Connect") {
                                                 connectLastFMManual()
                                             }
+                                            .buttonStyle(LiquidGlassButtonStyle(tint: .accentColor, isProminent: true, cornerRadius: DesignTokens.Radius.chip))
                                             .controlSize(.small)
                                             .disabled(inputLastFMUsername.isEmpty || inputLastFMSessionKey.isEmpty)
                                         }
@@ -407,8 +409,8 @@ struct SettingsView: View {
                             }
                         }
                     }
-                    .padding(10)
-                    .liquidGlassControl()
+                    .padding(12)
+                    .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium)
 
                     // ListenBrainz Card
                     VStack(alignment: .leading, spacing: 8) {
@@ -449,6 +451,7 @@ struct SettingsView: View {
                                     Button(isValidatingListenBrainz ? "Connecting…" : "Connect") {
                                         connectListenBrainz()
                                     }
+                                    .buttonStyle(LiquidGlassButtonStyle(tint: .accentColor, isProminent: true, cornerRadius: DesignTokens.Radius.chip))
                                     .disabled(inputListenBrainzToken.isEmpty || isValidatingListenBrainz)
                                 }
                                 if let error = listenBrainzError {
@@ -462,8 +465,8 @@ struct SettingsView: View {
                             }
                         }
                     }
-                    .padding(10)
-                    .liquidGlassControl()
+                    .padding(12)
+                    .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium)
 
                     // Privacy notice: Simple, concise, legible in dark mode
                     HStack(spacing: 6) {

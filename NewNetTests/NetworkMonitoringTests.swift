@@ -488,3 +488,25 @@ final class ScrobbleCoordinatorTests: XCTestCase {
         XCTAssertNil(keychain.get(key: ScrobbleCoordinator.keyLastFMSessionKey))
     }
 }
+
+@MainActor
+final class YTDLPServiceHostTests: XCTestCase {
+    func testCanHandleRedditAndSocialUrls() {
+        let service = YTDLPService()
+        XCTAssertTrue(service.canHandle(URL(string: "https://www.reddit.com/r/videos/comments/xyz/test/")!))
+        XCTAssertTrue(service.canHandle(URL(string: "https://redd.it/xyz123")!))
+        XCTAssertTrue(service.canHandle(URL(string: "https://v.redd.it/xyz123")!))
+        XCTAssertTrue(service.canHandle(URL(string: "https://tiktok.com/@user/video/123")!))
+        XCTAssertTrue(service.canHandle(URL(string: "https://www.youtube.com/watch?v=dQw4w9WgXcQ")!))
+        XCTAssertFalse(service.canHandle(URL(string: "https://example.com/file.zip")!))
+    }
+
+    func testIsRedditDetection() {
+        XCTAssertTrue(YTDLPService.isReddit(url: URL(string: "https://www.reddit.com/r/TeluguMusicMelodies/comments/1jhucee")!))
+        XCTAssertTrue(YTDLPService.isReddit(url: URL(string: "https://reddit.com/r/videos/s/7I6q5d2a9x")!))
+        XCTAssertTrue(YTDLPService.isReddit(url: URL(string: "https://v.redd.it/381tdwqjceqe1")!))
+        XCTAssertTrue(YTDLPService.isReddit(url: URL(string: "https://redd.it/1jhucee")!))
+        XCTAssertFalse(YTDLPService.isReddit(url: URL(string: "https://youtube.com/watch?v=123")!))
+    }
+}
+

@@ -17,6 +17,7 @@ struct DropdownPanel: View {
     @State private var isDropTarget = false
     @State private var shouldShowYTDLPPrompt = false
     @State private var selectedTab: NewNetTab = .network
+    @Namespace private var tabNamespace
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -41,7 +42,6 @@ struct DropdownPanel: View {
                     .transition(.opacity)
             }
         }
-        .padding(8)
         .contentShape(Rectangle())
         .onDrop(of: [.url, .fileURL, .text], isTargeted: $isDropTarget) { providers in
             downloadManagerViewModel.handleDrop(providers: providers)
@@ -112,38 +112,31 @@ struct DropdownPanel: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
         }
+        .scrollContentBackground(.hidden)
         .scrollIndicators(.hidden)
     }
 
     private var headerBar: some View {
-        HStack(spacing: 12) {
-            // Left section: App Icon
-            if let icon = NSApp.applicationIconImage {
-                Image(nsImage: icon)
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFit()
-                    .frame(width: 26, height: 26)
-                    .accessibilityLabel("NewNet")
-            } else {
-                Image(systemName: "network")
-                    .font(.system(size: 16, weight: .semibold))
-                    .frame(width: 26, height: 26)
-            }
-
-            Spacer()
-
-            // Center section: Tabs ordered according to user customization
-            HStack(spacing: 8) {
-                ForEach(settings.tabOrder) { tab in
-                    tabButton(tab: tab)
+        HStack(spacing: 8) {
+            // Left section: Tabs wrapped in GlassEffectContainer with sliding morphing indicator
+            GlassEffectContainer {
+                HStack(spacing: 3) {
+                    ForEach(settings.tabOrder) { tab in
+                        tabButton(tab: tab)
+                    }
+                }
+                .padding(3)
+                .glassEffect(.clear, in: Capsule(style: .continuous))
+                .overlay {
+                    Capsule(style: .continuous)
+                        .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.15 : 0.40), lineWidth: 0.75)
                 }
             }
 
             Spacer()
 
-            // Right section: Theme toggle, Settings, and Quit buttons
-            HStack(spacing: 6) {
+            // Right section: Circular Theme toggle, Settings, and Quit buttons
+            HStack(spacing: 5) {
                 let isDark = settings.appTheme == .dark || (settings.appTheme == .system && colorScheme == .dark)
 
                 Button {
@@ -152,12 +145,11 @@ struct DropdownPanel: View {
                     }
                 } label: {
                     Image(systemName: isDark ? "sun.max.fill" : "moon.fill")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(isDark ? Color.yellow : Color.primary)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 24, height: 24)
                 }
-                .buttonStyle(.plain)
-                .liquidGlassControl()
+                .buttonStyle(LiquidGlassButtonStyle(isCircular: true))
                 .help(isDark ? "Switch to Light Mode" : "Switch to Dark Mode")
                 .accessibilityLabel("Toggle Appearance")
 
@@ -165,11 +157,10 @@ struct DropdownPanel: View {
                     onSettingsTapped?()
                 } label: {
                     Image(systemName: "gearshape")
-                        .font(.system(size: 13, weight: .medium))
-                        .frame(width: 28, height: 28)
+                        .font(.system(size: 11, weight: .semibold))
+                        .frame(width: 24, height: 24)
                 }
-                .buttonStyle(.plain)
-                .liquidGlassControl()
+                .buttonStyle(LiquidGlassButtonStyle(isCircular: true))
                 .help("Settings")
                 .accessibilityLabel("Settings")
 
@@ -177,11 +168,10 @@ struct DropdownPanel: View {
                     NSApplication.shared.terminate(nil)
                 } label: {
                     Image(systemName: "power")
-                        .font(.system(size: 13, weight: .medium))
-                        .frame(width: 28, height: 28)
+                        .font(.system(size: 11, weight: .semibold))
+                        .frame(width: 24, height: 24)
                 }
-                .buttonStyle(.plain)
-                .liquidGlassControl()
+                .buttonStyle(LiquidGlassButtonStyle(tint: .red, isCircular: true))
                 .help("Quit NewNet")
                 .accessibilityLabel("Quit NewNet")
             }
@@ -193,15 +183,29 @@ struct DropdownPanel: View {
 
     private func tabButton(tab: NewNetTab) -> some View {
         Button {
-            selectedTab = tab
+            withAnimation(DesignTokens.Animation.tabMorph) {
+                selectedTab = tab
+            }
         } label: {
-            Image(systemName: tab.systemImage)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(selectedTab == tab ? Color.accentColor : .secondary)
-                .frame(width: 34, height: 28)
+            ZStack {
+                if selectedTab == tab {
+                    Circle()
+                        .fill(Color.accentColor.opacity(colorScheme == .dark ? 0.22 : 0.16))
+                        .overlay {
+                            Circle()
+                                .strokeBorder(Color.accentColor.opacity(0.45), lineWidth: 0.75)
+                        }
+                        .matchedGeometryEffect(id: "activeTabIndicator", in: tabNamespace)
+                }
+
+                Image(systemName: tab.systemImage)
+                    .font(.system(size: 12, weight: selectedTab == tab ? .bold : .medium))
+                    .foregroundStyle(selectedTab == tab ? Color.accentColor : Color.secondary)
+            }
+            .frame(width: 26, height: 26)
+            .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .liquidGlassControl(isActive: selectedTab == tab)
         .help(tab.title)
         .accessibilityLabel(tab.title)
         .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
@@ -231,19 +235,12 @@ struct DropdownPanel: View {
                 Button("Install") {
                     updateManager.installUpdate()
                 }
-                .buttonStyle(AddButtonStyle())
+                .buttonStyle(LiquidGlassButtonStyle(tint: .accentColor, isProminent: true, cornerRadius: DesignTokens.Radius.chip))
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.accentColor.opacity(0.1))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(Color.accentColor.opacity(0.2), lineWidth: 1)
-        )
+        .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium, tint: Color.accentColor)
     }
 
     private func panelCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -260,59 +257,128 @@ struct DropdownPanel: View {
                     downloadManagerViewModel.fillURLField(with: clipboardURL)
                     menuBarViewModel.dismissClipboardSuggestion()
                 } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: "link.circle.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(Color.accentColor)
-                            .frame(width: 24)
+                    HStack(spacing: 8) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.accentColor.opacity(colorScheme == .dark ? 0.22 : 0.16))
+                                .frame(width: 24, height: 24)
+                            Image(systemName: "doc.on.clipboard.fill")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(Color.accentColor)
+                        }
 
                         Text("Use Copied Link")
-                            .font(.system(size: 15, weight: .medium))
-
-                        Spacer()
-
-                        Image(systemName: "arrow.up.forward")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.primary)
+
+                        if let host = clipboardURL.host?.replacingOccurrences(of: "www.", with: "") {
+                            Text("•")
+                                .foregroundStyle(.tertiary)
+                            Text(host)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+
+                        Spacer(minLength: 6)
+
+                        HStack(spacing: 3) {
+                            Text("Paste")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                        .foregroundStyle(Color.accentColor)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 4)
+                        .background {
+                            Capsule(style: .continuous)
+                                .fill(Color.accentColor.opacity(colorScheme == .dark ? 0.18 : 0.12))
+                                .overlay {
+                                    Capsule(style: .continuous)
+                                        .strokeBorder(Color.accentColor.opacity(0.40), lineWidth: 0.75)
+                                }
+                        }
                     }
-                    .contentShape(Rectangle())
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .contentShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous))
                 }
                 .buttonStyle(.plain)
-                .menuItemBackground()
+                .liquidGlassControl(cornerRadius: DesignTokens.Radius.medium)
             }
+
+            let hasValidURL = !downloadManagerViewModel.urlField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 
             TextField("Paste link or use copied link", text: $downloadManagerViewModel.urlField)
                 .textFieldStyle(.plain)
                 .font(.system(size: 13, weight: .medium))
                 .padding(.leading, 12)
-                .padding(.trailing, 36)
-                .padding(.vertical, 10)
-                .liquidGlassControl()
+                .padding(.trailing, 64)
+                .padding(.vertical, 9)
+                .liquidGlassControl(cornerRadius: DesignTokens.Radius.medium)
                 .disabled(downloadManagerViewModel.isInspectingURL)
                 .overlay(alignment: .trailing) {
                     Button {
                         downloadManagerViewModel.submitURL()
                     } label: {
-                        Group {
+                        HStack(spacing: 4) {
                             if downloadManagerViewModel.isInspectingURL {
                                 ProgressView()
                                     .controlSize(.small)
-                                    .frame(width: 44, height: 20)
+                                    .frame(width: 14, height: 14)
                             } else {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 10, weight: .bold))
                                 Text("Add")
+                                    .font(.system(size: 11, weight: .semibold))
                             }
                         }
+                        .foregroundStyle(
+                            hasValidURL ? Color.white : Color.secondary.opacity(0.65)
+                        )
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background {
+                            Capsule(style: .continuous)
+                                .fill(
+                                    hasValidURL
+                                        ? AnyShapeStyle(Color.accentColor)
+                                        : AnyShapeStyle(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.20))
+                                )
+                                .overlay {
+                                    Capsule(style: .continuous)
+                                        .strokeBorder(
+                                            hasValidURL
+                                                ? LinearGradient(
+                                                    colors: [Color.white.opacity(0.60), Color.white.opacity(0.15)],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                )
+                                                : LinearGradient(
+                                                    colors: [Color.white.opacity(colorScheme == .dark ? 0.15 : 0.40), Color.white.opacity(0.05)],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                ),
+                                            lineWidth: 0.75
+                                        )
+                                }
+                                .shadow(
+                                    color: hasValidURL ? Color.accentColor.opacity(0.35) : Color.clear,
+                                    radius: 4,
+                                    x: 0,
+                                    y: 1
+                                )
+                        }
                     }
-                    .buttonStyle(AddButtonStyle())
+                    .buttonStyle(.plain)
+                    .disabled(!hasValidURL || downloadManagerViewModel.isInspectingURL)
                     .padding(.trailing, 6)
-                    .disabled(
-                        downloadManagerViewModel.isInspectingURL ||
-                        downloadManagerViewModel.urlField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    )
+                    .animation(DesignTokens.Animation.hover, value: hasValidURL)
                     .accessibilityLabel("Add download")
                 }
                 .onSubmit {
-                    downloadManagerViewModel.submitURL()
+                    if hasValidURL {
+                        downloadManagerViewModel.submitURL()
+                    }
                 }
 
             DownloadPreferenceControl(
@@ -345,14 +411,7 @@ struct DropdownPanel: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.red.opacity(colorScheme == .dark ? 0.15 : 0.08))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(Color.red.opacity(colorScheme == .dark ? 0.3 : 0.15), lineWidth: 1)
-                        )
-                )
+                .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium, tint: .red)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
@@ -465,29 +524,31 @@ private struct MediaFormatSelectionScreen: View {
         VStack(alignment: .leading, spacing: 0) {
             selectionHeader
             divider
-            mediaHero
-            divider
 
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Select Format")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.secondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    mediaHero
 
-                DownloadPreferenceControl(
-                    selection: preferenceBinding,
-                    options: availablePreferenceOptions
-                )
+                    divider
 
-                if pendingSelection.selectedPreference == .gif {
-                    GIFClipEditor(
-                        pendingSelection: pendingSelection,
-                        onChange: downloadManagerViewModel.setGIFRange,
-                        onPreset: downloadManagerViewModel.applyGIFPreset
+                    Text("Select Format")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+
+                    DownloadPreferenceControl(
+                        selection: preferenceBinding,
+                        options: availablePreferenceOptions
                     )
-                }
 
-                ScrollView {
-                    LazyVStack(spacing: 10) {
+                    if pendingSelection.selectedPreference == .gif {
+                        GIFClipEditor(
+                            pendingSelection: pendingSelection,
+                            onChange: downloadManagerViewModel.setGIFRange,
+                            onPreset: downloadManagerViewModel.applyGIFPreset
+                        )
+                    }
+
+                    LazyVStack(spacing: 8) {
                         ForEach(pendingSelection.availableOptions) { option in
                             MediaFormatOptionRow(
                                 option: option,
@@ -499,12 +560,11 @@ private struct MediaFormatSelectionScreen: View {
                     }
                     .padding(.vertical, 2)
                 }
-                .frame(maxHeight: .infinity)
-                .scrollIndicators(.hidden)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 16)
-            .frame(maxHeight: .infinity, alignment: .top)
+            .scrollContentBackground(.hidden)
+            .scrollIndicators(.automatic)
 
             if let validationMessage = downloadManagerViewModel.validationMessage {
                 HStack(alignment: .top, spacing: 8) {
@@ -519,7 +579,7 @@ private struct MediaFormatSelectionScreen: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 12)
+                .padding(.bottom, 8)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
@@ -529,12 +589,9 @@ private struct MediaFormatSelectionScreen: View {
                 Button("Back") {
                     downloadManagerViewModel.cancelPendingSelection()
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(LiquidGlassButtonStyle(cornerRadius: DesignTokens.Radius.medium))
                 .foregroundStyle(.secondary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .contentShape(Rectangle())
-                .liquidGlassControl()
+                .padding(.horizontal, 4)
 
                 Spacer()
 
@@ -554,19 +611,11 @@ private struct MediaFormatSelectionScreen: View {
                 Button("Download") {
                     downloadManagerViewModel.confirmPendingSelection()
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(.white)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .contentShape(Rectangle())
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.accentColor)
-                )
+                .buttonStyle(LiquidGlassButtonStyle(tint: .accentColor, isProminent: true, cornerRadius: DesignTokens.Radius.medium))
                 .disabled(pendingSelection.selectedOption == nil)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 14)
+            .padding(.vertical, 12)
         }
     }
 
@@ -598,37 +647,35 @@ private struct MediaFormatSelectionScreen: View {
     }
 
     private var mediaHero: some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .top, spacing: 12) {
             AsyncImage(url: pendingSelection.mediaInfo.thumbnailURL) { image in
                 image
                     .resizable()
                     .scaledToFill()
             } placeholder: {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(
-                        Color.primary.opacity(0.05)
-                    )
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.primary.opacity(0.05))
                     .overlay(
                         Image(systemName: "play.rectangle.fill")
-                            .font(.system(size: 28))
+                            .font(.system(size: 22))
                             .foregroundStyle(.secondary)
                     )
             }
-            .frame(width: 118, height: 82)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .frame(width: 84, height: 58)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.15), radius: 8, x: 0, y: 4)
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.15), radius: 6, x: 0, y: 3)
 
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(pendingSelection.mediaInfo.title)
-                    .font(.system(size: 16, weight: .semibold))
-                    .lineLimit(3)
+                    .font(.system(size: 14, weight: .semibold))
+                    .lineLimit(2)
                     .multilineTextAlignment(.leading)
 
-                FlowLayout(horizontalSpacing: 8, verticalSpacing: 8) {
+                FlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
                     if let uploader = pendingSelection.mediaInfo.uploader, !uploader.isEmpty {
                         infoChip(text: uploader)
                     }
@@ -641,15 +688,8 @@ private struct MediaFormatSelectionScreen: View {
                         infoChip(text: durationString(for: duration))
                     }
                 }
-
-                Text("Prefer the exact quality you want instead of the extractor default.")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 16)
     }
 
     private var availablePreferenceOptions: [DownloadContentPreference] {
@@ -782,36 +822,62 @@ private struct DownloadPreferenceControl: View {
     @Binding var selection: DownloadContentPreference
     let options: [DownloadContentPreference]
     @Environment(\.colorScheme) private var colorScheme
+    @Namespace private var prefNamespace
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 4) {
             ForEach(options) { option in
                 Button {
-                    selection = option
-                } label: {
-                    Group {
-                        if option == .gif {
-                            Text("GIF")
-                                .font(.system(size: 12, weight: .black))
-                        } else {
-                            Image(systemName: option.icon)
-                                .font(.system(size: 16, weight: .medium))
-                        }
+                    withAnimation(DesignTokens.Animation.tabMorph) {
+                        selection = option
                     }
-                        .foregroundStyle(selection == option ? Color.white : Color.secondary)
+                } label: {
+                    ZStack {
+                        if selection == option {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Color.accentColor)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .strokeBorder(
+                                            LinearGradient(
+                                                colors: [Color.white.opacity(0.60), Color.white.opacity(0.15)],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            ),
+                                            lineWidth: 0.75
+                                        )
+                                }
+                                .shadow(color: Color.accentColor.opacity(0.35), radius: 4, x: 0, y: 2)
+                                .matchedGeometryEffect(id: "activePref", in: prefNamespace)
+                        }
+
+                        HStack(spacing: 6) {
+                            if option == .gif {
+                                Text("GIF")
+                                    .font(.system(size: 11, weight: .black))
+                            } else {
+                                Image(systemName: option.icon)
+                                    .font(.system(size: 12, weight: .bold))
+                            }
+                            Text(option.title)
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                        .foregroundStyle(selection == option ? Color.white : Color.primary.opacity(0.75))
+                        .shadow(color: selection == option ? Color.black.opacity(0.20) : Color.clear, radius: 1, x: 0, y: 1)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 9)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(selection == option ? Color.accentColor : Color.clear)
-                        )
-                        .contentShape(Rectangle())
+                        .padding(.vertical, 7)
+                    }
+                    .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(4)
-        .liquidGlassControl()
+        .padding(3)
+        .glassEffect(.clear, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.15 : 0.45), lineWidth: 0.75)
+        }
     }
 }
 
@@ -827,7 +893,7 @@ private struct MediaFormatOptionRow: View {
             HStack(alignment: .top, spacing: 12) {
                 ZStack {
                     Circle()
-                        .fill(isSelected ? Color.accentColor.opacity(0.16) : Color.primary.opacity(0.1))
+                        .fill(isSelected ? Color.accentColor.opacity(0.20) : Color.primary.opacity(0.08))
                         .frame(width: 28, height: 28)
 
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
@@ -836,7 +902,7 @@ private struct MediaFormatOptionRow: View {
                 }
                 .padding(.top, 2)
 
-                VStack(alignment: .leading, spacing: 7) {
+                VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
                         Text(option.label)
                             .font(.system(size: 14, weight: .semibold))
@@ -854,34 +920,14 @@ private struct MediaFormatOptionRow: View {
                 }
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 13)
+            .padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(background)
-            .overlay(border)
-            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium, isHovered: isHovering, isActive: isSelected)
         }
         .buttonStyle(.plain)
         .onHover { isHovering = $0 }
         .animation(DesignTokens.Animation.hover, value: isHovering)
         .animation(DesignTokens.Animation.transition, value: isSelected)
-    }
-
-    private var background: some View {
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(isSelected ? AnyShapeStyle(.thinMaterial) : AnyShapeStyle(.ultraThinMaterial))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(
-                        isSelected 
-                            ? Color.accentColor.opacity(isHovering ? 0.2 : 0.15) 
-                            : Color.primary.opacity(isHovering ? 0.08 : 0.04)
-                    )
-            )
-    }
-
-    private var border: some View {
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .strokeBorder(isSelected ? Color.accentColor.opacity(0.7) : Color.primary.opacity(0.1), lineWidth: 1)
     }
 }
 
