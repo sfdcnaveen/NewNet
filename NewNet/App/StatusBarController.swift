@@ -252,10 +252,8 @@ private struct MenuBarPanelHost: View {
                                 .font(.system(size: 13, weight: .bold))
                                 .foregroundStyle(.primary)
                                 .frame(width: 28, height: 28)
-                                .liquidGlassControl()
-                                .clipShape(Circle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(LiquidGlassButtonStyle(cornerRadius: 14))
                         
                         Text("Settings")
                             .font(.system(size: 15, weight: .semibold))

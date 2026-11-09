@@ -37,7 +37,7 @@ struct DownloadRow: View {
                         .font(.system(size: 9, weight: .bold))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 3)
-                        .background(Capsule().fill(Color.primary.opacity(0.08)))
+                        .liquidGlassPill()
                         .foregroundStyle(.secondary)
                         
                         if let formatSummary = item.ytDLPConfiguration?.displayName, item.engine == .ytDLP {
@@ -53,7 +53,7 @@ struct DownloadRow: View {
                             .font(.system(size: 9, weight: .bold))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
-                            .background(Capsule().fill(Color.primary.opacity(0.08)))
+                            .liquidGlassPill(tint: item.ytDLPConfiguration?.contentPreference == .gif ? .accentColor : nil)
                             .foregroundStyle(.secondary)
                         }
                     }
@@ -64,15 +64,10 @@ struct DownloadRow: View {
                 Button(action: action) {
                     Image(systemName: actionSymbol)
                         .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(item.state == .completed ? Color.primary : Color.accentColor)
                         .frame(width: 26, height: 26)
                 }
-                .buttonStyle(.plain)
-                .background(
-                    Circle().fill(Color(nsColor: .controlBackgroundColor).opacity(isHovering ? 0.8 : 0.4))
-                )
-                .overlay(
-                    Circle().strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
-                )
+                .buttonStyle(LiquidGlassButtonStyle(cornerRadius: 13))
             }
             
             if item.isActive {
@@ -81,6 +76,7 @@ struct DownloadRow: View {
                         .progressViewStyle(.linear)
                         .tint(Color.accentColor)
                         .frame(height: 4)
+                        .clipShape(Capsule())
                         .animation(DesignTokens.Animation.progress, value: item.progress)
                     
                     HStack {
@@ -116,7 +112,7 @@ struct DownloadRow: View {
         }
         .padding(.horizontal, DesignTokens.Spacing.medium)
         .padding(.vertical, DesignTokens.Spacing.medium)
-        .liquidGlassControl(isHovered: isHovering, isActive: item.isActive)
+        .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium, isHovered: isHovering, isActive: item.isActive)
         .onHover { isHovering = $0 }
         .animation(DesignTokens.Animation.hover, value: isHovering)
         .animation(DesignTokens.Animation.transition, value: item.state)

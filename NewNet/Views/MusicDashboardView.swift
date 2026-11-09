@@ -89,57 +89,56 @@ struct MusicDashboardView: View {
                     }
                     Spacer()
                 }
-                .padding(10)
-                .liquidGlassControl()
+                .padding(12)
+                .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium)
             }
         }
-        .padding(10)
-        .liquidGlassControl()
+        .padding(14)
+        .liquidGlassCard(cornerRadius: DesignTokens.Radius.large)
     }
 
     private var mediaControlsSection: some View {
-        HStack(spacing: 16) {
-            Spacer()
+        GlassEffectContainer {
+            HStack(spacing: 14) {
+                Spacer()
 
-            Button {
-                scrobbleCoordinator.previousTrack()
-            } label: {
-                Image(systemName: "backward.fill")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 26, height: 26)
-                    .background(Circle().fill(Color.secondary.opacity(0.12)))
+                Button {
+                    scrobbleCoordinator.previousTrack()
+                } label: {
+                    Image(systemName: "backward.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .frame(width: 30, height: 30)
+                }
+                .buttonStyle(LiquidGlassButtonStyle(cornerRadius: 15))
+                .help("Previous Track")
+
+                Button {
+                    scrobbleCoordinator.togglePlayPause()
+                } label: {
+                    Image(systemName: scrobbleCoordinator.playbackState.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 36, height: 36)
+                }
+                .buttonStyle(LiquidGlassButtonStyle(tint: .accentColor, isProminent: true, cornerRadius: 18))
+                .help(scrobbleCoordinator.playbackState.isPlaying ? "Pause" : "Play")
+
+                Button {
+                    scrobbleCoordinator.nextTrack()
+                } label: {
+                    Image(systemName: "forward.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .frame(width: 30, height: 30)
+                }
+                .buttonStyle(LiquidGlassButtonStyle(cornerRadius: 15))
+                .help("Next Track")
+
+                Spacer()
             }
-            .buttonStyle(.plain)
-            .help("Previous Track")
-
-            Button {
-                scrobbleCoordinator.togglePlayPause()
-            } label: {
-                Image(systemName: scrobbleCoordinator.playbackState.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 30, height: 30)
-                    .background(Circle().fill(Color.secondary.opacity(0.18)))
-            }
-            .buttonStyle(.plain)
-            .help(scrobbleCoordinator.playbackState.isPlaying ? "Pause" : "Play")
-
-            Button {
-                scrobbleCoordinator.nextTrack()
-            } label: {
-                Image(systemName: "forward.fill")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 26, height: 26)
-                    .background(Circle().fill(Color.secondary.opacity(0.12)))
-            }
-            .buttonStyle(.plain)
-            .help("Next Track")
-
-            Spacer()
+            .padding(.vertical, 4)
         }
-        .padding(.vertical, 2)
     }
 
     private var playbackBadge: some View {
@@ -252,9 +251,9 @@ struct MusicDashboardView: View {
         enabled: Bool,
         status: ProviderConnectionStatus
     ) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 7) {
             Image(systemName: icon)
-                .font(.system(size: 11))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(enabled && status.isConnected ? Color.accentColor : .secondary)
 
             VStack(alignment: .leading, spacing: 1) {
@@ -272,9 +271,9 @@ struct MusicDashboardView: View {
                 .fill(enabled && status.isConnected ? Color.green : Color.secondary.opacity(0.4))
                 .frame(width: 6, height: 6)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .liquidGlassControl()
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .liquidGlassControl(cornerRadius: DesignTokens.Radius.medium, isActive: enabled && status.isConnected)
     }
 
     private var recentScrobblesSection: some View {
@@ -289,7 +288,7 @@ struct MusicDashboardView: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 12)
-                    .liquidGlassControl()
+                    .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium)
             } else {
                 VStack(spacing: 6) {
                     ForEach(scrobbleCoordinator.scrobbleHistory.prefix(5)) { item in
@@ -331,9 +330,9 @@ struct MusicDashboardView: View {
                                 .foregroundStyle(.tertiary)
                                 .monospacedDigit()
                         }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .liquidGlassControl()
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .liquidGlassCard(cornerRadius: DesignTokens.Radius.small)
                     }
                 }
             }

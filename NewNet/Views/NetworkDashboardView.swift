@@ -25,7 +25,12 @@ struct NetworkDashboardView: View {
 
             if !networkMonitor.history.isEmpty {
                 NetworkHistoryGraph(samples: networkMonitor.history)
-                    .frame(height: 46)
+                    .frame(height: 48)
+                    .padding(6)
+                    .background {
+                        RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
+                            .fill(Color.primary.opacity(0.03))
+                    }
                     .accessibilityLabel("Recent network activity graph")
             }
 
@@ -49,13 +54,15 @@ struct NetworkDashboardView: View {
                     ProgressView(value: speedTestService.progress)
                         .frame(width: 70)
                     Button("Cancel") { speedTestService.cancel() }
-                        .buttonStyle(.link)
+                        .buttonStyle(.plain)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.red)
                 } else {
                     Button(speedTestService.downloadMegabitsPerSecond == nil ? "Start Test" : "Test Again") {
                         speedTestService.start()
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .buttonStyle(LiquidGlassButtonStyle(cornerRadius: DesignTokens.Radius.chip))
+                    .font(.system(size: 11, weight: .medium))
                 }
             }
 
@@ -91,6 +98,7 @@ struct NetworkDashboardView: View {
                         HStack(spacing: 8) {
                             ProcessIconView(processID: process.id)
                             Text(process.name)
+                                .font(.system(size: 11, weight: .medium))
                                 .lineLimit(1)
                             Spacer()
                             Text("↓\(ByteCountFormatter.compactSpeedString(for: process.downloadBytesPerSecond)) ↑\(ByteCountFormatter.compactSpeedString(for: process.uploadBytesPerSecond))")
@@ -98,12 +106,15 @@ struct NetworkDashboardView: View {
                                 .monospacedDigit()
                                 .foregroundStyle(.secondary)
                         }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .liquidGlassControl(cornerRadius: DesignTokens.Radius.small)
                     }
                 }
             }
         }
-        .padding(12)
-        .liquidGlassControl()
+        .padding(14)
+        .liquidGlassCard(cornerRadius: DesignTokens.Radius.large)
         .onAppear {
             networkMonitor.setProcessMonitoringEnabled(settings.showActiveApplications)
         }
@@ -125,20 +136,28 @@ struct NetworkDashboardView: View {
     }
 
     private func metric(title: String, value: String, icon: String, tint: Color) -> some View {
-        HStack(spacing: 7) {
-            Image(systemName: icon)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(tint)
-            VStack(alignment: .leading, spacing: 1) {
+        HStack(spacing: 8) {
+            ZStack {
+                Circle()
+                    .fill(tint.opacity(0.16))
+                    .frame(width: 28, height: 28)
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(tint)
+            }
+            VStack(alignment: .leading, spacing: 2) {
                 Text(value)
                     .font(.system(size: 13, weight: .semibold))
                     .monospacedDigit()
                 Text(title)
-                    .font(.system(size: 10))
+                    .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .liquidGlassControl(cornerRadius: DesignTokens.Radius.medium)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
