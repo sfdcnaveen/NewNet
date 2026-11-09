@@ -127,20 +127,20 @@ struct DownloadItem: Identifiable, Codable, Hashable {
     var errorDescription: String?
 
     init(
-        id: UUID,
+        id: UUID = UUID(),
         sourceURL: URL,
-        destinationURL: URL,
+        destinationURL: URL = FileManager.default.temporaryDirectory,
         fileName: String,
-        engine: DownloadEngine,
-        contentPreference: DownloadContentPreference,
-        ytDLPConfiguration: YTDLPDownloadConfiguration?,
-        state: DownloadState,
-        createdAt: Date,
-        totalBytesExpected: Int64,
-        downloadedBytes: Int64,
-        supportsResuming: Bool,
-        segments: [DownloadSegment],
-        errorDescription: String?
+        engine: DownloadEngine = .ytDLP,
+        contentPreference: DownloadContentPreference = .auto,
+        ytDLPConfiguration: YTDLPDownloadConfiguration? = nil,
+        state: DownloadState = .queued,
+        createdAt: Date = Date(),
+        totalBytesExpected: Int64 = 0,
+        downloadedBytes: Int64 = 0,
+        supportsResuming: Bool = false,
+        segments: [DownloadSegment] = [],
+        errorDescription: String? = nil
     ) {
         self.id = id
         self.sourceURL = sourceURL
