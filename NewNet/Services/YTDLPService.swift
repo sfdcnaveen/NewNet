@@ -464,8 +464,11 @@ final class YTDLPService {
     }
 
     func requiresFFmpeg(for item: DownloadItem) -> Bool {
+        if item.contentPreference == .audio || item.contentPreference == .gif {
+            return true
+        }
         guard let configuration = item.ytDLPConfiguration else { return false }
-        if configuration.contentPreference == .gif {
+        if configuration.contentPreference == .gif || configuration.contentPreference == .audio {
             return true
         }
         if configuration.formatExpression.contains("+") {
@@ -474,11 +477,15 @@ final class YTDLPService {
         if configuration.extractAudio {
             return true
         }
+        if configuration.clipStart != nil || configuration.clipEnd != nil {
+            return true
+        }
         if let mergeOutputFormat = configuration.mergeOutputFormat, !mergeOutputFormat.isEmpty {
             return true
         }
         return false
     }
+
 
     static func isReddit(url: URL) -> Bool {
         guard let host = url.host?.lowercased() else { return false }
@@ -768,10 +775,15 @@ final class YTDLPService {
         if let configuration = item.ytDLPConfiguration {
             arguments += ["-f", configuration.formatExpression]
 
+            if let clipStart = configuration.clipStart, let clipEnd = configuration.clipEnd {
+                let start = max(0, clipStart)
+                let end = max(start + 0.5, clipEnd)
+                let startStr = start.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(start))" : "\(start)"
+                let endStr = end.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(end))" : "\(end)"
+                arguments += ["--download-sections", "*\(startStr)-\(endStr)"]
+            }
+
             if configuration.contentPreference == .gif {
-                if let clipStart = configuration.clipStart, let clipEnd = configuration.clipEnd {
-                    arguments += ["--download-sections", "*\(max(0, clipStart))-\(max(clipStart + 0.5, clipEnd))"]
-                }
                 arguments += ["--recode-video", "gif"]
                 arguments += ["--postprocessor-args", "VideoConvertor+ffmpeg_o:-an"]
             }
@@ -781,6 +793,7 @@ final class YTDLPService {
                 if let audioFormat = configuration.audioFormat, !audioFormat.isEmpty {
                     arguments += ["--audio-format", audioFormat]
                 }
+                arguments += ["--audio-quality", "0"]
             }
 
             if configuration.contentPreference != .gif,
@@ -795,7 +808,12 @@ final class YTDLPService {
             case .video:
                 arguments += ["-f", "bestvideo*+bestaudio/best"]
             case .audio:
-                arguments += ["-f", "bestaudio/best"]
+                arguments += [
+                    "-f", "bestaudio/best",
+                    "--extract-audio",
+                    "--audio-format", "mp3",
+                    "--audio-quality", "0"
+                ]
             case .gif:
                 arguments += ["-f", "bestvideo*+bestaudio/best", "--recode-video", "gif"]
             }
@@ -903,21 +921,58 @@ final class YTDLPService {
         return options
     }
 
-    private func buildAudioOptions(from formats: [YTDLPInspectionFormat]) -> [YTDLPDownloadOption] {
-        let sourceOptions = formats
+    func buildAudioOptions(from formats: [YTDLPInspectionFormat]) -> [YTDLPDownloadOption] {
+        let preferredFormat = formats
             .filter(\.hasAudio)
             .filter { !$0.hasVideo }
             .sorted(by: Self.isPreferredAudioFormat)
-            .reduce(into: [YTDLPDownloadOption]()) { result, format in
-                let option = makeAudioOption(from: format)
-                if !result.contains(where: { $0.id == option.id }) {
-                    result.append(option)
-                }
-            }
+            .first ?? formats
+            .filter(\.hasAudio)
+            .sorted(by: Self.isPreferredAudioFormat)
+            .first
 
-        let mp3Options = sourceOptions.map(makeMP3AudioOption(from:))
-        return sourceOptions + mp3Options
+        let formatExpression = preferredFormat?.formatId ?? "bestaudio/best"
+        let estimatedBytes = preferredFormat?.fileSize
+
+        let fullOption = YTDLPDownloadOption(
+            id: "audio-mp3-high",
+            label: "MP3 Audio High",
+            detail: "High quality MP3 audio (full length)",
+            estimatedBytes: estimatedBytes,
+            configuration: YTDLPDownloadConfiguration(
+                formatExpression: formatExpression,
+                displayName: "MP3 Audio High",
+                detailText: "High quality MP3 audio (full length)",
+                contentPreference: .audio,
+                extractAudio: true,
+                audioFormat: "mp3",
+                mergeOutputFormat: nil,
+                clipStart: nil,
+                clipEnd: nil
+            )
+        )
+
+        let ringtoneOption = YTDLPDownloadOption(
+            id: "audio-ringtone-29s",
+            label: "Ringtone",
+            detail: "High quality MP3 (trimmed to 29 seconds)",
+            estimatedBytes: nil,
+            configuration: YTDLPDownloadConfiguration(
+                formatExpression: formatExpression,
+                displayName: "Ringtone",
+                detailText: "High quality MP3 (trimmed to 29 seconds)",
+                contentPreference: .audio,
+                extractAudio: true,
+                audioFormat: "mp3",
+                mergeOutputFormat: nil,
+                clipStart: 0,
+                clipEnd: 29
+            )
+        )
+
+        return [fullOption, ringtoneOption]
     }
+
 
     private func makeCombinedVideoOption(from format: YTDLPInspectionFormat) -> YTDLPDownloadOption {
         let size = format.fileSize
@@ -988,72 +1043,7 @@ final class YTDLPService {
         )
     }
 
-    private func makeAudioOption(from format: YTDLPInspectionFormat) -> YTDLPDownloadOption {
-        let size = format.fileSize
-        let label = [
-            Self.audioQualityLabel(for: format),
-            format.ext?.uppercased()
-        ]
-        .compactMap { $0 }
-        .joined(separator: " • ")
 
-        let detail = [
-            format.formatNote?.nilIfNone,
-            Self.audioCodecSummary(for: format),
-            size.map(ByteCountFormatter.compactFileSize)
-        ]
-        .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-        .filter { !$0.isEmpty }
-        .joined(separator: "  ")
-
-        return YTDLPDownloadOption(
-            id: format.formatId,
-            label: label.ifEmpty("Audio"),
-            detail: detail.ifEmpty("Audio only"),
-            estimatedBytes: size,
-            configuration: YTDLPDownloadConfiguration(
-                formatExpression: format.formatId,
-                displayName: label.ifEmpty("Audio"),
-                detailText: detail.ifEmpty("Audio only"),
-                contentPreference: .audio,
-                extractAudio: false,
-                audioFormat: nil,
-                mergeOutputFormat: nil
-            )
-        )
-    }
-
-    private func makeMP3AudioOption(from option: YTDLPDownloadOption) -> YTDLPDownloadOption {
-        let bitrate = option.label
-            .split(separator: "•", maxSplits: 1)
-            .first?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .ifEmpty("Audio") ?? "Audio"
-        let label = "\(bitrate) • MP3"
-        let detail = [
-            "Converted to MP3",
-            option.detail
-        ]
-        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-        .filter { !$0.isEmpty }
-        .joined(separator: "  ")
-
-        return YTDLPDownloadOption(
-            id: "\(option.id)-mp3",
-            label: label,
-            detail: detail.ifEmpty("Audio converted to MP3"),
-            estimatedBytes: option.estimatedBytes,
-            configuration: YTDLPDownloadConfiguration(
-                formatExpression: option.configuration.formatExpression,
-                displayName: label,
-                detailText: detail.ifEmpty("Audio converted to MP3"),
-                contentPreference: .audio,
-                extractAudio: true,
-                audioFormat: "mp3",
-                mergeOutputFormat: nil
-            )
-        )
-    }
 
     private func bestCompatibleAudio(
         for video: YTDLPInspectionFormat,
@@ -1351,7 +1341,7 @@ private struct YTDLPInspectionThumbnail: Decodable {
     let url: String?
 }
 
-private struct YTDLPInspectionFormat: Decodable {
+struct YTDLPInspectionFormat: Decodable, Sendable {
     let formatId: String
     let formatNote: String?
     let ext: String?
@@ -1368,6 +1358,42 @@ private struct YTDLPInspectionFormat: Decodable {
     let vcodec: String?
     let acodec: String?
     let dynamicRange: String?
+
+    init(
+        formatId: String,
+        formatNote: String? = nil,
+        ext: String? = nil,
+        width: Int? = nil,
+        height: Int? = nil,
+        fps: Double? = nil,
+        tbr: Double? = nil,
+        abr: Double? = nil,
+        audioChannels: Int? = nil,
+        resolution: String? = nil,
+        format: String? = nil,
+        fileSizeExact: Int64? = nil,
+        fileSizeApprox: Int64? = nil,
+        vcodec: String? = nil,
+        acodec: String? = nil,
+        dynamicRange: String? = nil
+    ) {
+        self.formatId = formatId
+        self.formatNote = formatNote
+        self.ext = ext
+        self.width = width
+        self.height = height
+        self.fps = fps
+        self.tbr = tbr
+        self.abr = abr
+        self.audioChannels = audioChannels
+        self.resolution = resolution
+        self.format = format
+        self.fileSizeExact = fileSizeExact
+        self.fileSizeApprox = fileSizeApprox
+        self.vcodec = vcodec
+        self.acodec = acodec
+        self.dynamicRange = dynamicRange
+    }
 
     nonisolated var hasVideo: Bool {
         vcodec?.lowercased() != "none"

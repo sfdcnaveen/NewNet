@@ -508,5 +508,92 @@ final class YTDLPServiceHostTests: XCTestCase {
         XCTAssertTrue(YTDLPService.isReddit(url: URL(string: "https://redd.it/1jhucee")!))
         XCTAssertFalse(YTDLPService.isReddit(url: URL(string: "https://youtube.com/watch?v=123")!))
     }
+
+    func testBuildAudioOptionsReturnsExactlyTwoOptions() {
+        let service = YTDLPService()
+        let formats = [
+            YTDLPInspectionFormat(
+                formatId: "140",
+                formatNote: "medium",
+                ext: "m4a",
+                tbr: 128,
+                abr: 128,
+                vcodec: "none",
+                acodec: "mp4a.40.2"
+            ),
+            YTDLPInspectionFormat(
+                formatId: "251",
+                formatNote: "high",
+                ext: "webm",
+                tbr: 160,
+                abr: 160,
+                vcodec: "none",
+                acodec: "opus"
+            ),
+            YTDLPInspectionFormat(
+                formatId: "18",
+                ext: "mp4",
+                tbr: 300,
+                vcodec: "avc1",
+                acodec: "mp4a.40.2"
+            )
+        ]
+
+        let options = service.buildAudioOptions(from: formats)
+        XCTAssertEqual(options.count, 2, "There must be exactly two audio options")
+
+        let fullOption = options[0]
+        XCTAssertEqual(fullOption.id, "audio-mp3-high")
+        XCTAssertEqual(fullOption.label, "MP3 Audio High")
+        XCTAssertEqual(fullOption.configuration.formatExpression, "251")
+        XCTAssertEqual(fullOption.configuration.contentPreference, .audio)
+        XCTAssertTrue(fullOption.configuration.extractAudio)
+        XCTAssertEqual(fullOption.configuration.audioFormat, "mp3")
+        XCTAssertNil(fullOption.configuration.clipStart)
+        XCTAssertNil(fullOption.configuration.clipEnd)
+
+        let ringtoneOption = options[1]
+        XCTAssertEqual(ringtoneOption.id, "audio-ringtone-29s")
+        XCTAssertEqual(ringtoneOption.label, "Ringtone")
+        XCTAssertEqual(ringtoneOption.configuration.formatExpression, "251")
+        XCTAssertEqual(ringtoneOption.configuration.contentPreference, .audio)
+        XCTAssertTrue(ringtoneOption.configuration.extractAudio)
+        XCTAssertEqual(ringtoneOption.configuration.audioFormat, "mp3")
+        XCTAssertEqual(ringtoneOption.configuration.clipStart, 0)
+        XCTAssertEqual(ringtoneOption.configuration.clipEnd, 29)
+    }
+
+    func testBuildAudioOptionsFallbackWhenEmpty() {
+        let service = YTDLPService()
+        let options = service.buildAudioOptions(from: [])
+        XCTAssertEqual(options.count, 2)
+        XCTAssertEqual(options[0].id, "audio-mp3-high")
+        XCTAssertEqual(options[0].label, "MP3 Audio High")
+        XCTAssertEqual(options[0].configuration.formatExpression, "bestaudio/best")
+        XCTAssertEqual(options[1].id, "audio-ringtone-29s")
+        XCTAssertEqual(options[1].label, "Ringtone")
+        XCTAssertEqual(options[1].configuration.formatExpression, "bestaudio/best")
+    }
+
+    func testRequiresFFmpegForAudioAndRingtone() {
+        let service = YTDLPService()
+        let ringtoneConfig = YTDLPDownloadConfiguration(
+            formatExpression: "251",
+            displayName: "Ringtone",
+            detailText: "29s",
+            contentPreference: .audio,
+            extractAudio: true,
+            audioFormat: "mp3",
+            clipStart: 0,
+            clipEnd: 29
+        )
+        let item = DownloadItem(
+            sourceURL: URL(string: "https://youtube.com/watch?v=123")!,
+            fileName: "song.mp3",
+            contentPreference: .audio,
+            ytDLPConfiguration: ringtoneConfig
+        )
+        XCTAssertTrue(service.requiresFFmpeg(for: item))
+    }
 }
 

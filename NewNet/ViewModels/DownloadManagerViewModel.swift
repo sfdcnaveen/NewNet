@@ -251,6 +251,10 @@ final class DownloadManagerViewModel: ObservableObject {
         downloadManager.open(item)
     }
 
+    func showInFinder(_ item: DownloadItem) {
+        downloadManager.showInFinder(item)
+    }
+
     func openDownloadsFolder() {
         downloadManager.openDownloadsFolder()
     }

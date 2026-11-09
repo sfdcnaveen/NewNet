@@ -449,7 +449,8 @@ struct DropdownPanel: View {
                             item: item,
                             onPause: { downloadManagerViewModel.pause(item) },
                             onResume: { downloadManagerViewModel.resume(item) },
-                            onOpen: { downloadManagerViewModel.open(item) }
+                            onPlay: { downloadManagerViewModel.open(item) },
+                            onShowInFinder: { downloadManagerViewModel.showInFinder(item) }
                         )
                     }
                 }
