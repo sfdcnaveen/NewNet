@@ -16,6 +16,12 @@ struct SettingsView: View {
     @State private var ytdlpUpdateMessage: String?
     @State private var installedYTDLPVersion: String?
 
+    @State private var inputLastFMAPIKey = ""
+    @State private var inputLastFMAPISecret = ""
+    @State private var isAuthorizingLastFM = false
+    @State private var isConnectingLastFM = false
+    @State private var lastFMErrorMessage: String?
+    @State private var showManualLastFM = false
     @State private var inputLastFMUsername = ""
     @State private var inputLastFMSessionKey = ""
     @State private var inputListenBrainzToken = ""
@@ -295,26 +301,109 @@ struct SettingsView: View {
                                     .foregroundStyle(.primary)
                                 Button("Disconnect") {
                                     scrobbleCoordinator.disconnectLastFM()
+                                    isAuthorizingLastFM = false
+                                    lastFMErrorMessage = nil
                                 }
                                 .buttonStyle(.link)
                                 .font(.system(size: 11))
                             }
-                        } else {
-                            VStack(alignment: .leading, spacing: 6) {
-                                HStack {
-                                    TextField("Username", text: $inputLastFMUsername)
-                                        .textFieldStyle(.roundedBorder)
-                                        .frame(width: 110)
-                                    SecureField("Session Key", text: $inputLastFMSessionKey)
-                                        .textFieldStyle(.roundedBorder)
-                                    Button("Connect") {
-                                        connectLastFM()
-                                    }
-                                    .disabled(inputLastFMUsername.isEmpty || inputLastFMSessionKey.isEmpty)
+                        } else if isAuthorizingLastFM {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack(spacing: 6) {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                    Text("Waiting for authorization in browser…")
+                                        .font(.system(size: 11, weight: .medium))
                                 }
-                                Text("Credentials are saved securely in NewNet's private encrypted vault.")
+
+                                Text("1. In your browser, log in to Last.fm and click 'Yes, allow access'.\n2. Once approved, return here and click 'Complete Connection'.")
                                     .font(.system(size: 10))
                                     .foregroundStyle(.secondary)
+
+                                HStack(spacing: 8) {
+                                    Button(isConnectingLastFM ? "Connecting…" : "Complete Connection") {
+                                        completeLastFMAuth()
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .controlSize(.small)
+                                    .disabled(isConnectingLastFM)
+
+                                    Button("Cancel") {
+                                        scrobbleCoordinator.cancelLastFMBrowserAuth()
+                                        isAuthorizingLastFM = false
+                                        lastFMErrorMessage = nil
+                                    }
+                                    .controlSize(.small)
+                                }
+
+                                if let error = lastFMErrorMessage {
+                                    Text(error)
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(.red)
+                                }
+                            }
+                        } else {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Connect your Last.fm account using 1-Click Official Browser Authorization.")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.secondary)
+
+                                HStack(spacing: 6) {
+                                    TextField("API Key", text: $inputLastFMAPIKey)
+                                        .textFieldStyle(.roundedBorder)
+                                    SecureField("Shared Secret", text: $inputLastFMAPISecret)
+                                        .textFieldStyle(.roundedBorder)
+                                }
+
+                                HStack {
+                                    Button {
+                                        startLastFMBrowserAuth()
+                                    } label: {
+                                        HStack(spacing: 5) {
+                                            Image(systemName: "safari")
+                                            Text("Connect Last.fm (Browser)")
+                                        }
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .controlSize(.small)
+                                    .disabled(inputLastFMAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || inputLastFMAPISecret.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                                    Spacer()
+
+                                    Link("Get API Key ↗", destination: URL(string: "https://www.last.fm/api/account/create")!)
+                                        .font(.system(size: 10))
+                                        .buttonStyle(.link)
+                                }
+
+                                if let error = lastFMErrorMessage {
+                                    Text(error)
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(.red)
+                                }
+
+                                DisclosureGroup("Manual Session Key (Advanced)", isExpanded: $showManualLastFM) {
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        HStack {
+                                            TextField("Username", text: $inputLastFMUsername)
+                                                .textFieldStyle(.roundedBorder)
+                                                .frame(width: 110)
+                                            SecureField("Session Key", text: $inputLastFMSessionKey)
+                                                .textFieldStyle(.roundedBorder)
+                                            Button("Connect") {
+                                                connectLastFMManual()
+                                            }
+                                            .controlSize(.small)
+                                            .disabled(inputLastFMUsername.isEmpty || inputLastFMSessionKey.isEmpty)
+                                        }
+                                    }
+                                    .padding(.top, 4)
+                                }
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+
+                                Text("Credentials are saved securely in NewNet's private encrypted vault.")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.tertiary)
                             }
                         }
                     }
@@ -395,6 +484,12 @@ struct SettingsView: View {
         .padding(10)
         .task {
             installedYTDLPVersion = await ytDLPService.installedVersion(settings: settings)
+            if let savedKey = scrobbleCoordinator.getSavedLastFMAPIKey() {
+                inputLastFMAPIKey = savedKey
+            }
+            if let savedSecret = scrobbleCoordinator.getSavedLastFMAPISecret() {
+                inputLastFMAPISecret = savedSecret
+            }
         }
         .alert("Unable to Update Login Item", isPresented: $showLoginError) {
             Button("OK", role: .cancel) {}
@@ -531,11 +626,48 @@ struct SettingsView: View {
         settings.tabOrder = order
     }
 
-    private func connectLastFM() {
+    private func startLastFMBrowserAuth() {
+        lastFMErrorMessage = nil
+        Task { @MainActor in
+            do {
+                let url = try await scrobbleCoordinator.startLastFMBrowserAuth(
+                    apiKey: inputLastFMAPIKey,
+                    apiSecret: inputLastFMAPISecret
+                )
+                NSWorkspace.shared.open(url)
+                isAuthorizingLastFM = true
+            } catch {
+                lastFMErrorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func completeLastFMAuth() {
+        lastFMErrorMessage = nil
+        isConnectingLastFM = true
+        Task { @MainActor in
+            do {
+                _ = try await scrobbleCoordinator.completeLastFMBrowserAuth()
+                isAuthorizingLastFM = false
+            } catch {
+                lastFMErrorMessage = error.localizedDescription
+            }
+            isConnectingLastFM = false
+        }
+    }
+
+    private func connectLastFMManual() {
         let username = inputLastFMUsername.trimmingCharacters(in: .whitespacesAndNewlines)
         let sessionKey = inputLastFMSessionKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let apiKey = inputLastFMAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let apiSecret = inputLastFMAPISecret.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !username.isEmpty, !sessionKey.isEmpty else { return }
-        scrobbleCoordinator.connectLastFMWithSession(username: username, sessionKey: sessionKey)
+        scrobbleCoordinator.connectLastFMWithSession(
+            username: username,
+            sessionKey: sessionKey,
+            apiKey: apiKey.isEmpty ? nil : apiKey,
+            apiSecret: apiSecret.isEmpty ? nil : apiSecret
+        )
         inputLastFMSessionKey = ""
     }
 

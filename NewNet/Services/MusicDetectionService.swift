@@ -10,6 +10,9 @@ struct DetectionResult: Sendable {
 @MainActor
 protocol MusicDetectionServiceProtocol: Sendable {
     func detectCurrentPlayback() async -> DetectionResult
+    func togglePlayPause(player: MusicPlayerApp?) async
+    func nextTrack(player: MusicPlayerApp?) async
+    func previousTrack(player: MusicPlayerApp?) async
 }
 
 @MainActor
@@ -35,6 +38,63 @@ final class MusicDetectionService: MusicDetectionServiceProtocol {
         }
 
         return DetectionResult(track: nil, state: .stopped, player: .other)
+    }
+
+    func togglePlayPause(player: MusicPlayerApp? = nil) async {
+        let isMusicRunning = !NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.Music").isEmpty
+        let isSpotifyRunning = !NSRunningApplication.runningApplications(withBundleIdentifier: "com.spotify.client").isEmpty
+
+        await Task.detached(priority: .userInitiated) {
+            if player == .appleMusic && isMusicRunning {
+                Self.executeAppleScript("tell application \"Music\" to playpause")
+            } else if player == .spotify && isSpotifyRunning {
+                Self.executeAppleScript("tell application \"Spotify\" to playpause")
+            } else if isMusicRunning {
+                Self.executeAppleScript("tell application \"Music\" to playpause")
+            } else if isSpotifyRunning {
+                Self.executeAppleScript("tell application \"Spotify\" to playpause")
+            }
+        }.value
+    }
+
+    func nextTrack(player: MusicPlayerApp? = nil) async {
+        let isMusicRunning = !NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.Music").isEmpty
+        let isSpotifyRunning = !NSRunningApplication.runningApplications(withBundleIdentifier: "com.spotify.client").isEmpty
+
+        await Task.detached(priority: .userInitiated) {
+            if player == .appleMusic && isMusicRunning {
+                Self.executeAppleScript("tell application \"Music\" to next track")
+            } else if player == .spotify && isSpotifyRunning {
+                Self.executeAppleScript("tell application \"Spotify\" to next track")
+            } else if isMusicRunning {
+                Self.executeAppleScript("tell application \"Music\" to next track")
+            } else if isSpotifyRunning {
+                Self.executeAppleScript("tell application \"Spotify\" to next track")
+            }
+        }.value
+    }
+
+    func previousTrack(player: MusicPlayerApp? = nil) async {
+        let isMusicRunning = !NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.Music").isEmpty
+        let isSpotifyRunning = !NSRunningApplication.runningApplications(withBundleIdentifier: "com.spotify.client").isEmpty
+
+        await Task.detached(priority: .userInitiated) {
+            if player == .appleMusic && isMusicRunning {
+                Self.executeAppleScript("tell application \"Music\" to previous track")
+            } else if player == .spotify && isSpotifyRunning {
+                Self.executeAppleScript("tell application \"Spotify\" to previous track")
+            } else if isMusicRunning {
+                Self.executeAppleScript("tell application \"Music\" to previous track")
+            } else if isSpotifyRunning {
+                Self.executeAppleScript("tell application \"Spotify\" to previous track")
+            }
+        }.value
+    }
+
+    private nonisolated static func executeAppleScript(_ source: String) {
+        guard let script = NSAppleScript(source: source) else { return }
+        var error: NSDictionary?
+        script.executeAndReturnError(&error)
     }
 
     private nonisolated static func queryAppleMusic() -> DetectionResult? {

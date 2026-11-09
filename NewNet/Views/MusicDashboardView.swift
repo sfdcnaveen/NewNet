@@ -37,57 +37,48 @@ struct MusicDashboardView: View {
     private var currentTrackSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             if let track = scrobbleCoordinator.currentTrack {
-                HStack(alignment: .top, spacing: 12) {
-                    artworkView(for: track)
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(track.title)
-                            .font(.system(size: 13, weight: .semibold))
-                            .lineLimit(1)
-
-                        Text(track.artist)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-
-                        if let album = track.album, !album.isEmpty {
-                            Text(album)
-                                .font(.system(size: 11))
-                                .foregroundStyle(.tertiary)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(track.title)
+                                .font(.system(size: 13, weight: .semibold))
                                 .lineLimit(1)
-                        }
 
-                        HStack(spacing: 6) {
-                            Label(track.player.rawValue, systemImage: track.player.iconName)
-                                .font(.system(size: 10, weight: .medium))
+                            Text(track.artist)
+                                .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(.secondary)
+                                .lineLimit(1)
 
-                            Text("•")
-                                .font(.system(size: 10))
-                                .foregroundStyle(.tertiary)
-
-                            playbackBadge
+                            if let album = track.album, !album.isEmpty {
+                                Text(album)
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.tertiary)
+                                    .lineLimit(1)
+                            }
                         }
-                        .padding(.top, 2)
+                        Spacer()
+                        playbackBadge
                     }
-                    Spacer()
+
+                    HStack(spacing: 6) {
+                        Label(track.player.rawValue, systemImage: track.player.iconName)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 if track.duration > 0 {
                     playbackProgressView(track: track)
                 }
 
+                mediaControlsSection
+
                 statusBannerView
             } else {
-                HStack(spacing: 12) {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color.secondary.opacity(0.12))
-                        .frame(width: 48, height: 48)
-                        .overlay {
-                            Image(systemName: "music.note")
-                                .font(.system(size: 20))
-                                .foregroundStyle(.secondary)
-                        }
+                HStack(spacing: 10) {
+                    Image(systemName: "music.note")
+                        .font(.system(size: 16))
+                        .foregroundStyle(.secondary)
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text("No Music Playing")
@@ -106,39 +97,49 @@ struct MusicDashboardView: View {
         .liquidGlassControl()
     }
 
-    private func artworkView(for track: TrackMetadata) -> some View {
-        Group {
-            if let url = track.artworkURL {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                    default:
-                        fallbackArtwork(for: track)
-                    }
-                }
-            } else if let data = track.artworkData, let nsImage = NSImage(data: data) {
-                Image(nsImage: nsImage)
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                fallbackArtwork(for: track)
-            }
-        }
-        .frame(width: 52, height: 52)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-    }
+    private var mediaControlsSection: some View {
+        HStack(spacing: 16) {
+            Spacer()
 
-    private func fallbackArtwork(for track: TrackMetadata) -> some View {
-        RoundedRectangle(cornerRadius: 8, style: .continuous)
-            .fill(Color.accentColor.opacity(0.15))
-            .overlay {
-                Image(systemName: track.player.iconName)
-                    .font(.system(size: 22))
-                    .foregroundStyle(Color.accentColor)
+            Button {
+                scrobbleCoordinator.previousTrack()
+            } label: {
+                Image(systemName: "backward.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 26, height: 26)
+                    .background(Circle().fill(Color.secondary.opacity(0.12)))
             }
+            .buttonStyle(.plain)
+            .help("Previous Track")
+
+            Button {
+                scrobbleCoordinator.togglePlayPause()
+            } label: {
+                Image(systemName: scrobbleCoordinator.playbackState.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 30, height: 30)
+                    .background(Circle().fill(Color.secondary.opacity(0.18)))
+            }
+            .buttonStyle(.plain)
+            .help(scrobbleCoordinator.playbackState.isPlaying ? "Pause" : "Play")
+
+            Button {
+                scrobbleCoordinator.nextTrack()
+            } label: {
+                Image(systemName: "forward.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 26, height: 26)
+                    .background(Circle().fill(Color.secondary.opacity(0.12)))
+            }
+            .buttonStyle(.plain)
+            .help("Next Track")
+
+            Spacer()
+        }
+        .padding(.vertical, 2)
     }
 
     private var playbackBadge: some View {

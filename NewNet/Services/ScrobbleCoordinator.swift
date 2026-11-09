@@ -20,6 +20,8 @@ final class ScrobbleCoordinator: ObservableObject {
 
     private var pollTimer: Timer?
     private var hasScrobbledCurrentTrack = false
+    private var hasAttemptedScrobble = false
+    private var pendingLastFMAuth: (apiKey: String, apiSecret: String, token: String)?
     private var accumulatedPlayTime: TimeInterval = 0
     private var trackStartedAt: Date?
     private var lastPollDate: Date?
@@ -119,6 +121,7 @@ final class ScrobbleCoordinator: ObservableObject {
         // Handle loop / replay of the same track
         if currentPos < 5.0 && lastObservedPosition > 20.0 {
             hasScrobbledCurrentTrack = false
+            hasAttemptedScrobble = false
             accumulatedPlayTime = currentPos
             trackStartedAt = now
         }
@@ -144,10 +147,10 @@ final class ScrobbleCoordinator: ObservableObject {
         }
         lastObservedPosition = currentPos
 
-        // Check eligibility
+        // Check eligibility: track scrobbles after 30 seconds of playback
         let duration = detectedTrack.duration
         let minDuration: TimeInterval = 30.0
-        let threshold = min(duration * 0.5, 240.0)
+        let threshold: TimeInterval = min(30.0, max(duration, 30.0))
 
         if duration < minDuration {
             submissionStatus = .idle
@@ -156,6 +159,8 @@ final class ScrobbleCoordinator: ObservableObject {
 
         if hasScrobbledCurrentTrack {
             submissionStatus = .scrobbled
+        } else if hasAttemptedScrobble {
+            // Scrobble was already attempted for this play session; prevent repeating failed submissions every poll
         } else {
             let effectivePlayTime = max(accumulatedPlayTime, currentPos)
             let remaining = max(0, threshold - effectivePlayTime)
@@ -163,6 +168,7 @@ final class ScrobbleCoordinator: ObservableObject {
                 submissionStatus = .waitingForEligibility(remainingSeconds: remaining)
             } else {
                 // Eligible to scrobble!
+                hasAttemptedScrobble = true
                 scrobbleTrack(detectedTrack, at: trackStartedAt ?? now.addingTimeInterval(-effectivePlayTime))
             }
         }
@@ -170,6 +176,7 @@ final class ScrobbleCoordinator: ObservableObject {
 
     private func resetTrackSession() {
         hasScrobbledCurrentTrack = false
+        hasAttemptedScrobble = false
         hasSubmittedNowPlaying = false
         accumulatedPlayTime = 0
         lastObservedPosition = 0
@@ -267,7 +274,12 @@ final class ScrobbleCoordinator: ObservableObject {
             )
 
             await MainActor.run {
-                self.scrobbleHistory.insert(historyItem, at: 0)
+                if let existingIndex = self.scrobbleHistory.firstIndex(where: { $0.track.isSameTrack(as: track) }) {
+                    self.scrobbleHistory[existingIndex] = historyItem
+                } else {
+                    self.scrobbleHistory.insert(historyItem, at: 0)
+                }
+
                 if self.scrobbleHistory.count > 50 {
                     self.scrobbleHistory.removeLast()
                 }
@@ -286,6 +298,84 @@ final class ScrobbleCoordinator: ObservableObject {
                 }
             }
         }
+    }
+
+    // MARK: - Playback Controls
+
+    func togglePlayPause() {
+        let player = currentTrack?.player
+        Task {
+            await detectionService.togglePlayPause(player: player)
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            await pollPlayback()
+        }
+    }
+
+    func nextTrack() {
+        let player = currentTrack?.player
+        Task {
+            await detectionService.nextTrack(player: player)
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            await pollPlayback()
+        }
+    }
+
+    func previousTrack() {
+        let player = currentTrack?.player
+        Task {
+            await detectionService.previousTrack(player: player)
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            await pollPlayback()
+        }
+    }
+
+    // MARK: - Last.fm Browser Authorization
+
+    func startLastFMBrowserAuth(apiKey: String, apiSecret: String) async throws -> URL {
+        let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedSecret = apiSecret.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedKey.isEmpty, !trimmedSecret.isEmpty else {
+            throw LastFMError.apiError(code: 0, message: "API Key and Shared Secret are required.")
+        }
+
+        let token = try await lastFMService.generateAuthToken(apiKey: trimmedKey)
+        guard let authURL = URL(string: "https://www.last.fm/api/auth/?api_key=\(trimmedKey)&token=\(token)") else {
+            throw LastFMError.invalidURL
+        }
+
+        pendingLastFMAuth = (apiKey: trimmedKey, apiSecret: trimmedSecret, token: token)
+        return authURL
+    }
+
+    func completeLastFMBrowserAuth() async throws -> String {
+        guard let pending = pendingLastFMAuth else {
+            throw LastFMError.noSession
+        }
+
+        lastFMStatus = .connecting
+        do {
+            let session = try await lastFMService.createSession(
+                apiKey: pending.apiKey,
+                apiSecret: pending.apiSecret,
+                token: pending.token
+            )
+            connectLastFMWithSession(
+                username: session.username,
+                sessionKey: session.sessionKey,
+                apiKey: pending.apiKey,
+                apiSecret: pending.apiSecret
+            )
+            pendingLastFMAuth = nil
+            return session.username
+        } catch {
+            lastFMStatus = .error(message: error.localizedDescription)
+            throw error
+        }
+    }
+
+    func cancelLastFMBrowserAuth() {
+        pendingLastFMAuth = nil
+        restoreProviderSessions()
     }
 
     // MARK: - Last.fm Account Management
@@ -314,6 +404,14 @@ final class ScrobbleCoordinator: ObservableObject {
         settings.lastFMUsername = ""
         settings.isLastFMEnabled = false
         lastFMStatus = .disconnected
+    }
+
+    func getSavedLastFMAPIKey() -> String? {
+        return keychain.get(key: Self.keyLastFMAPIKey)
+    }
+
+    func getSavedLastFMAPISecret() -> String? {
+        return keychain.get(key: Self.keyLastFMAPISecret)
     }
 
     func getEffectiveLastFMAPIKey() -> String {

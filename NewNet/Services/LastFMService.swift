@@ -31,16 +31,31 @@ final class LastFMService: LastFMServiceProtocol, Sendable {
         }
 
         let (data, response) = try await urlSession.data(from: url)
-        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
-            throw LastFMError.serverError("HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)")
+        if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
+            struct ErrorResponse: Decodable {
+                let error: Int?
+                let message: String?
+            }
+            if let err = try? JSONDecoder().decode(ErrorResponse.self, from: data), let code = err.error, let msg = err.message {
+                throw LastFMError.apiError(code: code, message: msg)
+            }
+            throw LastFMError.serverError("HTTP \(httpResponse.statusCode)")
         }
 
         struct TokenResponse: Decodable {
-            let token: String
+            let token: String?
+            let error: Int?
+            let message: String?
         }
 
         let decoded = try JSONDecoder().decode(TokenResponse.self, from: data)
-        return decoded.token
+        if let error = decoded.error, let msg = decoded.message {
+            throw LastFMError.apiError(code: error, message: msg)
+        }
+        guard let token = decoded.token else {
+            throw LastFMError.noSession
+        }
+        return token
     }
 
     func createSession(apiKey: String, apiSecret: String, token: String) async throws -> (username: String, sessionKey: String) {
@@ -143,8 +158,15 @@ final class LastFMService: LastFMServiceProtocol, Sendable {
         request.httpBody = bodyString.data(using: .utf8)
 
         let (data, response) = try await urlSession.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
-            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+        if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
+            struct ErrorResponse: Decodable {
+                let error: Int?
+                let message: String?
+            }
+            if let err = try? JSONDecoder().decode(ErrorResponse.self, from: data), let code = err.error, let msg = err.message {
+                throw LastFMError.apiError(code: code, message: msg)
+            }
+            let code = httpResponse.statusCode
             let bodyText = String(data: data, encoding: .utf8) ?? ""
             throw LastFMError.serverError("HTTP \(code): \(bodyText)")
         }

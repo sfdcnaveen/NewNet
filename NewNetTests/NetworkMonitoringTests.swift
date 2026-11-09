@@ -168,9 +168,24 @@ final class ListenBrainzServiceTests: XCTestCase {
 @MainActor
 private final class MockMusicDetection: MusicDetectionServiceProtocol {
     var stubbedResult: DetectionResult = DetectionResult(track: nil, state: .stopped, player: .appleMusic)
+    var togglePlayPauseCount = 0
+    var nextTrackCount = 0
+    var previousTrackCount = 0
 
     func detectCurrentPlayback() async -> DetectionResult {
         return stubbedResult
+    }
+
+    func togglePlayPause(player: MusicPlayerApp?) async {
+        togglePlayPauseCount += 1
+    }
+
+    func nextTrack(player: MusicPlayerApp?) async {
+        nextTrackCount += 1
+    }
+
+    func previousTrack(player: MusicPlayerApp?) async {
+        previousTrackCount += 1
     }
 }
 
@@ -310,7 +325,7 @@ final class ScrobbleCoordinatorTests: XCTestCase {
         )
         await coordinator.pollPlayback()
 
-        // Track is 100s, threshold is 50s. At pos 20, not eligible yet
+        // Track is 100s, threshold is 30s. At pos 20, not eligible yet
         mockDetection.stubbedResult = DetectionResult(
             track: track,
             state: .playing(position: 20.0),
@@ -319,10 +334,10 @@ final class ScrobbleCoordinatorTests: XCTestCase {
         await coordinator.pollPlayback()
         XCTAssertEqual(mockLastFM.scrobbleCallCount, 0)
 
-        // At pos 55s, threshold (50s) exceeded -> Scrobble triggers!
+        // At pos 32s, threshold (30s) exceeded -> Scrobble triggers!
         mockDetection.stubbedResult = DetectionResult(
             track: track,
-            state: .playing(position: 55.0),
+            state: .playing(position: 32.0),
             player: .spotify
         )
         await coordinator.pollPlayback()
@@ -341,6 +356,70 @@ final class ScrobbleCoordinatorTests: XCTestCase {
         await coordinator.pollPlayback()
         try? await Task.sleep(nanoseconds: 100_000_000)
         XCTAssertEqual(mockLastFM.scrobbleCallCount, 1, "Duplicate scrobble must be prevented")
+    }
+
+    func testScrobbleFailureDoesNotDuplicateHistory() async {
+        coordinator.connectLastFMWithSession(username: "testuser", sessionKey: "test_sk")
+        settings.isLastFMEnabled = true
+        mockLastFM.shouldFail = true
+
+        let track = TrackMetadata(
+            title: "Aeroplane",
+            artist: "Sushin Shyam",
+            duration: 147.0,
+            player: .appleMusic
+        )
+
+        // Initial play at pos 0
+        mockDetection.stubbedResult = DetectionResult(track: track, state: .playing(position: 0.0), player: .appleMusic)
+        await coordinator.pollPlayback()
+
+        // At pos 35s, threshold exceeded -> Scrobble triggers but fails
+        mockDetection.stubbedResult = DetectionResult(track: track, state: .playing(position: 35.0), player: .appleMusic)
+        await coordinator.pollPlayback()
+        try? await Task.sleep(nanoseconds: 250_000_000)
+
+        XCTAssertEqual(coordinator.scrobbleHistory.count, 1)
+        XCTAssertEqual(coordinator.scrobbleHistory.first?.lastFMResult?.success, false)
+
+        // Subsequent polls must NOT trigger scrobble again or add duplicate history entries
+        mockDetection.stubbedResult = DetectionResult(track: track, state: .playing(position: 37.0), player: .appleMusic)
+        await coordinator.pollPlayback()
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        mockDetection.stubbedResult = DetectionResult(track: track, state: .playing(position: 40.0), player: .appleMusic)
+        await coordinator.pollPlayback()
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        XCTAssertEqual(coordinator.scrobbleHistory.count, 1, "Failed scrobbles must NOT duplicate in history")
+        XCTAssertEqual(mockLastFM.scrobbleCallCount, 0, "Failed scrobble must not be retried every poll tick")
+    }
+
+    func testLastFMBrowserAuthFlow() async throws {
+        let authURL = try await coordinator.startLastFMBrowserAuth(apiKey: "custom_key", apiSecret: "custom_secret")
+        XCTAssertTrue(authURL.absoluteString.contains("api_key=custom_key"))
+        XCTAssertTrue(authURL.absoluteString.contains("token=mock_token"))
+
+        let username = try await coordinator.completeLastFMBrowserAuth()
+        XCTAssertEqual(username, "mock_user")
+        XCTAssertTrue(coordinator.lastFMStatus.isConnected)
+        XCTAssertEqual(keychain.get(key: ScrobbleCoordinator.keyLastFMSessionKey), "mock_session_key")
+        XCTAssertEqual(keychain.get(key: ScrobbleCoordinator.keyLastFMAPIKey), "custom_key")
+        XCTAssertEqual(keychain.get(key: ScrobbleCoordinator.keyLastFMAPISecret), "custom_secret")
+    }
+
+    func testPlaybackControls() async {
+        coordinator.togglePlayPause()
+        try? await Task.sleep(nanoseconds: 350_000_000)
+        XCTAssertEqual(mockDetection.togglePlayPauseCount, 1)
+
+        coordinator.nextTrack()
+        try? await Task.sleep(nanoseconds: 450_000_000)
+        XCTAssertEqual(mockDetection.nextTrackCount, 1)
+
+        coordinator.previousTrack()
+        try? await Task.sleep(nanoseconds: 450_000_000)
+        XCTAssertEqual(mockDetection.previousTrackCount, 1)
     }
 
     func testShortTrackNotEligible() async {
