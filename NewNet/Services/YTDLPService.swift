@@ -186,7 +186,17 @@ final class YTDLPService {
         "m.youtube.com",
         "x.com",
         "twitter.com",
-        "instagram.com"
+        "instagram.com",
+        "reddit.com",
+        "redd.it",
+        "v.redd.it",
+        "tiktok.com",
+        "threads.net",
+        "facebook.com",
+        "fb.watch",
+        "vimeo.com",
+        "twitch.tv",
+        "soundcloud.com"
     ]
 
     private static var commonBinaryPaths: [String] {

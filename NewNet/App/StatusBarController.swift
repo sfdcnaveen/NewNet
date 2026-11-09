@@ -189,6 +189,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         updatePopoverAppearance()
+        if let window = popover.contentViewController?.view.window {
+            window.isOpaque = false
+        }
         NSApp.activate(ignoringOtherApps: true)
     }
 

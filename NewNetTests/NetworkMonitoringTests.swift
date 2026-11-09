@@ -488,3 +488,16 @@ final class ScrobbleCoordinatorTests: XCTestCase {
         XCTAssertNil(keychain.get(key: ScrobbleCoordinator.keyLastFMSessionKey))
     }
 }
+
+@MainActor
+final class YTDLPServiceHostTests: XCTestCase {
+    func testCanHandleRedditAndSocialUrls() {
+        let service = YTDLPService()
+        XCTAssertTrue(service.canHandle(URL(string: "https://www.reddit.com/r/videos/comments/xyz/test/")!))
+        XCTAssertTrue(service.canHandle(URL(string: "https://redd.it/xyz123")!))
+        XCTAssertTrue(service.canHandle(URL(string: "https://v.redd.it/xyz123")!))
+        XCTAssertTrue(service.canHandle(URL(string: "https://tiktok.com/@user/video/123")!))
+        XCTAssertTrue(service.canHandle(URL(string: "https://www.youtube.com/watch?v=dQw4w9WgXcQ")!))
+        XCTAssertFalse(service.canHandle(URL(string: "https://example.com/file.zip")!))
+    }
+}

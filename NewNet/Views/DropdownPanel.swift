@@ -42,7 +42,7 @@ struct DropdownPanel: View {
                     .transition(.opacity)
             }
         }
-        .padding(8)
+        .padding(4)
         .contentShape(Rectangle())
         .onDrop(of: [.url, .fileURL, .text], isTargeted: $isDropTarget) { providers in
             downloadManagerViewModel.handleDrop(providers: providers)
@@ -136,7 +136,7 @@ struct DropdownPanel: View {
 
             // Center section: Tabs wrapped in GlassEffectContainer with sliding morphing indicator
             GlassEffectContainer {
-                HStack(spacing: 4) {
+                HStack(spacing: 3) {
                     ForEach(settings.tabOrder) { tab in
                         tabButton(tab: tab)
                     }
@@ -144,7 +144,11 @@ struct DropdownPanel: View {
                 .padding(3)
                 .background {
                     Capsule(style: .continuous)
-                        .fill(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
+                        .fill(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.22))
+                        .overlay {
+                            Capsule(style: .continuous)
+                                .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.15 : 0.40), lineWidth: 0.75)
+                        }
                 }
             }
 
@@ -205,19 +209,27 @@ struct DropdownPanel: View {
             ZStack {
                 if selectedTab == tab {
                     Capsule(style: .continuous)
-                        .fill(Color.accentColor.opacity(colorScheme == .dark ? 0.28 : 0.16))
-                        .glassEffect(.regular.tint(Color.accentColor).interactive(), in: Capsule(style: .continuous))
+                        .fill(Color.accentColor)
                         .overlay {
                             Capsule(style: .continuous)
-                                .strokeBorder(Color.accentColor.opacity(0.6), lineWidth: 1)
+                                .strokeBorder(
+                                    LinearGradient(
+                                        colors: [Color.white.opacity(0.60), Color.white.opacity(0.15)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 0.75
+                                )
                         }
+                        .shadow(color: Color.accentColor.opacity(0.35), radius: 5, x: 0, y: 2)
                         .matchedGeometryEffect(id: "activeTabIndicator", in: tabNamespace)
                 }
 
                 Image(systemName: tab.systemImage)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(selectedTab == tab ? Color.accentColor : .secondary)
-                    .frame(width: 34, height: 26)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(selectedTab == tab ? Color.white : Color.primary.opacity(0.70))
+                    .shadow(color: selectedTab == tab ? Color.black.opacity(0.25) : Color.clear, radius: 1, x: 0, y: 1)
+                    .frame(width: 36, height: 26)
             }
             .contentShape(Capsule(style: .continuous))
         }
@@ -783,42 +795,61 @@ private struct DownloadPreferenceControl: View {
     @Namespace private var prefNamespace
 
     var body: some View {
-        GlassEffectContainer {
-            HStack(spacing: 4) {
-                ForEach(options) { option in
-                    Button {
-                        withAnimation(DesignTokens.Animation.tabMorph) {
-                            selection = option
-                        }
-                    } label: {
-                        ZStack {
-                            if selection == option {
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .fill(Color.accentColor.opacity(colorScheme == .dark ? 0.35 : 0.85))
-                                    .glassEffect(.regular.tint(Color.accentColor).interactive(), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                    .matchedGeometryEffect(id: "activePref", in: prefNamespace)
-                            }
-
-                            Group {
-                                if option == .gif {
-                                    Text("GIF")
-                                        .font(.system(size: 12, weight: .black))
-                                } else {
-                                    Image(systemName: option.icon)
-                                        .font(.system(size: 15, weight: .medium))
-                                }
-                            }
-                            .foregroundStyle(selection == option ? Color.white : Color.secondary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-                        }
-                        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        HStack(spacing: 4) {
+            ForEach(options) { option in
+                Button {
+                    withAnimation(DesignTokens.Animation.tabMorph) {
+                        selection = option
                     }
-                    .buttonStyle(.plain)
+                } label: {
+                    ZStack {
+                        if selection == option {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Color.accentColor)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .strokeBorder(
+                                            LinearGradient(
+                                                colors: [Color.white.opacity(0.60), Color.white.opacity(0.15)],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            ),
+                                            lineWidth: 0.75
+                                        )
+                                }
+                                .shadow(color: Color.accentColor.opacity(0.35), radius: 4, x: 0, y: 2)
+                                .matchedGeometryEffect(id: "activePref", in: prefNamespace)
+                        }
+
+                        HStack(spacing: 6) {
+                            if option == .gif {
+                                Text("GIF")
+                                    .font(.system(size: 11, weight: .black))
+                            } else {
+                                Image(systemName: option.icon)
+                                    .font(.system(size: 12, weight: .bold))
+                            }
+                            Text(option.title)
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                        .foregroundStyle(selection == option ? Color.white : Color.primary.opacity(0.75))
+                        .shadow(color: selection == option ? Color.black.opacity(0.20) : Color.clear, radius: 1, x: 0, y: 1)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 7)
+                    }
+                    .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
+                .buttonStyle(.plain)
             }
-            .padding(3)
-            .liquidGlassControl(cornerRadius: DesignTokens.Radius.medium)
+        }
+        .padding(3)
+        .background {
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .fill(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.22))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.15 : 0.45), lineWidth: 0.75)
+                }
         }
     }
 }
