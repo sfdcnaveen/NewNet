@@ -257,25 +257,53 @@ struct DropdownPanel: View {
                     downloadManagerViewModel.fillURLField(with: clipboardURL)
                     menuBarViewModel.dismissClipboardSuggestion()
                 } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: "link.circle.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(Color.accentColor)
-                            .frame(width: 24)
+                    HStack(spacing: 8) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.accentColor.opacity(colorScheme == .dark ? 0.22 : 0.16))
+                                .frame(width: 24, height: 24)
+                            Image(systemName: "doc.on.clipboard.fill")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(Color.accentColor)
+                        }
 
                         Text("Use Copied Link")
-                            .font(.system(size: 15, weight: .medium))
-
-                        Spacer()
-
-                        Image(systemName: "arrow.up.forward")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.primary)
+
+                        if let host = clipboardURL.host?.replacingOccurrences(of: "www.", with: "") {
+                            Text("•")
+                                .foregroundStyle(.tertiary)
+                            Text(host)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+
+                        Spacer(minLength: 6)
+
+                        HStack(spacing: 3) {
+                            Text("Paste")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                        .foregroundStyle(Color.accentColor)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 4)
+                        .background {
+                            Capsule(style: .continuous)
+                                .fill(Color.accentColor.opacity(colorScheme == .dark ? 0.18 : 0.12))
+                                .overlay {
+                                    Capsule(style: .continuous)
+                                        .strokeBorder(Color.accentColor.opacity(0.40), lineWidth: 0.75)
+                                }
+                        }
                     }
-                    .contentShape(Rectangle())
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .contentShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.medium, style: .continuous))
                 }
                 .buttonStyle(.plain)
-                .menuItemBackground()
+                .liquidGlassControl(cornerRadius: DesignTokens.Radius.medium)
             }
 
             let hasValidURL = !downloadManagerViewModel.urlField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -496,29 +524,31 @@ private struct MediaFormatSelectionScreen: View {
         VStack(alignment: .leading, spacing: 0) {
             selectionHeader
             divider
-            mediaHero
-            divider
 
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Select Format")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.secondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    mediaHero
 
-                DownloadPreferenceControl(
-                    selection: preferenceBinding,
-                    options: availablePreferenceOptions
-                )
+                    divider
 
-                if pendingSelection.selectedPreference == .gif {
-                    GIFClipEditor(
-                        pendingSelection: pendingSelection,
-                        onChange: downloadManagerViewModel.setGIFRange,
-                        onPreset: downloadManagerViewModel.applyGIFPreset
+                    Text("Select Format")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+
+                    DownloadPreferenceControl(
+                        selection: preferenceBinding,
+                        options: availablePreferenceOptions
                     )
-                }
 
-                ScrollView {
-                    LazyVStack(spacing: 10) {
+                    if pendingSelection.selectedPreference == .gif {
+                        GIFClipEditor(
+                            pendingSelection: pendingSelection,
+                            onChange: downloadManagerViewModel.setGIFRange,
+                            onPreset: downloadManagerViewModel.applyGIFPreset
+                        )
+                    }
+
+                    LazyVStack(spacing: 8) {
                         ForEach(pendingSelection.availableOptions) { option in
                             MediaFormatOptionRow(
                                 option: option,
@@ -530,12 +560,11 @@ private struct MediaFormatSelectionScreen: View {
                     }
                     .padding(.vertical, 2)
                 }
-                .frame(maxHeight: .infinity)
-                .scrollIndicators(.hidden)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 16)
-            .frame(maxHeight: .infinity, alignment: .top)
+            .scrollContentBackground(.hidden)
+            .scrollIndicators(.automatic)
 
             if let validationMessage = downloadManagerViewModel.validationMessage {
                 HStack(alignment: .top, spacing: 8) {
@@ -550,7 +579,7 @@ private struct MediaFormatSelectionScreen: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 12)
+                .padding(.bottom, 8)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
@@ -586,7 +615,7 @@ private struct MediaFormatSelectionScreen: View {
                 .disabled(pendingSelection.selectedOption == nil)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 14)
+            .padding(.vertical, 12)
         }
     }
 
@@ -618,37 +647,35 @@ private struct MediaFormatSelectionScreen: View {
     }
 
     private var mediaHero: some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .top, spacing: 12) {
             AsyncImage(url: pendingSelection.mediaInfo.thumbnailURL) { image in
                 image
                     .resizable()
                     .scaledToFill()
             } placeholder: {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(
-                        Color.primary.opacity(0.05)
-                    )
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.primary.opacity(0.05))
                     .overlay(
                         Image(systemName: "play.rectangle.fill")
-                            .font(.system(size: 28))
+                            .font(.system(size: 22))
                             .foregroundStyle(.secondary)
                     )
             }
-            .frame(width: 118, height: 82)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .frame(width: 84, height: 58)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.15), radius: 8, x: 0, y: 4)
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.15), radius: 6, x: 0, y: 3)
 
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(pendingSelection.mediaInfo.title)
-                    .font(.system(size: 16, weight: .semibold))
-                    .lineLimit(3)
+                    .font(.system(size: 14, weight: .semibold))
+                    .lineLimit(2)
                     .multilineTextAlignment(.leading)
 
-                FlowLayout(horizontalSpacing: 8, verticalSpacing: 8) {
+                FlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
                     if let uploader = pendingSelection.mediaInfo.uploader, !uploader.isEmpty {
                         infoChip(text: uploader)
                     }
@@ -661,15 +688,8 @@ private struct MediaFormatSelectionScreen: View {
                         infoChip(text: durationString(for: duration))
                     }
                 }
-
-                Text("Prefer the exact quality you want instead of the extractor default.")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 16)
     }
 
     private var availablePreferenceOptions: [DownloadContentPreference] {

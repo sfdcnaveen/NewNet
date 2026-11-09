@@ -480,6 +480,76 @@ final class YTDLPService {
         return false
     }
 
+    static func isReddit(url: URL) -> Bool {
+        guard let host = url.host?.lowercased() else { return false }
+        return host.contains("reddit.com") || host.contains("redd.it")
+    }
+
+    private struct ResolvedRedditMedia: Sendable {
+        let streamURL: URL
+        let title: String?
+    }
+
+    private func resolveCanonicalRedditURL(from url: URL) async -> URL {
+        guard url.path.contains("/s/") else { return url }
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"
+        request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36", forHTTPHeaderField: "User-Agent")
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            if let httpResponse = response as? HTTPURLResponse, let finalURL = httpResponse.url, finalURL.path.contains("/comments/") {
+                return finalURL
+            }
+        } catch {}
+        return url
+    }
+
+    private func resolveRedditMedia(from redditURL: URL) async -> ResolvedRedditMedia? {
+        let canonicalURL = await resolveCanonicalRedditURL(from: redditURL)
+        let canonicalString = canonicalURL.absoluteString
+        guard let encoded = canonicalString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let infoURL = URL(string: "https://rapidsave.com/info?url=\(encoded)") else {
+            return nil
+        }
+
+        var request = URLRequest(url: infoURL)
+        request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 10
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard (response as? HTTPURLResponse)?.statusCode == 200,
+                  let html = String(data: data, encoding: .utf8) else {
+                return nil
+            }
+
+            guard let regex = try? NSRegularExpression(pattern: #"https://v\.redd\.it/([a-zA-Z0-9]+)"#) else {
+                return nil
+            }
+            let nsString = html as NSString
+            let matches = regex.matches(in: html, range: NSRange(location: 0, length: nsString.length))
+            if let firstMatch = matches.first, firstMatch.numberOfRanges > 1 {
+                let videoId = nsString.substring(with: firstMatch.range(at: 1))
+                if let streamURL = URL(string: "https://v.redd.it/\(videoId)/HLSPlaylist.m3u8") {
+                    var title: String? = nil
+                    if let permalinkRegex = try? NSRegularExpression(pattern: #"permalink=https://reddit\.com/r/[^/]+/comments/[^/]+/([^/&]+)"#) {
+                        let pMatches = permalinkRegex.matches(in: html, range: NSRange(location: 0, length: nsString.length))
+                        if let pMatch = pMatches.first, pMatch.numberOfRanges > 1 {
+                            let slug = nsString.substring(with: pMatch.range(at: 1))
+                            title = slug.replacingOccurrences(of: "_", with: " ")
+                                .replacingOccurrences(of: "-", with: " ")
+                                .capitalized
+                        }
+                    }
+                    return ResolvedRedditMedia(streamURL: streamURL, title: title)
+                }
+            }
+        } catch {
+            print("Reddit resolution error:", error)
+        }
+        return nil
+    }
+
     func inspectMedia(
         url: URL,
         settings: AppSettings,
@@ -487,9 +557,31 @@ final class YTDLPService {
     ) async throws -> YTDLPMediaInfo {
         _ = preferredContent
         let binaryURL = try await ensureInstalled(settings: settings)
-        let output = try await runInspection(binaryURL: binaryURL, url: url)
-        let jsonData = extractJSONObject(from: output)
+        
+        var effectiveURL = url
+        var titleOverride: String? = nil
 
+        let output: Data
+        do {
+            output = try await runInspection(binaryURL: binaryURL, url: effectiveURL)
+        } catch {
+            let errStr = error.localizedDescription
+            let isRedditIssue = Self.isReddit(url: url) || errStr.localizedCaseInsensitiveContains("Reddit") || errStr.localizedCaseInsensitiveContains("authentication is required")
+            
+            if isRedditIssue, let resolved = await resolveRedditMedia(from: url) {
+                effectiveURL = resolved.streamURL
+                titleOverride = resolved.title
+                output = try await runInspection(binaryURL: binaryURL, url: effectiveURL)
+            } else if isRedditIssue {
+                throw YTDLPServiceError.inspectionFailed(
+                    "Reddit requires browser verification for this link. Please check that this Reddit post has media or try opening it in your browser."
+                )
+            } else {
+                throw error
+            }
+        }
+
+        let jsonData = extractJSONObject(from: output)
         let decoder = JSONDecoder()
 
         let response: YTDLPInspectionResponse
@@ -514,16 +606,22 @@ final class YTDLPService {
             .compactMap(URL.init(string:))
             .last ?? response.thumbnail.flatMap(URL.init(string:))
 
-        let effectiveTitle = response.title?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .ifEmpty(url.host?.replacingOccurrences(of: "www.", with: "") ?? "Media Download")
-            ?? (url.host?.replacingOccurrences(of: "www.", with: "") ?? "Media Download")
+        let rawTitle = response.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let effectiveTitle: String = {
+            if let titleOverride, !titleOverride.isEmpty {
+                return titleOverride
+            }
+            if let rawTitle, !rawTitle.isEmpty, rawTitle != "HLSPlaylist" {
+                return rawTitle
+            }
+            return url.host?.replacingOccurrences(of: "www.", with: "") ?? "Reddit Video"
+        }()
 
         return YTDLPMediaInfo(
-            sourceURL: url,
+            sourceURL: effectiveURL,
             title: effectiveTitle,
             uploader: response.uploader,
-            extractor: response.extractorKey ?? response.extractor,
+            extractor: response.extractorKey ?? response.extractor ?? (Self.isReddit(url: url) ? "Reddit" : nil),
             duration: response.duration,
             thumbnailURL: thumbnailURL,
             videoOptions: videoOptions,
@@ -630,6 +728,14 @@ final class YTDLPService {
 
     private func arguments(for item: DownloadItem, settings: AppSettings) -> [String] {
         let downloadsDirectory = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
+        let outputTemplate: String
+        let customName = item.fileName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !customName.isEmpty, customName != "HLSPlaylist", !customName.hasPrefix("HLSPlaylist.") {
+            outputTemplate = "\(customName) [%(extractor_key)s-%(id)s].%(ext)s"
+        } else {
+            outputTemplate = "%(title).170B [%(extractor_key)s-%(id)s].%(ext)s"
+        }
+
         var arguments = [
             "--newline",
             "--progress",
@@ -638,7 +744,7 @@ final class YTDLPService {
             "--paths",
             downloadsDirectory.path(percentEncoded: false),
             "--output",
-            "%(title).170B [%(extractor_key)s-%(id)s].%(ext)s",
+            outputTemplate,
             "--print",
             "before_dl:TITLE:%(title)s",
             "--print",
