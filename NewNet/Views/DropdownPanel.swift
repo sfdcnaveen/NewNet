@@ -189,30 +189,21 @@ struct DropdownPanel: View {
         } label: {
             ZStack {
                 if selectedTab == tab {
-                    Capsule(style: .continuous)
-                        .fill(Color.accentColor)
+                    Circle()
+                        .fill(Color.accentColor.opacity(colorScheme == .dark ? 0.22 : 0.16))
                         .overlay {
-                            Capsule(style: .continuous)
-                                .strokeBorder(
-                                    LinearGradient(
-                                        colors: [Color.white.opacity(0.60), Color.white.opacity(0.15)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 0.75
-                                )
+                            Circle()
+                                .strokeBorder(Color.accentColor.opacity(0.45), lineWidth: 0.75)
                         }
-                        .shadow(color: Color.accentColor.opacity(0.35), radius: 5, x: 0, y: 2)
                         .matchedGeometryEffect(id: "activeTabIndicator", in: tabNamespace)
                 }
 
                 Image(systemName: tab.systemImage)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(selectedTab == tab ? Color.white : Color.primary.opacity(0.70))
-                    .shadow(color: selectedTab == tab ? Color.black.opacity(0.25) : Color.clear, radius: 1, x: 0, y: 1)
-                    .frame(width: 36, height: 26)
+                    .font(.system(size: 12, weight: selectedTab == tab ? .bold : .medium))
+                    .foregroundStyle(selectedTab == tab ? Color.accentColor : Color.secondary)
             }
-            .contentShape(Capsule(style: .continuous))
+            .frame(width: 26, height: 26)
+            .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .help(tab.title)
@@ -287,41 +278,79 @@ struct DropdownPanel: View {
                 .menuItemBackground()
             }
 
+            let hasValidURL = !downloadManagerViewModel.urlField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+
             TextField("Paste link or use copied link", text: $downloadManagerViewModel.urlField)
                 .textFieldStyle(.plain)
                 .font(.system(size: 13, weight: .medium))
                 .padding(.leading, 12)
-                .padding(.trailing, 46)
-                .padding(.vertical, 10)
+                .padding(.trailing, 64)
+                .padding(.vertical, 9)
                 .liquidGlassControl(cornerRadius: DesignTokens.Radius.medium)
                 .disabled(downloadManagerViewModel.isInspectingURL)
                 .overlay(alignment: .trailing) {
                     Button {
                         downloadManagerViewModel.submitURL()
                     } label: {
-                        Group {
+                        HStack(spacing: 4) {
                             if downloadManagerViewModel.isInspectingURL {
                                 ProgressView()
                                     .controlSize(.small)
-                                    .frame(width: 44, height: 20)
+                                    .frame(width: 14, height: 14)
                             } else {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 10, weight: .bold))
                                 Text("Add")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 4)
+                                    .font(.system(size: 11, weight: .semibold))
                             }
                         }
+                        .foregroundStyle(
+                            hasValidURL ? Color.white : Color.secondary.opacity(0.65)
+                        )
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background {
+                            Capsule(style: .continuous)
+                                .fill(
+                                    hasValidURL
+                                        ? AnyShapeStyle(Color.accentColor)
+                                        : AnyShapeStyle(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.20))
+                                )
+                                .overlay {
+                                    Capsule(style: .continuous)
+                                        .strokeBorder(
+                                            hasValidURL
+                                                ? LinearGradient(
+                                                    colors: [Color.white.opacity(0.60), Color.white.opacity(0.15)],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                )
+                                                : LinearGradient(
+                                                    colors: [Color.white.opacity(colorScheme == .dark ? 0.15 : 0.40), Color.white.opacity(0.05)],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                ),
+                                            lineWidth: 0.75
+                                        )
+                                }
+                                .shadow(
+                                    color: hasValidURL ? Color.accentColor.opacity(0.35) : Color.clear,
+                                    radius: 4,
+                                    x: 0,
+                                    y: 1
+                                )
+                        }
                     }
-                    .buttonStyle(LiquidGlassButtonStyle(tint: .accentColor, isProminent: true, cornerRadius: DesignTokens.Radius.chip))
+                    .buttonStyle(.plain)
+                    .disabled(!hasValidURL || downloadManagerViewModel.isInspectingURL)
                     .padding(.trailing, 6)
-                    .disabled(
-                        downloadManagerViewModel.isInspectingURL ||
-                        downloadManagerViewModel.urlField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    )
+                    .animation(DesignTokens.Animation.hover, value: hasValidURL)
                     .accessibilityLabel("Add download")
                 }
                 .onSubmit {
-                    downloadManagerViewModel.submitURL()
+                    if hasValidURL {
+                        downloadManagerViewModel.submitURL()
+                    }
                 }
 
             DownloadPreferenceControl(
