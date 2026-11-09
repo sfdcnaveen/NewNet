@@ -266,44 +266,63 @@ struct LiquidGlassButtonStyle: ButtonStyle {
     var tint: Color? = nil
     var isProminent: Bool = false
     var cornerRadius: CGFloat = DesignTokens.Radius.small
+    var isCircular: Bool = false
     
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
-        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-        
-        configuration.label
-            .foregroundStyle(isProminent ? Color.white : (tint ?? Color.primary))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .glassEffect(
-                isProminent
-                    ? .regular.interactive().tint(tint ?? Color.accentColor)
-                    : .clear.interactive(),
-                in: shape
-            )
-            .overlay {
-                shape.strokeBorder(
-                    isProminent
-                        ? LinearGradient(
-                            colors: [Color.white.opacity(0.6), Color.white.opacity(0.15)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                        : LinearGradient(
-                            colors: [
-                                colorScheme == .dark ? Color.white.opacity(configuration.isPressed ? 0.35 : 0.18) : Color.white.opacity(0.60),
-                                colorScheme == .dark ? Color.white.opacity(0.06) : Color.white.opacity(0.20)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                    lineWidth: 0.75
-                )
+        Group {
+            if isCircular {
+                let shape = Circle()
+                configuration.label
+                    .foregroundStyle(isProminent ? Color.white : (tint ?? Color.primary))
+                    .glassEffect(
+                        isProminent
+                            ? .regular.interactive().tint(tint ?? Color.accentColor)
+                            : .clear.interactive(),
+                        in: shape
+                    )
+                    .overlay {
+                        shape.strokeBorder(strokeGradient(isPressed: configuration.isPressed), lineWidth: 0.75)
+                    }
+            } else {
+                let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                configuration.label
+                    .foregroundStyle(isProminent ? Color.white : (tint ?? Color.primary))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .glassEffect(
+                        isProminent
+                            ? .regular.interactive().tint(tint ?? Color.accentColor)
+                            : .clear.interactive(),
+                        in: shape
+                    )
+                    .overlay {
+                        shape.strokeBorder(strokeGradient(isPressed: configuration.isPressed), lineWidth: 0.75)
+                    }
             }
-            .scaleEffect(!reduceMotion && configuration.isPressed ? 0.94 : 1.0)
-            .animation(DesignTokens.Animation.hover, value: configuration.isPressed)
+        }
+        .scaleEffect(!reduceMotion && configuration.isPressed ? 0.94 : 1.0)
+        .animation(DesignTokens.Animation.hover, value: configuration.isPressed)
+    }
+
+    private func strokeGradient(isPressed: Bool) -> LinearGradient {
+        if isProminent {
+            return LinearGradient(
+                colors: [Color.white.opacity(0.6), Color.white.opacity(0.15)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+        return LinearGradient(
+            colors: [
+                colorScheme == .dark ? Color.white.opacity(isPressed ? 0.40 : 0.25) : Color.white.opacity(0.60),
+                colorScheme == .dark ? Color.white.opacity(0.06) : Color.white.opacity(0.20)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
 }
 

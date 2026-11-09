@@ -117,24 +117,8 @@ struct DropdownPanel: View {
     }
 
     private var headerBar: some View {
-        HStack(spacing: 12) {
-            // Left section: App Icon
-            if let icon = NSApp.applicationIconImage {
-                Image(nsImage: icon)
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFit()
-                    .frame(width: 26, height: 26)
-                    .accessibilityLabel("NewNet")
-            } else {
-                Image(systemName: "network")
-                    .font(.system(size: 16, weight: .semibold))
-                    .frame(width: 26, height: 26)
-            }
-
-            Spacer()
-
-            // Center section: Tabs wrapped in GlassEffectContainer with sliding morphing indicator
+        HStack(spacing: 8) {
+            // Left section: Tabs wrapped in GlassEffectContainer with sliding morphing indicator
             GlassEffectContainer {
                 HStack(spacing: 3) {
                     ForEach(settings.tabOrder) { tab in
@@ -151,8 +135,8 @@ struct DropdownPanel: View {
 
             Spacer()
 
-            // Right section: Theme toggle, Settings, and Quit buttons with tactile Liquid Glass style
-            HStack(spacing: 6) {
+            // Right section: Circular Theme toggle, Settings, and Quit buttons
+            HStack(spacing: 5) {
                 let isDark = settings.appTheme == .dark || (settings.appTheme == .system && colorScheme == .dark)
 
                 Button {
@@ -161,11 +145,11 @@ struct DropdownPanel: View {
                     }
                 } label: {
                     Image(systemName: isDark ? "sun.max.fill" : "moon.fill")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(isDark ? Color.yellow : Color.primary)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 24, height: 24)
                 }
-                .buttonStyle(LiquidGlassButtonStyle(cornerRadius: DesignTokens.Radius.small))
+                .buttonStyle(LiquidGlassButtonStyle(isCircular: true))
                 .help(isDark ? "Switch to Light Mode" : "Switch to Dark Mode")
                 .accessibilityLabel("Toggle Appearance")
 
@@ -173,10 +157,10 @@ struct DropdownPanel: View {
                     onSettingsTapped?()
                 } label: {
                     Image(systemName: "gearshape")
-                        .font(.system(size: 13, weight: .medium))
-                        .frame(width: 28, height: 28)
+                        .font(.system(size: 11, weight: .semibold))
+                        .frame(width: 24, height: 24)
                 }
-                .buttonStyle(LiquidGlassButtonStyle(cornerRadius: DesignTokens.Radius.small))
+                .buttonStyle(LiquidGlassButtonStyle(isCircular: true))
                 .help("Settings")
                 .accessibilityLabel("Settings")
 
@@ -184,10 +168,10 @@ struct DropdownPanel: View {
                     NSApplication.shared.terminate(nil)
                 } label: {
                     Image(systemName: "power")
-                        .font(.system(size: 13, weight: .medium))
-                        .frame(width: 28, height: 28)
+                        .font(.system(size: 11, weight: .semibold))
+                        .frame(width: 24, height: 24)
                 }
-                .buttonStyle(LiquidGlassButtonStyle(tint: .red, cornerRadius: DesignTokens.Radius.small))
+                .buttonStyle(LiquidGlassButtonStyle(tint: .red, isCircular: true))
                 .help("Quit NewNet")
                 .accessibilityLabel("Quit NewNet")
             }
