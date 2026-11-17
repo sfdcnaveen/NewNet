@@ -36,6 +36,16 @@ final class AppSettings: ObservableObject {
         static let isListenBrainzEnabled = "settings.isListenBrainzEnabled"
         static let lastFMUsername = "settings.lastFMUsername"
         static let listenBrainzUsername = "settings.listenBrainzUsername"
+        static let keepAwakeDurationMinutes = "settings.keepAwakeDurationMinutes"
+        static let keepAwakePreventDisplaySleep = "settings.keepAwakePreventDisplaySleep"
+        static let clipboardHistoryEnabled = "settings.clipboardHistoryEnabled"
+        static let clipboardHistoryLimit = "settings.clipboardHistoryLimit"
+        static let scrollInversionEnabled = "settings.scrollInversionEnabled"
+        static let scrollInvertVertical = "settings.scrollInvertVertical"
+        static let scrollInvertHorizontal = "settings.scrollInvertHorizontal"
+        static let finderCutPasteEnabled = "settings.finderCutPasteEnabled"
+        static let autoQuitEnabled = "settings.autoQuitEnabled"
+        static let autoQuitExceptions = "settings.autoQuitExceptions"
     }
 
     private let defaults: UserDefaults
@@ -156,6 +166,71 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    @Published var keepAwakeDurationMinutes: Int {
+        didSet {
+            defaults.set(keepAwakeDurationMinutes, forKey: Keys.keepAwakeDurationMinutes)
+        }
+    }
+
+    @Published var keepAwakePreventDisplaySleep: Bool {
+        didSet {
+            defaults.set(keepAwakePreventDisplaySleep, forKey: Keys.keepAwakePreventDisplaySleep)
+        }
+    }
+
+    @Published var clipboardHistoryEnabled: Bool {
+        didSet {
+            defaults.set(clipboardHistoryEnabled, forKey: Keys.clipboardHistoryEnabled)
+        }
+    }
+
+    @Published var clipboardHistoryLimit: Int {
+        didSet {
+            let clamped = min(max(clipboardHistoryLimit, 10), 200)
+            if clipboardHistoryLimit != clamped {
+                clipboardHistoryLimit = clamped
+                return
+            }
+            defaults.set(clamped, forKey: Keys.clipboardHistoryLimit)
+        }
+    }
+
+    @Published var scrollInversionEnabled: Bool {
+        didSet {
+            defaults.set(scrollInversionEnabled, forKey: Keys.scrollInversionEnabled)
+        }
+    }
+
+    @Published var scrollInvertVertical: Bool {
+        didSet {
+            defaults.set(scrollInvertVertical, forKey: Keys.scrollInvertVertical)
+        }
+    }
+
+    @Published var scrollInvertHorizontal: Bool {
+        didSet {
+            defaults.set(scrollInvertHorizontal, forKey: Keys.scrollInvertHorizontal)
+        }
+    }
+
+    @Published var finderCutPasteEnabled: Bool {
+        didSet {
+            defaults.set(finderCutPasteEnabled, forKey: Keys.finderCutPasteEnabled)
+        }
+    }
+
+    @Published var autoQuitEnabled: Bool {
+        didSet {
+            defaults.set(autoQuitEnabled, forKey: Keys.autoQuitEnabled)
+        }
+    }
+
+    @Published var autoQuitExceptions: [String] {
+        didSet {
+            defaults.set(autoQuitExceptions, forKey: Keys.autoQuitExceptions)
+        }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
 
@@ -184,6 +259,16 @@ final class AppSettings: ObservableObject {
         isListenBrainzEnabled = defaults.bool(forKey: Keys.isListenBrainzEnabled)
         lastFMUsername = defaults.string(forKey: Keys.lastFMUsername) ?? ""
         listenBrainzUsername = defaults.string(forKey: Keys.listenBrainzUsername) ?? ""
+        keepAwakeDurationMinutes = defaults.object(forKey: Keys.keepAwakeDurationMinutes) as? Int ?? 0
+        keepAwakePreventDisplaySleep = defaults.bool(forKey: Keys.keepAwakePreventDisplaySleep)
+        clipboardHistoryEnabled = defaults.object(forKey: Keys.clipboardHistoryEnabled) as? Bool ?? true
+        clipboardHistoryLimit = defaults.object(forKey: Keys.clipboardHistoryLimit) as? Int ?? 50
+        scrollInversionEnabled = defaults.bool(forKey: Keys.scrollInversionEnabled)
+        scrollInvertVertical = defaults.object(forKey: Keys.scrollInvertVertical) as? Bool ?? true
+        scrollInvertHorizontal = defaults.bool(forKey: Keys.scrollInvertHorizontal)
+        finderCutPasteEnabled = defaults.bool(forKey: Keys.finderCutPasteEnabled)
+        autoQuitEnabled = defaults.bool(forKey: Keys.autoQuitEnabled)
+        autoQuitExceptions = defaults.stringArray(forKey: Keys.autoQuitExceptions) ?? []
     }
 
     func restoreDefaultTabOrder() {

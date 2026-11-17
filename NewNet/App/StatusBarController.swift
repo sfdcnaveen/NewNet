@@ -10,6 +10,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
     private let indicatorView = MenuBarSpeedIndicator(frame: .zero)
     private let popover = NSPopover()
     private let settings: AppSettings
+    private let utilitiesCoordinator: UtilitiesCoordinator
     private var cancellables: Set<AnyCancellable> = []
     private var deferredWidth: CGFloat?
     private var globalMouseMonitor: Any?
@@ -21,9 +22,11 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         updateManager: UpdateManager,
         networkMonitor: NetworkSpeedMonitor,
         speedTestService: SpeedTestService,
-        scrobbleCoordinator: ScrobbleCoordinator
+        scrobbleCoordinator: ScrobbleCoordinator,
+        utilitiesCoordinator: UtilitiesCoordinator
     ) {
         self.settings = settings
+        self.utilitiesCoordinator = utilitiesCoordinator
         super.init()
         configureStatusItem()
         configurePopover(
@@ -33,7 +36,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             updateManager: updateManager,
             networkMonitor: networkMonitor,
             speedTestService: speedTestService,
-            scrobbleCoordinator: scrobbleCoordinator
+            scrobbleCoordinator: scrobbleCoordinator,
+            utilitiesCoordinator: utilitiesCoordinator
         )
         bindSnapshot(menuBarViewModel)
         bindSettings(settings)
@@ -70,7 +74,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         updateManager: UpdateManager,
         networkMonitor: NetworkSpeedMonitor,
         speedTestService: SpeedTestService,
-        scrobbleCoordinator: ScrobbleCoordinator
+        scrobbleCoordinator: ScrobbleCoordinator,
+        utilitiesCoordinator: UtilitiesCoordinator
     ) {
         popover.delegate = self
         popover.behavior = .transient
@@ -84,7 +89,8 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
                 updateManager: updateManager,
                 networkMonitor: networkMonitor,
                 speedTestService: speedTestService,
-                scrobbleCoordinator: scrobbleCoordinator
+                scrobbleCoordinator: scrobbleCoordinator,
+                utilitiesCoordinator: utilitiesCoordinator
             )
         )
         hostingController.view.wantsLayer = true
@@ -244,6 +250,7 @@ private struct MenuBarPanelHost: View {
     @ObservedObject var networkMonitor: NetworkSpeedMonitor
     @ObservedObject var speedTestService: SpeedTestService
     @ObservedObject var scrobbleCoordinator: ScrobbleCoordinator
+    @ObservedObject var utilitiesCoordinator: UtilitiesCoordinator
 
     init(
         menuBarViewModel: MenuBarViewModel,
@@ -252,7 +259,8 @@ private struct MenuBarPanelHost: View {
         updateManager: UpdateManager,
         networkMonitor: NetworkSpeedMonitor,
         speedTestService: SpeedTestService,
-        scrobbleCoordinator: ScrobbleCoordinator
+        scrobbleCoordinator: ScrobbleCoordinator,
+        utilitiesCoordinator: UtilitiesCoordinator
     ) {
         self.menuBarViewModel = menuBarViewModel
         self.downloadManagerViewModel = downloadManagerViewModel
@@ -261,6 +269,7 @@ private struct MenuBarPanelHost: View {
         self.networkMonitor = networkMonitor
         self.speedTestService = speedTestService
         self.scrobbleCoordinator = scrobbleCoordinator
+        self.utilitiesCoordinator = utilitiesCoordinator
     }
 
     var body: some View {
@@ -297,7 +306,8 @@ private struct MenuBarPanelHost: View {
                         updateManager: updateManager,
                         networkMonitor: networkMonitor,
                         speedTestService: speedTestService,
-                        scrobbleCoordinator: scrobbleCoordinator
+                        scrobbleCoordinator: scrobbleCoordinator,
+                        utilitiesCoordinator: utilitiesCoordinator
                     )
                     .padding(.top, -12)
                 }
@@ -312,6 +322,7 @@ private struct MenuBarPanelHost: View {
                     networkMonitor: networkMonitor,
                     speedTestService: speedTestService,
                     scrobbleCoordinator: scrobbleCoordinator,
+                    utilitiesCoordinator: utilitiesCoordinator,
                     onSettingsTapped: {
                         withAnimation(DesignTokens.Animation.transition) {
                             showingSettings = true

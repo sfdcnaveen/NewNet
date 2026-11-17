@@ -13,6 +13,7 @@ struct NewNetApp: App {
     @StateObject private var menuBarViewModel: MenuBarViewModel
     @StateObject private var downloadManagerViewModel: DownloadManagerViewModel
     @StateObject private var scrobbleCoordinator: ScrobbleCoordinator
+    @StateObject private var utilitiesCoordinator: UtilitiesCoordinator
     private let statusBarController: StatusBarController
     private let performanceCoordinator: PerformanceCoordinator
 
@@ -25,6 +26,7 @@ struct NewNetApp: App {
         let clipboardMonitor = ClipboardMonitor(settings: settings)
         let downloadManager = DownloadManager(settings: settings)
         let scrobbleCoordinator = ScrobbleCoordinator(settings: settings)
+        let utilitiesCoordinator = UtilitiesCoordinator(settings: settings)
         let menuBarViewModel = MenuBarViewModel(
             networkMonitor: networkMonitor,
             clipboardMonitor: clipboardMonitor
@@ -40,7 +42,8 @@ struct NewNetApp: App {
             updateManager: updateManager,
             networkMonitor: networkMonitor,
             speedTestService: speedTestService,
-            scrobbleCoordinator: scrobbleCoordinator
+            scrobbleCoordinator: scrobbleCoordinator,
+            utilitiesCoordinator: utilitiesCoordinator
         )
         let performanceCoordinator = PerformanceCoordinator(
             settings: settings,
@@ -58,6 +61,7 @@ struct NewNetApp: App {
         _menuBarViewModel = StateObject(wrappedValue: menuBarViewModel)
         _downloadManagerViewModel = StateObject(wrappedValue: downloadManagerViewModel)
         _scrobbleCoordinator = StateObject(wrappedValue: scrobbleCoordinator)
+        _utilitiesCoordinator = StateObject(wrappedValue: utilitiesCoordinator)
         self.statusBarController = statusBarController
         self.performanceCoordinator = performanceCoordinator
 
@@ -76,7 +80,8 @@ struct NewNetApp: App {
                 updateManager: updateManager,
                 networkMonitor: networkMonitor,
                 speedTestService: speedTestService,
-                scrobbleCoordinator: scrobbleCoordinator
+                scrobbleCoordinator: scrobbleCoordinator,
+                utilitiesCoordinator: utilitiesCoordinator
             )
             .frame(width: 440, height: 480)
         }

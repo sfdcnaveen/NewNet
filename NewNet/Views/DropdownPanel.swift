@@ -11,6 +11,7 @@ struct DropdownPanel: View {
     @ObservedObject var networkMonitor: NetworkSpeedMonitor
     @ObservedObject var speedTestService: SpeedTestService
     @ObservedObject var scrobbleCoordinator: ScrobbleCoordinator
+    @ObservedObject var utilitiesCoordinator: UtilitiesCoordinator
     var onSettingsTapped: (() -> Void)?
 
     @Environment(\.colorScheme) private var colorScheme
@@ -107,6 +108,16 @@ struct DropdownPanel: View {
                         settings: settings,
                         onOpenSettings: onSettingsTapped
                     )
+                case .clipboard:
+                    ClipboardHistoryView(
+                        clipboardService: utilitiesCoordinator.clipboardHistory
+                    )
+                case .utilities:
+                    UtilitiesDashboardView(
+                        coordinator: utilitiesCoordinator,
+                        settings: settings,
+                        onOpenSettings: onSettingsTapped
+                    )
                 }
             }
             .padding(.horizontal, 14)
@@ -135,8 +146,23 @@ struct DropdownPanel: View {
 
             Spacer()
 
-            // Right section: Circular Theme toggle, Settings, and Quit buttons
+            // Right section: Keep Awake, Theme toggle, Settings, and Quit buttons
             HStack(spacing: 5) {
+                let isAwake = utilitiesCoordinator.keepAwake.isActive
+                Button {
+                    withAnimation(DesignTokens.Animation.hover) {
+                        utilitiesCoordinator.keepAwake.toggle()
+                    }
+                } label: {
+                    Image(systemName: isAwake ? "cup.and.saucer.fill" : "cup.and.saucer")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(isAwake ? Color.orange : Color.secondary)
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(LiquidGlassButtonStyle(tint: isAwake ? .orange : nil, isCircular: true))
+                .help(isAwake ? "Keep Awake is active (\(utilitiesCoordinator.keepAwake.remainingTimeFormatted))" : "Keep Awake")
+                .accessibilityLabel("Toggle Keep Awake")
+
                 let isDark = settings.appTheme == .dark || (settings.appTheme == .system && colorScheme == .dark)
 
                 Button {

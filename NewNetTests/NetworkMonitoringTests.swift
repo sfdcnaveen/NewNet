@@ -38,26 +38,26 @@ final class TabOrderAndNavigationTests: XCTestCase {
 
     func testDefaultTabOrder() {
         let settings = AppSettings(defaults: testDefaults)
-        XCTAssertEqual(settings.tabOrder, [.network, .ytdlp, .music])
+        XCTAssertEqual(settings.tabOrder, [.network, .ytdlp, .music, .clipboard, .utilities])
     }
 
     func testReorderTabs() {
         let settings = AppSettings(defaults: testDefaults)
-        settings.tabOrder = [.music, .network, .ytdlp]
-        XCTAssertEqual(settings.tabOrder, [.music, .network, .ytdlp])
+        settings.tabOrder = [.music, .network, .ytdlp, .clipboard, .utilities]
+        XCTAssertEqual(settings.tabOrder, [.music, .network, .ytdlp, .clipboard, .utilities])
 
         // Verify persistence across new instance
         let reloaded = AppSettings(defaults: testDefaults)
-        XCTAssertEqual(reloaded.tabOrder, [.music, .network, .ytdlp])
+        XCTAssertEqual(reloaded.tabOrder, [.music, .network, .ytdlp, .clipboard, .utilities])
     }
 
     func testRestoreDefaultTabOrder() {
         let settings = AppSettings(defaults: testDefaults)
-        settings.tabOrder = [.ytdlp, .music, .network]
-        XCTAssertEqual(settings.tabOrder, [.ytdlp, .music, .network])
+        settings.tabOrder = [.ytdlp, .music, .network, .clipboard, .utilities]
+        XCTAssertEqual(settings.tabOrder, [.ytdlp, .music, .network, .clipboard, .utilities])
 
         settings.restoreDefaultTabOrder()
-        XCTAssertEqual(settings.tabOrder, [.network, .ytdlp, .music])
+        XCTAssertEqual(settings.tabOrder, [.network, .ytdlp, .music, .clipboard, .utilities])
     }
 
     func testTabOrderDeduplicationAndFallback() {
@@ -65,8 +65,8 @@ final class TabOrderAndNavigationTests: XCTestCase {
         testDefaults.set(["music", "invalid_tab", "music"], forKey: "settings.tabOrder")
         let settings = AppSettings(defaults: testDefaults)
 
-        // Missing default tabs (network, ytdlp) should be appended automatically without duplicates
-        XCTAssertEqual(settings.tabOrder, [.music, .network, .ytdlp])
+        // Missing default tabs should be appended automatically without duplicates
+        XCTAssertEqual(settings.tabOrder, [.music, .network, .ytdlp, .clipboard, .utilities])
     }
 }
 
@@ -594,6 +594,152 @@ final class YTDLPServiceHostTests: XCTestCase {
             ytDLPConfiguration: ringtoneConfig
         )
         XCTAssertTrue(service.requiresFFmpeg(for: item))
+    }
+}
+
+@MainActor
+final class UtilitiesServicesTests: XCTestCase {
+
+    // MARK: - Keep Awake Tests
+
+    func testKeepAwakeActivationAndDeactivation() {
+        let service = KeepAwakeService()
+        XCTAssertFalse(service.isActive)
+        XCTAssertNil(service.remainingSeconds)
+
+        // Indefinite
+        service.activate(minutes: 0)
+        XCTAssertTrue(service.isActive)
+        XCTAssertNil(service.remainingSeconds)
+        XCTAssertEqual(service.remainingTimeFormatted, "Indefinite")
+
+        // Deactivate
+        service.deactivate()
+        XCTAssertFalse(service.isActive)
+        XCTAssertNil(service.remainingSeconds)
+
+        // Timed
+        service.activate(minutes: 30)
+        XCTAssertTrue(service.isActive)
+        XCTAssertNotNil(service.remainingSeconds)
+        XCTAssertGreaterThan(service.remainingSeconds ?? 0, 0)
+        XCTAssertTrue(service.remainingTimeFormatted.contains(":"))
+
+        service.deactivate()
+        XCTAssertFalse(service.isActive)
+    }
+
+    func testKeepAwakeToggle() {
+        let service = KeepAwakeService()
+        XCTAssertFalse(service.isActive)
+
+        service.toggle(minutes: 15)
+        XCTAssertTrue(service.isActive)
+
+        service.toggle()
+        XCTAssertFalse(service.isActive)
+    }
+
+    // MARK: - Clipboard History Tests
+
+    func testClipboardHistoryItemCreationAndFiltering() {
+        let textItem = ClipboardItem(text: "Hello World", kind: .text)
+        let linkItem = ClipboardItem(text: "https://example.com/test", kind: .link)
+        let fileItem = ClipboardItem(text: "test.pdf", kind: .files, filePaths: ["/Users/test/test.pdf"])
+
+        XCTAssertEqual(textItem.kind, .text)
+        XCTAssertEqual(linkItem.kind, .link)
+        XCTAssertEqual(fileItem.kind, .files)
+        XCTAssertEqual(textItem.charCount, 11)
+    }
+
+    func testClipboardServicePinningAndDeletion() {
+        let service = ClipboardHistoryService()
+        service.clearAllIncludingPinned()
+        XCTAssertEqual(service.items.count, 0)
+
+        let item1 = ClipboardItem(id: UUID(), text: "Item 1", kind: .text, createdAt: Date().addingTimeInterval(-100))
+        let item2 = ClipboardItem(id: UUID(), text: "Item 2", kind: .text, createdAt: Date())
+
+        service.record(item: item1)
+        service.record(item: item2)
+
+        XCTAssertEqual(service.items.count, 2)
+
+        if let first = service.items.first {
+            XCTAssertFalse(first.isPinned)
+            service.togglePin(first)
+            XCTAssertTrue(service.items.first?.isPinned ?? false)
+
+            service.deleteItem(first)
+            XCTAssertFalse(service.items.contains { $0.id == first.id })
+        }
+    }
+
+    // MARK: - Scroll Inverter Tests
+
+    func testScrollInverterToggleAndSettings() {
+        let service = ScrollInverterService()
+        let initial = service.isEnabled
+
+        service.toggle()
+        XCTAssertEqual(service.isEnabled, !initial)
+
+        // Test axis flags
+        service.invertVertical = true
+        service.invertHorizontal = true
+        XCTAssertTrue(service.invertVertical)
+        XCTAssertTrue(service.invertHorizontal)
+
+        service.isEnabled = false
+    }
+
+    // MARK: - Finder Cut & Paste Tests
+
+    func testFinderCutPasteToggleAndInitialState() {
+        let service = FinderCutPasteService()
+        XCTAssertTrue(service.markedURLs.isEmpty)
+
+        service.isEnabled = false
+        XCTAssertFalse(service.isEnabled)
+        XCTAssertFalse(service.isRunning)
+    }
+
+    // MARK: - Quit on Close Tests
+
+    func testQuitOnCloseExceptions() {
+        let service = QuitOnCloseService()
+        let testBundle = "com.test.uniqueApp"
+
+        service.addException(bundleIdentifier: testBundle)
+        XCTAssertTrue(service.exceptions.contains(testBundle))
+
+        service.removeException(bundleIdentifier: testBundle)
+        XCTAssertFalse(service.exceptions.contains(testBundle))
+    }
+
+    // MARK: - NewNetTab Tests
+
+    func testNewNetTabIncludesUtilitiesAndClipboard() {
+        XCTAssertTrue(NewNetTab.allCases.contains(.clipboard))
+        XCTAssertTrue(NewNetTab.allCases.contains(.utilities))
+        XCTAssertEqual(NewNetTab.clipboard.title, "Clipboard")
+        XCTAssertEqual(NewNetTab.utilities.title, "Utilities")
+        XCTAssertEqual(NewNetTab.clipboard.systemImage, "doc.on.clipboard")
+        XCTAssertEqual(NewNetTab.utilities.systemImage, "wrench.and.screwdriver")
+    }
+
+    // MARK: - Coordinator Integration
+
+    func testUtilitiesCoordinatorInitialization() {
+        let settings = AppSettings()
+        let coordinator = UtilitiesCoordinator(settings: settings)
+
+        XCTAssertNotNil(coordinator.keepAwake)
+        XCTAssertNotNil(coordinator.clipboardHistory)
+        XCTAssertNotNil(coordinator.quitOnClose)
+        XCTAssertNotNil(coordinator.scrollInverter)
+        XCTAssertNotNil(coordinator.finderCutPaste)
     }
 }
 
