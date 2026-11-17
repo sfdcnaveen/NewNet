@@ -24,6 +24,7 @@ final class ScrollInverterService: ObservableObject {
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
+    private var cancellables: Set<AnyCancellable> = []
 
     init() {
         let storedEnabled = UserDefaults.standard.bool(forKey: "settings.scrollInversionEnabled")
@@ -32,6 +33,22 @@ final class ScrollInverterService: ObservableObject {
         if storedEnabled {
             self.isEnabled = true
         }
+
+        PermissionsManager.shared.$isAccessibilityGranted
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] granted in
+                guard let self = self else { return }
+                if granted {
+                    if self.hasPermissionError {
+                        self.hasPermissionError = false
+                    }
+                    if self.isEnabled && !self.isRunning {
+                        self.start()
+                    }
+                }
+            }
+            .store(in: &cancellables)
     }
 
     deinit {

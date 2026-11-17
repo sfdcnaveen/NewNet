@@ -10,6 +10,7 @@ struct UtilitiesDashboardView: View {
     @ObservedObject private var scrollInverter: ScrollInverterService
     @ObservedObject private var finderCutPaste: FinderCutPasteService
     @ObservedObject private var quitOnClose: QuitOnCloseService
+    @ObservedObject private var permissionsManager = PermissionsManager.shared
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -24,7 +25,25 @@ struct UtilitiesDashboardView: View {
     }
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
+            // Section Header
+            HStack {
+                Text("macOS Utilities")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if let onOpenSettings = onOpenSettings {
+                    Button {
+                        onOpenSettings()
+                    } label: {
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Utilities Settings")
+                }
+            }
+
             // Keep Awake Card
             keepAwakeCard
 
@@ -91,30 +110,37 @@ struct UtilitiesDashboardView: View {
                 .help(isAwake ? "Deactivate Keep Awake" : "Activate Keep Awake")
             }
 
-            // Duration selector pills
+            // Duration selector pills (additive when active countdown)
             HStack(spacing: 6) {
+                let isTimed = isAwake && (keepAwake.remainingSeconds != nil)
                 let durations: [(title: String, mins: Int)] = [
                     ("∞", 0),
-                    ("15m", 15),
-                    ("30m", 30),
-                    ("1h", 60),
-                    ("2h", 120)
+                    (isTimed ? "+15m" : "15m", 15),
+                    (isTimed ? "+30m" : "30m", 30),
+                    (isTimed ? "+1h" : "1h", 60),
+                    (isTimed ? "+2h" : "2h", 120)
                 ]
 
                 ForEach(durations, id: \.mins) { item in
-                    let isSelected = keepAwake.durationMinutes == item.mins
+                    let isIndefiniteActive = isAwake && keepAwake.remainingSeconds == nil && item.mins == 0
                     Button {
                         withAnimation(DesignTokens.Animation.transition) {
-                            keepAwake.activate(minutes: item.mins)
+                            if item.mins == 0 {
+                                keepAwake.activate(minutes: 0)
+                            } else if isTimed {
+                                keepAwake.addMinutes(item.mins)
+                            } else {
+                                keepAwake.activate(minutes: item.mins)
+                            }
                         }
                     } label: {
                         Text(item.title)
-                            .font(.system(size: 11, weight: isSelected && isAwake ? .semibold : .regular))
+                            .font(.system(size: 11, weight: isIndefiniteActive ? .semibold : .medium))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                             .liquidGlassPill(
-                                tint: isSelected && isAwake ? Color.orange : nil,
-                                isActive: isSelected && isAwake
+                                tint: isIndefiniteActive ? Color.orange : nil,
+                                isActive: isIndefiniteActive
                             )
                     }
                     .buttonStyle(.plain)
@@ -122,13 +148,14 @@ struct UtilitiesDashboardView: View {
 
                 Spacer()
 
-                // Display sleep toggle
-                Toggle(isOn: $keepAwake.preventDisplaySleep) {
-                    Text("Keep Screen On")
+                // Lid closed sleep toggle
+                Toggle(isOn: $keepAwake.preventLidSleep) {
+                    Text("Lid Closed?")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(.secondary)
                 }
                 .toggleStyle(.checkbox)
+                .help("Prevents Mac sleep even when the MacBook lid is closed")
             }
 
             if let battery = keepAwake.batteryPercentage {
@@ -187,7 +214,7 @@ struct UtilitiesDashboardView: View {
                     .toggleStyle(.switch)
             }
 
-            if scrollInverter.hasPermissionError {
+            if (scrollInverter.hasPermissionError || !permissionsManager.isAccessibilityGranted) && scrollInverter.isEnabled {
                 HStack(spacing: 6) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.system(size: 11))
@@ -196,7 +223,7 @@ struct UtilitiesDashboardView: View {
                         .font(.system(size: 11))
                     Spacer()
                     Button("Grant") {
-                        SystemPermissionsHelper.requestAccessibility()
+                        permissionsManager.requestAccessibility()
                     }
                     .buttonStyle(LiquidGlassButtonStyle())
                 }
@@ -276,7 +303,7 @@ struct UtilitiesDashboardView: View {
                 .padding(.top, 2)
             }
 
-            if finderCutPaste.hasPermissionError {
+            if (finderCutPaste.hasPermissionError || !permissionsManager.isAccessibilityGranted) && finderCutPaste.isEnabled {
                 HStack(spacing: 6) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.system(size: 11))
@@ -285,7 +312,7 @@ struct UtilitiesDashboardView: View {
                         .font(.system(size: 11))
                     Spacer()
                     Button("Grant") {
-                        SystemPermissionsHelper.requestAccessibility()
+                        permissionsManager.requestAccessibility()
                     }
                     .buttonStyle(LiquidGlassButtonStyle())
                 }
@@ -338,7 +365,7 @@ struct UtilitiesDashboardView: View {
                     .toggleStyle(.switch)
             }
 
-            if !SystemPermissionsHelper.isAccessibilityGranted && isEnabled {
+            if (quitOnClose.hasPermissionError || !permissionsManager.isAccessibilityGranted) && isEnabled {
                 HStack(spacing: 6) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.system(size: 11))
@@ -347,7 +374,7 @@ struct UtilitiesDashboardView: View {
                         .font(.system(size: 11))
                     Spacer()
                     Button("Grant") {
-                        SystemPermissionsHelper.requestAccessibility()
+                        permissionsManager.requestAccessibility()
                     }
                     .buttonStyle(LiquidGlassButtonStyle())
                 }

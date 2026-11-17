@@ -26,6 +26,7 @@ final class FinderCutPasteService: ObservableObject {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var markedPasteboardChangeCount: Int = 0
+    private var cancellables: Set<AnyCancellable> = []
 
     // Virtual key codes for ANSI
     private enum KeyCode {
@@ -39,6 +40,22 @@ final class FinderCutPasteService: ObservableObject {
         if stored {
             self.isEnabled = true
         }
+
+        PermissionsManager.shared.$isAccessibilityGranted
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] granted in
+                guard let self = self else { return }
+                if granted {
+                    if self.hasPermissionError {
+                        self.hasPermissionError = false
+                    }
+                    if self.isEnabled && !self.isRunning {
+                        self.start()
+                    }
+                }
+            }
+            .store(in: &cancellables)
     }
 
     deinit {

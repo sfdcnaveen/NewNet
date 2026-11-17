@@ -26,7 +26,23 @@ final class UtilitiesCoordinator: ObservableObject {
 
     private func bindSettings() {
         // Keep Awake
-        keepAwake.preventDisplaySleep = settings.keepAwakePreventDisplaySleep
+        keepAwake.preventLidSleep = settings.keepAwakePreventDisplaySleep
+
+        settings.$keepAwakePreventDisplaySleep
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] val in
+                self?.keepAwake.preventLidSleep = val
+            }
+            .store(in: &cancellables)
+
+        keepAwake.$preventLidSleep
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] val in
+                if self?.settings.keepAwakePreventDisplaySleep != val {
+                    self?.settings.keepAwakePreventDisplaySleep = val
+                }
+            }
+            .store(in: &cancellables)
 
         // Forward objectWillChange from child services so views update automatically
         keepAwake.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &cancellables)

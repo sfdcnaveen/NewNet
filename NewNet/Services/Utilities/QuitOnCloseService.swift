@@ -23,11 +23,13 @@ final class QuitOnCloseService: ObservableObject {
             UserDefaults.standard.set(exceptions, forKey: "settings.autoQuitExceptions")
         }
     }
+    @Published private(set) var hasPermissionError: Bool = false
 
     private var exceptionSet: Set<String> = []
     private var hadWindows: Set<pid_t> = []
     private var pendingChecks: [pid_t: DispatchWorkItem] = [:]
     private var isMonitoring: Bool = false
+    private var cancellables: Set<AnyCancellable> = []
 
     // Default system apps that should never be auto-quit
     private static let defaultExcludedBundleIDs: Set<String> = [
@@ -41,6 +43,22 @@ final class QuitOnCloseService: ObservableObject {
         let stored = UserDefaults.standard.stringArray(forKey: "settings.autoQuitExceptions") ?? []
         self.exceptions = stored
         self.exceptionSet = Set(stored)
+
+        PermissionsManager.shared.$isAccessibilityGranted
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] granted in
+                guard let self = self else { return }
+                if granted {
+                    if self.hasPermissionError {
+                        self.hasPermissionError = false
+                    }
+                    if self.isEnabled && !self.isMonitoring {
+                        self.startMonitoring()
+                    }
+                }
+            }
+            .store(in: &cancellables)
     }
 
     deinit {
@@ -68,9 +86,11 @@ final class QuitOnCloseService: ObservableObject {
     func startMonitoring() {
         guard !isMonitoring else { return }
         guard SystemPermissionsHelper.isAccessibilityGranted else {
+            hasPermissionError = true
             Self.logger.warning("Accessibility permission required for Quit on Close")
             return
         }
+        hasPermissionError = false
 
         isMonitoring = true
 

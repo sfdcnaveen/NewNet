@@ -9,6 +9,17 @@ struct ClipboardHistoryView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            // Section Header
+            HStack {
+                Text("Clipboard History")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("\(clipboardService.items.count) item\(clipboardService.items.count == 1 ? "" : "s")")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+
             // Header with search & clear
             searchAndFilterBar
 

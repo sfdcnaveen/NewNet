@@ -153,8 +153,19 @@ final class ClipboardHistoryService: ObservableObject {
 
         switch item.kind {
         case .image:
+            var objectsToWrite: [NSPasteboardWriting] = []
+            if let paths = item.filePaths, !paths.isEmpty {
+                for path in paths {
+                    objectsToWrite.append(URL(fileURLWithPath: path) as NSURL)
+                }
+            }
             if let data = item.imageThumbnailData, let image = NSImage(data: data) {
-                pasteboard.writeObjects([image])
+                objectsToWrite.append(image)
+            }
+            if !objectsToWrite.isEmpty {
+                pasteboard.writeObjects(objectsToWrite)
+            } else if let paths = item.filePaths, let first = paths.first, let img = NSImage(contentsOfFile: first) {
+                pasteboard.writeObjects([img])
             }
         case .files:
             if let paths = item.filePaths {
@@ -241,6 +252,10 @@ final class ClipboardHistoryService: ObservableObject {
         return false
     }
 
+    private static let imageExtensions: Set<String> = [
+        "jpg", "jpeg", "png", "gif", "webp", "heic", "tiff", "tif", "bmp", "svg", "ico"
+    ]
+
     private func capturePasteboardItem() -> ClipboardItem? {
         // Check files
         if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL],
@@ -248,6 +263,22 @@ final class ClipboardHistoryService: ObservableObject {
            urls.allSatisfy({ $0.isFileURL }) {
             let paths = urls.map(\.path)
             let names = urls.map(\.lastPathComponent).joined(separator: ", ")
+
+            // If files are images, categorize as .image with thumbnail preview
+            let isAllImages = urls.allSatisfy { Self.imageExtensions.contains($0.pathExtension.lowercased()) }
+            if isAllImages {
+                var thumbData: Data? = nil
+                if let firstURL = urls.first, let image = NSImage(contentsOf: firstURL) {
+                    thumbData = generateThumbnailData(from: image)
+                }
+                return ClipboardItem(
+                    text: names,
+                    kind: .image,
+                    filePaths: paths,
+                    imageThumbnailData: thumbData
+                )
+            }
+
             return ClipboardItem(
                 text: names,
                 kind: .files,

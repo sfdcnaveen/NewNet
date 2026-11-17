@@ -230,7 +230,7 @@ struct SettingsView: View {
                         Text("2 Hours").tag(120)
                     }
 
-                    Toggle("Prevent display from sleeping", isOn: $settings.keepAwakePreventDisplaySleep)
+                    Toggle("Lid Closed? (Prevent sleep with lid closed)", isOn: $settings.keepAwakePreventDisplaySleep)
                 }
                 .padding(.vertical, 2)
 

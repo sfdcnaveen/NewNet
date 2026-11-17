@@ -640,16 +640,43 @@ final class UtilitiesServicesTests: XCTestCase {
         XCTAssertFalse(service.isActive)
     }
 
+    func testKeepAwakeAddMinutesAndLidClosedMode() {
+        let service = KeepAwakeService()
+        XCTAssertFalse(service.isActive)
+
+        // Starting from inactive by adding minutes activates the session
+        service.addMinutes(15)
+        XCTAssertTrue(service.isActive)
+        let initialRemaining = service.remainingSeconds ?? 0
+        XCTAssertGreaterThan(initialRemaining, 0)
+
+        // Adding 30 minutes extends remaining time
+        service.addMinutes(30)
+        let extendedRemaining = service.remainingSeconds ?? 0
+        XCTAssertGreaterThan(extendedRemaining, initialRemaining + (25 * 60))
+
+        // Lid sleep mode toggle
+        XCTAssertFalse(service.preventLidSleep)
+        service.preventLidSleep = true
+        XCTAssertTrue(service.preventLidSleep)
+        XCTAssertTrue(service.preventDisplaySleep) // alias consistency
+
+        service.deactivate()
+        XCTAssertFalse(service.isActive)
+    }
+
     // MARK: - Clipboard History Tests
 
     func testClipboardHistoryItemCreationAndFiltering() {
         let textItem = ClipboardItem(text: "Hello World", kind: .text)
         let linkItem = ClipboardItem(text: "https://example.com/test", kind: .link)
         let fileItem = ClipboardItem(text: "test.pdf", kind: .files, filePaths: ["/Users/test/test.pdf"])
+        let imageItem = ClipboardItem(text: "photo.jpg", kind: .image, filePaths: ["/Users/test/photo.jpg"])
 
         XCTAssertEqual(textItem.kind, .text)
         XCTAssertEqual(linkItem.kind, .link)
         XCTAssertEqual(fileItem.kind, .files)
+        XCTAssertEqual(imageItem.kind, .image)
         XCTAssertEqual(textItem.charCount, 11)
     }
 
