@@ -126,7 +126,7 @@ public final class PermissionsManager: ObservableObject {
     }
 
     // Thread-safe query using AXIsProcessTrustedWithOptions
-    nonisolated private static func queryAccessibilityStatus(prompt: Bool) -> Bool {
+    nonisolated public static func queryAccessibilityStatus(prompt: Bool) -> Bool {
         let promptKey = "AXTrustedCheckOptionPrompt" as CFString
         let options = [promptKey: prompt ? kCFBooleanTrue : kCFBooleanFalse] as CFDictionary
         return AXIsProcessTrustedWithOptions(options)
@@ -142,6 +142,21 @@ public enum SystemPermissionsHelper {
         PermissionsManager.shared.status
     }
 
+    nonisolated public static func checkAccessibility(prompt: Bool) -> Bool {
+        PermissionsManager.queryAccessibilityStatus(prompt: prompt)
+    }
+
+    nonisolated public static func checkListenEventAccess(prompt: Bool = false) -> Bool {
+        if #available(macOS 10.15, *) {
+            let preflight = CGPreflightListenEventAccess()
+            if !preflight && prompt {
+                return CGRequestListenEventAccess()
+            }
+            return preflight
+        }
+        return true
+    }
+
     public static func requestAccessibility() {
         PermissionsManager.shared.requestAccessibility()
     }
@@ -154,6 +169,20 @@ public enum SystemPermissionsHelper {
 
     public static func restartApplication() {
         PermissionsManager.restartApplication()
+    }
+
+    public static func resetAccessibilityPermissions() {
+        let bundleID = Bundle.main.bundleIdentifier ?? "NihanviBuilds.NewNet"
+        DispatchQueue.global(qos: .userInitiated).async {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
+            process.arguments = ["reset", "Accessibility", bundleID]
+            try? process.run()
+            process.waitUntilExit()
+            DispatchQueue.main.async {
+                _ = PermissionsManager.shared.refresh(prompt: false)
+            }
+        }
     }
 }
 

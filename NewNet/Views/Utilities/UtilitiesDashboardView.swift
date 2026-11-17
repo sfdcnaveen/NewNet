@@ -44,8 +44,8 @@ struct UtilitiesDashboardView: View {
                 }
             }
 
-            // Accessibility permission banner (vanishes immediately when granted)
-            if !permissionsManager.isAccessibilityGranted {
+            // Accessibility permission banner (only visible if an enabled utility requires accessibility)
+            if !permissionsManager.isAccessibilityGranted && anyAccessibilityFeatureEnabled {
                 accessibilityStatusBanner
             }
 
@@ -62,6 +62,10 @@ struct UtilitiesDashboardView: View {
             quitOnCloseCard
         }
         .padding(.vertical, 4)
+    }
+
+    private var anyAccessibilityFeatureEnabled: Bool {
+        scrollInverter.isEnabled || finderCutPaste.isEnabled || quitOnClose.isEnabled
     }
 
     // MARK: - Accessibility Status Banner
@@ -116,13 +120,27 @@ struct UtilitiesDashboardView: View {
                     HStack(spacing: 3) {
                         Image(systemName: "arrow.triangle.2.circlepath")
                             .font(.system(size: 9))
-                        Text("Restart NewNet")
+                        Text("Restart")
                             .font(.system(size: 10, weight: .medium))
                     }
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
                 .help("Restart NewNet if macOS requires a process relaunch to apply permissions")
+
+                Button {
+                    SystemPermissionsHelper.resetAccessibilityPermissions()
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 9))
+                        Text("Reset TCC")
+                            .font(.system(size: 10, weight: .medium))
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help("Reset macOS TCC database entry for NewNet using tccutil")
             }
             .padding(.top, 2)
         }

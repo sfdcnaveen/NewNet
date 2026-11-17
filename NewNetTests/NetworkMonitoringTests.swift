@@ -788,6 +788,11 @@ final class UtilitiesServicesTests: XCTestCase {
         let isGranted = SystemPermissionsHelper.isAccessibilityGranted
         XCTAssertEqual(isGranted, currentStatus == .granted)
 
+        // Nonisolated queries
+        let passiveChecked = SystemPermissionsHelper.checkAccessibility(prompt: false)
+        XCTAssertEqual(passiveChecked, isGranted)
+        _ = SystemPermissionsHelper.checkListenEventAccess(prompt: false)
+
         // Stop polling cleanly in test environment
         PermissionsManager.shared.stopPolling()
     }
