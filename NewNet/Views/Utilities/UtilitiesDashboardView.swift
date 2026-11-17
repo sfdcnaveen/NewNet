@@ -44,6 +44,11 @@ struct UtilitiesDashboardView: View {
                 }
             }
 
+            // Accessibility permission banner (vanishes immediately when granted)
+            if !permissionsManager.isAccessibilityGranted {
+                accessibilityStatusBanner
+            }
+
             // Keep Awake Card
             keepAwakeCard
 
@@ -57,6 +62,72 @@ struct UtilitiesDashboardView: View {
             quitOnCloseCard
         }
         .padding(.vertical, 4)
+    }
+
+    // MARK: - Accessibility Status Banner
+
+    private var accessibilityStatusBanner: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.orange)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Accessibility Permission Required")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text("Enable NewNet in System Settings to use gesture, mouse, and Finder tools.")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+
+            HStack(spacing: 6) {
+                Button {
+                    permissionsManager.requestAccessibility()
+                } label: {
+                    Text("Open System Settings")
+                        .font(.system(size: 10, weight: .semibold))
+                }
+                .buttonStyle(LiquidGlassButtonStyle(cornerRadius: DesignTokens.Radius.chip))
+
+                Button {
+                    withAnimation(DesignTokens.Animation.transition) {
+                        _ = permissionsManager.refresh(prompt: false)
+                    }
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 9, weight: .semibold))
+                        Text("Check Again")
+                            .font(.system(size: 10, weight: .medium))
+                    }
+                }
+                .buttonStyle(LiquidGlassButtonStyle(cornerRadius: DesignTokens.Radius.chip))
+                .help("Re-query macOS Accessibility permissions")
+
+                Spacer()
+
+                Button {
+                    SystemPermissionsHelper.restartApplication()
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 9))
+                        Text("Restart NewNet")
+                            .font(.system(size: 10, weight: .medium))
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help("Restart NewNet if macOS requires a process relaunch to apply permissions")
+            }
+            .padding(.top, 2)
+        }
+        .padding(10)
+        .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium, tint: .orange)
     }
 
     // MARK: - Keep Awake Card

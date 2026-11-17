@@ -45,7 +45,6 @@ final class QuitOnCloseService: ObservableObject {
         self.exceptionSet = Set(stored)
 
         PermissionsManager.shared.$isAccessibilityGranted
-            .dropFirst()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] granted in
                 guard let self = self else { return }

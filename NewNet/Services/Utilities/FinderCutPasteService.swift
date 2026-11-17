@@ -4,7 +4,7 @@ import Combine
 import CoreGraphics
 import Foundation
 import os
-fileprivate let finderLogger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "NewNet", category: "FinderCutPaste")
+nonisolated let finderLogger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "NewNet", category: "FinderCutPaste")
 
 @MainActor
 final class FinderCutPasteService: ObservableObject {
@@ -42,7 +42,6 @@ final class FinderCutPasteService: ObservableObject {
         }
 
         PermissionsManager.shared.$isAccessibilityGranted
-            .dropFirst()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] granted in
                 guard let self = self else { return }

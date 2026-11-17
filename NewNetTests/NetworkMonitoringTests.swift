@@ -25,15 +25,15 @@ final class TabOrderAndNavigationTests: XCTestCase {
     private var testDefaults: UserDefaults!
     private var suiteName: String!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         suiteName = "test.newnet.tabs.\(UUID().uuidString)"
         testDefaults = UserDefaults(suiteName: suiteName)!
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         testDefaults.removePersistentDomain(forName: suiteName)
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testDefaultTabOrder() {
@@ -70,18 +70,19 @@ final class TabOrderAndNavigationTests: XCTestCase {
     }
 }
 
+@MainActor
 final class KeychainManagerTests: XCTestCase {
     private let testService = "com.newnet.test.\(UUID().uuidString)"
     private var keychain: KeychainManager!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         keychain = KeychainManager(service: testService)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         keychain.delete(key: "test_key")
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testSaveAndRetrieveCredential() {
@@ -110,6 +111,7 @@ final class KeychainManagerTests: XCTestCase {
     }
 }
 
+@MainActor
 final class LastFMServiceTests: XCTestCase {
     func testCalculateSignature() {
         // Last.fm signature: sorted alphabetically, concatenated, append secret, md5
@@ -149,6 +151,7 @@ final class LastFMServiceTests: XCTestCase {
     }
 }
 
+@MainActor
 final class ListenBrainzServiceTests: XCTestCase {
     func testEmptyTokenThrows() async {
         let service = ListenBrainzService()
@@ -253,8 +256,8 @@ final class ScrobbleCoordinatorTests: XCTestCase {
     private var mockListenBrainz: MockListenBrainz!
     private var coordinator: ScrobbleCoordinator!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         suiteName = "test.newnet.scrobble.\(UUID().uuidString)"
         testDefaults = UserDefaults(suiteName: suiteName)!
         settings = AppSettings(defaults: testDefaults)
@@ -272,9 +275,9 @@ final class ScrobbleCoordinatorTests: XCTestCase {
         )
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         testDefaults.removePersistentDomain(forName: suiteName)
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testTrackDetectionAndNowPlaying() async {
@@ -767,6 +770,26 @@ final class UtilitiesServicesTests: XCTestCase {
         XCTAssertNotNil(coordinator.quitOnClose)
         XCTAssertNotNil(coordinator.scrollInverter)
         XCTAssertNotNil(coordinator.finderCutPaste)
+    }
+
+    // MARK: - Accessibility Permission Tests
+
+    func testAccessibilityPermissionStatusAndHelper() {
+        let granted = AccessibilityPermissionStatus.granted
+        let notGranted = AccessibilityPermissionStatus.notGranted
+        let unknown = AccessibilityPermissionStatus.unknown
+
+        XCTAssertEqual(granted, .granted)
+        XCTAssertEqual(notGranted, .notGranted)
+        XCTAssertEqual(unknown, .unknown)
+
+        // Verify SystemPermissionsHelper reflection of PermissionsManager
+        let currentStatus = SystemPermissionsHelper.status
+        let isGranted = SystemPermissionsHelper.isAccessibilityGranted
+        XCTAssertEqual(isGranted, currentStatus == .granted)
+
+        // Stop polling cleanly in test environment
+        PermissionsManager.shared.stopPolling()
     }
 }
 

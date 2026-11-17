@@ -221,6 +221,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             window.backgroundColor = .clear
         }
         NSApp.activate(ignoringOtherApps: true)
+        PermissionsManager.shared.refresh(prompt: false)
     }
 
     @objc

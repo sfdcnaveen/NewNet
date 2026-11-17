@@ -35,7 +35,6 @@ final class ScrollInverterService: ObservableObject {
         }
 
         PermissionsManager.shared.$isAccessibilityGranted
-            .dropFirst()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] granted in
                 guard let self = self else { return }

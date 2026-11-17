@@ -44,8 +44,15 @@ if [[ ! -x "$RESOURCE_DIR/ffmpeg-x64" ]]; then
   chmod +x "$RESOURCE_DIR/ffmpeg-x64"
 fi
 
-echo "Ad-hoc signing the app bundle to prevent 'damaged' errors..."
-codesign --force --deep --sign - "$APP_PATH"
+echo "Ad-hoc signing the app bundle with stable Designated Requirement..."
+if [[ -d "$APP_PATH/Contents/Frameworks" ]]; then
+  for fw in "$APP_PATH/Contents/Frameworks"/*; do
+    if [[ -d "$fw" ]]; then
+      codesign --force --sign - "$fw" 2>/dev/null || true
+    fi
+  done
+fi
+codesign --force --sign - -r="designated => identifier \"NihanviBuilds.NewNet\"" "$APP_PATH"
 
 echo "Preparing staging folder..."
 rm -rf "$STAGING_DIR"
