@@ -8,6 +8,7 @@ struct SettingsView: View {
     @ObservedObject var networkMonitor: NetworkSpeedMonitor
     @ObservedObject var speedTestService: SpeedTestService
     @ObservedObject var scrobbleCoordinator: ScrobbleCoordinator
+    var utilitiesCoordinator: UtilitiesCoordinator? = nil
     private let ytDLPService = YTDLPService()
     private let externalToolsService = ExternalToolsService()
     @State private var loginErrorMessage: String?
@@ -203,6 +204,164 @@ struct SettingsView: View {
             Section("Smart Features") {
                 Toggle("Detect links copied to clipboard", isOn: clipboardBinding)
                 Toggle("Battery saver mode", isOn: powerSavingBinding)
+            }
+
+            Section("macOS Utilities") {
+                // Keep Awake
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Image(systemName: "cup.and.saucer.fill")
+                            .foregroundStyle(.orange)
+                        Text("Keep Awake")
+                            .font(.system(size: 13, weight: .medium))
+                        Spacer()
+                        if let coord = utilitiesCoordinator, coord.keepAwake.isActive {
+                            Text(coord.keepAwake.remainingTimeFormatted)
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(.orange)
+                        }
+                    }
+
+                    Picker("Default duration", selection: $settings.keepAwakeDurationMinutes) {
+                        Text("Indefinite").tag(0)
+                        Text("15 Minutes").tag(15)
+                        Text("30 Minutes").tag(30)
+                        Text("1 Hour").tag(60)
+                        Text("2 Hours").tag(120)
+                    }
+
+                    Toggle("Lid Closed? (Prevent sleep with lid closed)", isOn: $settings.keepAwakePreventDisplaySleep)
+                }
+                .padding(.vertical, 2)
+
+                // Clipboard History
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Image(systemName: "doc.on.clipboard.fill")
+                            .foregroundStyle(.blue)
+                        Text("Clipboard History")
+                            .font(.system(size: 13, weight: .medium))
+                        Spacer()
+                        Toggle("", isOn: $settings.clipboardHistoryEnabled)
+                            .labelsHidden()
+                    }
+
+                    if settings.clipboardHistoryEnabled {
+                        Stepper("History limit: \(settings.clipboardHistoryLimit) items", value: $settings.clipboardHistoryLimit, in: 10...200, step: 10)
+                            .font(.system(size: 12))
+
+                        if let coord = utilitiesCoordinator {
+                            Button("Clear Clipboard History") {
+                                coord.clipboardHistory.clearHistory()
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.red)
+                            .font(.system(size: 11))
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
+
+                // Mouse Scroll Inverter
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Image(systemName: "computermouse.fill")
+                            .foregroundStyle(.cyan)
+                        Text("Inverse Mouse Scrolling")
+                            .font(.system(size: 13, weight: .medium))
+                        Spacer()
+                        Toggle("", isOn: $settings.scrollInversionEnabled)
+                            .labelsHidden()
+                    }
+
+                    Text("Reverses physical mouse wheel scrolling without affecting trackpad natural scrolling.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+
+                    if settings.scrollInversionEnabled {
+                        if !SystemPermissionsHelper.isAccessibilityGranted {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(.orange)
+                                Text("Requires Accessibility permission")
+                                    .font(.system(size: 11))
+                                Spacer()
+                                Button("Grant") {
+                                    SystemPermissionsHelper.requestAccessibility()
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.small)
+                            }
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
+
+                // Finder Cut & Paste
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Image(systemName: "scissors")
+                            .foregroundStyle(.purple)
+                        Text("Finder Cut & Paste")
+                            .font(.system(size: 13, weight: .medium))
+                        Spacer()
+                        Toggle("", isOn: $settings.finderCutPasteEnabled)
+                            .labelsHidden()
+                    }
+
+                    Text("Enables ⌘X to cut and ⌘V to move files directly in Finder.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+
+                    if settings.finderCutPasteEnabled && !SystemPermissionsHelper.isAccessibilityGranted {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                            Text("Requires Accessibility permission")
+                                .font(.system(size: 11))
+                            Spacer()
+                            Button("Grant") {
+                                SystemPermissionsHelper.requestAccessibility()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
+
+                // Quit on Close
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Image(systemName: "xmark.app.fill")
+                            .foregroundStyle(.red)
+                        Text("Quit on Close")
+                            .font(.system(size: 13, weight: .medium))
+                        Spacer()
+                        Toggle("", isOn: $settings.autoQuitEnabled)
+                            .labelsHidden()
+                    }
+
+                    Text("Automatically quits applications when their last window is closed.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+
+                    if settings.autoQuitEnabled && !SystemPermissionsHelper.isAccessibilityGranted {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                            Text("Requires Accessibility permission")
+                                .font(.system(size: 11))
+                            Spacer()
+                            Button("Grant") {
+                                SystemPermissionsHelper.requestAccessibility()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
             }
 
             Section("Navigation & Tab Ordering") {

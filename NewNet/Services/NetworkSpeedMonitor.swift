@@ -246,7 +246,7 @@ final class NetworkSpeedMonitor: ObservableObject {
         !name.hasPrefix("lo") && !name.hasPrefix("awdl") && !name.hasPrefix("llw") && !name.hasPrefix("utun")
     }
 
-    private static func readProcessSamples() -> [NetworkProcessUsage]? {
+    nonisolated private static func readProcessSamples() -> [NetworkProcessUsage]? {
         let process = Process()
         let pipe = Pipe()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/nettop")
@@ -259,7 +259,7 @@ final class NetworkSpeedMonitor: ObservableObject {
         return parseProcessOutput(output)
     }
 
-    static func parseProcessOutput(_ output: String) -> [NetworkProcessUsage] {
+    nonisolated static func parseProcessOutput(_ output: String) -> [NetworkProcessUsage] {
         output.split(separator: "\n", omittingEmptySubsequences: true).compactMap { line in
             let columns = line.split(separator: ",", omittingEmptySubsequences: false).map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
             guard columns.count >= 5, columns[0] != "time" else { return nil }

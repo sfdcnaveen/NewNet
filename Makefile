@@ -124,6 +124,14 @@ else
 		SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
 		SWIFT_STRICT_CONCURRENCY=complete \
 		build
+	@if [ -d "$(APP_PATH)" ]; then \
+		if [ -d "$(APP_PATH)/Contents/Frameworks" ]; then \
+			for fw in "$(APP_PATH)/Contents/Frameworks"/*; do \
+				if [ -d "$$fw" ]; then codesign --force --sign - "$$fw" 2>/dev/null || true; fi; \
+			done; \
+		fi; \
+		codesign --force -s - -r="designated => identifier \"NihanviBuilds.$(APP_NAME)\"" "$(APP_PATH)" 2>/dev/null || true; \
+	fi
 endif
 
 $(TARGET_PREFIX)test:

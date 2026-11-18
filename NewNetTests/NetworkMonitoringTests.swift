@@ -25,39 +25,39 @@ final class TabOrderAndNavigationTests: XCTestCase {
     private var testDefaults: UserDefaults!
     private var suiteName: String!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         suiteName = "test.newnet.tabs.\(UUID().uuidString)"
         testDefaults = UserDefaults(suiteName: suiteName)!
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         testDefaults.removePersistentDomain(forName: suiteName)
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testDefaultTabOrder() {
         let settings = AppSettings(defaults: testDefaults)
-        XCTAssertEqual(settings.tabOrder, [.network, .ytdlp, .music])
+        XCTAssertEqual(settings.tabOrder, [.network, .ytdlp, .music, .clipboard, .utilities])
     }
 
     func testReorderTabs() {
         let settings = AppSettings(defaults: testDefaults)
-        settings.tabOrder = [.music, .network, .ytdlp]
-        XCTAssertEqual(settings.tabOrder, [.music, .network, .ytdlp])
+        settings.tabOrder = [.music, .network, .ytdlp, .clipboard, .utilities]
+        XCTAssertEqual(settings.tabOrder, [.music, .network, .ytdlp, .clipboard, .utilities])
 
         // Verify persistence across new instance
         let reloaded = AppSettings(defaults: testDefaults)
-        XCTAssertEqual(reloaded.tabOrder, [.music, .network, .ytdlp])
+        XCTAssertEqual(reloaded.tabOrder, [.music, .network, .ytdlp, .clipboard, .utilities])
     }
 
     func testRestoreDefaultTabOrder() {
         let settings = AppSettings(defaults: testDefaults)
-        settings.tabOrder = [.ytdlp, .music, .network]
-        XCTAssertEqual(settings.tabOrder, [.ytdlp, .music, .network])
+        settings.tabOrder = [.ytdlp, .music, .network, .clipboard, .utilities]
+        XCTAssertEqual(settings.tabOrder, [.ytdlp, .music, .network, .clipboard, .utilities])
 
         settings.restoreDefaultTabOrder()
-        XCTAssertEqual(settings.tabOrder, [.network, .ytdlp, .music])
+        XCTAssertEqual(settings.tabOrder, [.network, .ytdlp, .music, .clipboard, .utilities])
     }
 
     func testTabOrderDeduplicationAndFallback() {
@@ -65,23 +65,24 @@ final class TabOrderAndNavigationTests: XCTestCase {
         testDefaults.set(["music", "invalid_tab", "music"], forKey: "settings.tabOrder")
         let settings = AppSettings(defaults: testDefaults)
 
-        // Missing default tabs (network, ytdlp) should be appended automatically without duplicates
-        XCTAssertEqual(settings.tabOrder, [.music, .network, .ytdlp])
+        // Missing default tabs should be appended automatically without duplicates
+        XCTAssertEqual(settings.tabOrder, [.music, .network, .ytdlp, .clipboard, .utilities])
     }
 }
 
+@MainActor
 final class KeychainManagerTests: XCTestCase {
     private let testService = "com.newnet.test.\(UUID().uuidString)"
     private var keychain: KeychainManager!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         keychain = KeychainManager(service: testService)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         keychain.delete(key: "test_key")
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testSaveAndRetrieveCredential() {
@@ -110,6 +111,7 @@ final class KeychainManagerTests: XCTestCase {
     }
 }
 
+@MainActor
 final class LastFMServiceTests: XCTestCase {
     func testCalculateSignature() {
         // Last.fm signature: sorted alphabetically, concatenated, append secret, md5
@@ -149,6 +151,7 @@ final class LastFMServiceTests: XCTestCase {
     }
 }
 
+@MainActor
 final class ListenBrainzServiceTests: XCTestCase {
     func testEmptyTokenThrows() async {
         let service = ListenBrainzService()
@@ -253,8 +256,8 @@ final class ScrobbleCoordinatorTests: XCTestCase {
     private var mockListenBrainz: MockListenBrainz!
     private var coordinator: ScrobbleCoordinator!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         suiteName = "test.newnet.scrobble.\(UUID().uuidString)"
         testDefaults = UserDefaults(suiteName: suiteName)!
         settings = AppSettings(defaults: testDefaults)
@@ -272,9 +275,9 @@ final class ScrobbleCoordinatorTests: XCTestCase {
         )
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         testDefaults.removePersistentDomain(forName: suiteName)
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testTrackDetectionAndNowPlaying() async {
@@ -594,6 +597,229 @@ final class YTDLPServiceHostTests: XCTestCase {
             ytDLPConfiguration: ringtoneConfig
         )
         XCTAssertTrue(service.requiresFFmpeg(for: item))
+    }
+}
+
+@MainActor
+final class UtilitiesServicesTests: XCTestCase {
+
+    // MARK: - Keep Awake Tests
+
+    func testKeepAwakeActivationAndDeactivation() {
+        let service = KeepAwakeService()
+        XCTAssertFalse(service.isActive)
+        XCTAssertNil(service.remainingSeconds)
+
+        // Indefinite
+        service.activate(minutes: 0)
+        XCTAssertTrue(service.isActive)
+        XCTAssertNil(service.remainingSeconds)
+        XCTAssertEqual(service.remainingTimeFormatted, "Indefinite")
+
+        // Deactivate
+        service.deactivate()
+        XCTAssertFalse(service.isActive)
+        XCTAssertNil(service.remainingSeconds)
+
+        // Timed
+        service.activate(minutes: 30)
+        XCTAssertTrue(service.isActive)
+        XCTAssertNotNil(service.remainingSeconds)
+        XCTAssertGreaterThan(service.remainingSeconds ?? 0, 0)
+        XCTAssertTrue(service.remainingTimeFormatted.contains(":"))
+
+        service.deactivate()
+        XCTAssertFalse(service.isActive)
+    }
+
+    func testKeepAwakeToggle() {
+        let service = KeepAwakeService()
+        XCTAssertFalse(service.isActive)
+
+        service.toggle(minutes: 15)
+        XCTAssertTrue(service.isActive)
+
+        service.toggle()
+        XCTAssertFalse(service.isActive)
+    }
+
+    func testKeepAwakeAddMinutesAndLidClosedMode() {
+        let service = KeepAwakeService()
+        XCTAssertFalse(service.isActive)
+
+        // Starting from inactive by adding minutes activates the session
+        service.addMinutes(15)
+        XCTAssertTrue(service.isActive)
+        let initialRemaining = service.remainingSeconds ?? 0
+        XCTAssertGreaterThan(initialRemaining, 0)
+
+        // Adding 30 minutes extends remaining time
+        service.addMinutes(30)
+        let extendedRemaining = service.remainingSeconds ?? 0
+        XCTAssertGreaterThan(extendedRemaining, initialRemaining + (25 * 60))
+
+        // Lid sleep mode toggle
+        XCTAssertFalse(service.preventLidSleep)
+        service.preventLidSleep = true
+        XCTAssertTrue(service.preventLidSleep)
+        XCTAssertTrue(service.preventDisplaySleep) // alias consistency
+
+        service.deactivate()
+        XCTAssertFalse(service.isActive)
+    }
+
+    // MARK: - Clipboard History Tests
+
+    func testClipboardHistoryItemCreationAndFiltering() {
+        let textItem = ClipboardItem(text: "Hello World", kind: .text)
+        let linkItem = ClipboardItem(text: "https://example.com/test", kind: .link)
+        let fileItem = ClipboardItem(text: "test.pdf", kind: .files, filePaths: ["/Users/test/test.pdf"])
+        let imageItem = ClipboardItem(text: "photo.jpg", kind: .image, filePaths: ["/Users/test/photo.jpg"])
+
+        XCTAssertEqual(textItem.kind, .text)
+        XCTAssertEqual(linkItem.kind, .link)
+        XCTAssertEqual(fileItem.kind, .files)
+        XCTAssertEqual(imageItem.kind, .image)
+        XCTAssertEqual(textItem.charCount, 11)
+    }
+
+    func testClipboardServicePinningAndDeletion() {
+        let service = ClipboardHistoryService()
+        service.clearAllIncludingPinned()
+        XCTAssertEqual(service.items.count, 0)
+
+        let item1 = ClipboardItem(id: UUID(), text: "Item 1", kind: .text, createdAt: Date().addingTimeInterval(-100))
+        let item2 = ClipboardItem(id: UUID(), text: "Item 2", kind: .text, createdAt: Date())
+
+        service.record(item: item1)
+        service.record(item: item2)
+
+        XCTAssertEqual(service.items.count, 2)
+
+        if let first = service.items.first {
+            XCTAssertFalse(first.isPinned)
+            service.togglePin(first)
+            XCTAssertTrue(service.items.first?.isPinned ?? false)
+
+            service.deleteItem(first)
+            XCTAssertFalse(service.items.contains { $0.id == first.id })
+        }
+    }
+
+    // MARK: - Scroll Inverter Tests
+
+    func testScrollInverterToggleAndSettings() {
+        let service = ScrollInverterService()
+        let initial = service.isEnabled
+
+        service.toggle()
+        XCTAssertEqual(service.isEnabled, !initial)
+
+        // Test axis flags
+        service.invertVertical = true
+        service.invertHorizontal = true
+        XCTAssertTrue(service.invertVertical)
+        XCTAssertTrue(service.invertHorizontal)
+
+        service.isEnabled = false
+    }
+
+    // MARK: - Finder Cut & Paste Tests
+
+    func testFinderCutPasteToggleAndInitialState() {
+        let service = FinderCutPasteService()
+        XCTAssertTrue(service.markedURLs.isEmpty)
+
+        service.isEnabled = false
+        XCTAssertFalse(service.isEnabled)
+        XCTAssertFalse(service.isRunning)
+    }
+
+    // MARK: - Quit on Close Tests
+
+    func testQuitOnCloseExceptions() {
+        let service = QuitOnCloseService()
+        let testBundle = "com.test.uniqueApp"
+
+        service.addException(bundleIdentifier: testBundle)
+        XCTAssertTrue(service.exceptions.contains(testBundle))
+
+        service.removeException(bundleIdentifier: testBundle)
+        XCTAssertFalse(service.exceptions.contains(testBundle))
+    }
+
+    func testQuitOnCloseBrowserAndFinderExclusion() {
+        let service = QuitOnCloseService()
+
+        // Finder and own app excluded
+        XCTAssertTrue(service.isExcluded(bundleID: "com.apple.finder"))
+        XCTAssertTrue(service.isExcluded(bundleID: Bundle.main.bundleIdentifier ?? "NihanviBuilds.NewNet"))
+
+        // Standard browsers excluded
+        XCTAssertTrue(service.isExcluded(bundleID: "com.apple.Safari"))
+        XCTAssertTrue(service.isExcluded(bundleID: "com.google.Chrome"))
+        XCTAssertTrue(service.isExcluded(bundleID: "org.mozilla.firefox"))
+        XCTAssertTrue(service.isExcluded(bundleID: "com.brave.Browser"))
+        XCTAssertTrue(service.isExcluded(bundleID: "company.thebrowser.Browser"))
+
+        // Standard user apps are NOT excluded by default
+        XCTAssertFalse(service.isExcluded(bundleID: "com.apple.calculator"))
+        XCTAssertFalse(service.isExcluded(bundleID: "com.apple.TextEdit"))
+
+        // Adding user exception
+        service.addException(bundleIdentifier: "com.apple.TextEdit")
+        XCTAssertTrue(service.isExcluded(bundleID: "com.apple.TextEdit"))
+        service.removeException(bundleIdentifier: "com.apple.TextEdit")
+        XCTAssertFalse(service.isExcluded(bundleID: "com.apple.TextEdit"))
+    }
+
+    // MARK: - NewNetTab Tests
+
+    func testNewNetTabIncludesUtilitiesAndClipboard() {
+        XCTAssertTrue(NewNetTab.allCases.contains(.clipboard))
+        XCTAssertTrue(NewNetTab.allCases.contains(.utilities))
+        XCTAssertEqual(NewNetTab.clipboard.title, "Clipboard")
+        XCTAssertEqual(NewNetTab.utilities.title, "Utilities")
+        XCTAssertEqual(NewNetTab.clipboard.systemImage, "doc.on.clipboard")
+        XCTAssertEqual(NewNetTab.utilities.systemImage, "wrench.and.screwdriver")
+    }
+
+    // MARK: - Coordinator Integration
+
+    func testUtilitiesCoordinatorInitialization() {
+        let settings = AppSettings()
+        let coordinator = UtilitiesCoordinator(settings: settings)
+
+        XCTAssertNotNil(coordinator.keepAwake)
+        XCTAssertNotNil(coordinator.clipboardHistory)
+        XCTAssertNotNil(coordinator.quitOnClose)
+        XCTAssertNotNil(coordinator.scrollInverter)
+        XCTAssertNotNil(coordinator.finderCutPaste)
+    }
+
+    // MARK: - Accessibility Permission Tests
+
+    func testAccessibilityPermissionStatusAndHelper() {
+        let granted = AccessibilityPermissionStatus.granted
+        let notGranted = AccessibilityPermissionStatus.notGranted
+        let unknown = AccessibilityPermissionStatus.unknown
+
+        XCTAssertEqual(granted, .granted)
+        XCTAssertEqual(notGranted, .notGranted)
+        XCTAssertEqual(unknown, .unknown)
+
+        // Verify SystemPermissionsHelper reflection of PermissionsManager
+        let currentStatus = SystemPermissionsHelper.status
+        let isGranted = SystemPermissionsHelper.isAccessibilityGranted
+        XCTAssertEqual(isGranted, currentStatus == .granted)
+
+        // Nonisolated queries
+        let passiveChecked = SystemPermissionsHelper.checkAccessibility(prompt: false)
+        XCTAssertEqual(passiveChecked, isGranted)
+        _ = SystemPermissionsHelper.checkListenEventAccess(prompt: false)
+
+        // Stop polling cleanly in test environment
+        PermissionsManager.shared.stopPolling()
     }
 }
 
