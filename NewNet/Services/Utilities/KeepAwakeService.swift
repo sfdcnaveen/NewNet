@@ -15,6 +15,8 @@ final class KeepAwakeService: ObservableObject {
         didSet {
             if isActive {
                 applyAssertions()
+            } else if !preventLidSleep {
+                setPmsetDisableSleep(false)
             }
         }
     }
@@ -45,6 +47,11 @@ final class KeepAwakeService: ObservableObject {
     private var endDate: Date?
 
     init() {
+        // Clear any orphaned sleepDisabled setting from unexpected app exit
+        if UserDefaults.standard.bool(forKey: "settings.sleepDisabledFlag") {
+            setPmsetDisableSleep(false)
+        }
+
         updateBatteryStatus()
         startBatteryMonitoring()
         
@@ -59,6 +66,7 @@ final class KeepAwakeService: ObservableObject {
     deinit {
         MainActor.assumeIsolated {
             releaseAssertions()
+            setPmsetDisableSleep(false, synchronous: true)
             countdownTimer?.invalidate()
             batteryTimer?.invalidate()
         }
@@ -158,7 +166,7 @@ final class KeepAwakeService: ObservableObject {
         }
     }
 
-    // MARK: - IOKit Power Assertions
+    // MARK: - IOKit Power Assertions & Clamshell Mode
 
     private func applyAssertions() {
         // Prevent system idle sleep
@@ -180,6 +188,8 @@ final class KeepAwakeService: ObservableObject {
 
         // Lid closed mode: prevents sleep even when MacBook clamshell / lid is closed
         if preventLidSleep {
+            setPmsetDisableSleep(true)
+
             if !hasLidAssertion {
                 var assertionID = IOPMAssertionID(0)
                 let result = IOPMAssertionCreateWithName(
@@ -212,6 +222,8 @@ final class KeepAwakeService: ObservableObject {
                 }
             }
         } else {
+            setPmsetDisableSleep(false)
+
             if hasLidAssertion {
                 IOPMAssertionRelease(lidAssertionID)
                 hasLidAssertion = false
@@ -224,6 +236,8 @@ final class KeepAwakeService: ObservableObject {
     }
 
     private func releaseAssertions() {
+        setPmsetDisableSleep(false)
+
         if hasLidAssertion {
             IOPMAssertionRelease(lidAssertionID)
             hasLidAssertion = false
@@ -235,6 +249,36 @@ final class KeepAwakeService: ObservableObject {
         if hasSystemAssertion {
             IOPMAssertionRelease(systemAssertionID)
             hasSystemAssertion = false
+        }
+    }
+
+    private func setPmsetDisableSleep(_ disable: Bool, synchronous: Bool = false) {
+        let flag = disable ? "1" : "0"
+        UserDefaults.standard.set(disable, forKey: "settings.sleepDisabledFlag")
+
+        let execute = {
+            let sudoProcess = Process()
+            sudoProcess.executableURL = URL(fileURLWithPath: "/usr/bin/sudo")
+            sudoProcess.arguments = ["-n", "/usr/bin/pmset", "disablesleep", flag]
+            do {
+                try sudoProcess.run()
+                sudoProcess.waitUntilExit()
+                if sudoProcess.terminationStatus != 0 {
+                    let directProcess = Process()
+                    directProcess.executableURL = URL(fileURLWithPath: "/usr/bin/pmset")
+                    directProcess.arguments = ["disablesleep", flag]
+                    try? directProcess.run()
+                    directProcess.waitUntilExit()
+                }
+            } catch {
+                Self.logger.error("pmset disablesleep failed: \(error.localizedDescription)")
+            }
+        }
+
+        if synchronous {
+            execute()
+        } else {
+            DispatchQueue.global(qos: .userInitiated).async(execute: execute)
         }
     }
 
@@ -280,5 +324,6 @@ final class KeepAwakeService: ObservableObject {
 
     @objc private func handleAppWillTerminate() {
         releaseAssertions()
+        setPmsetDisableSleep(false, synchronous: true)
     }
 }

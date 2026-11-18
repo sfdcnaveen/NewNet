@@ -317,21 +317,6 @@ struct UtilitiesDashboardView: View {
                     .buttonStyle(LiquidGlassButtonStyle())
                 }
                 .padding(.top, 4)
-            } else if scrollInverter.isEnabled {
-                HStack(spacing: 12) {
-                    Toggle(isOn: $scrollInverter.invertVertical) {
-                        Text("Vertical")
-                            .font(.system(size: 11))
-                    }
-                    .toggleStyle(.checkbox)
-
-                    Toggle(isOn: $scrollInverter.invertHorizontal) {
-                        Text("Horizontal")
-                            .font(.system(size: 11))
-                    }
-                    .toggleStyle(.checkbox)
-                }
-                .padding(.top, 2)
             }
         }
         .padding(12)

@@ -27,6 +27,7 @@ final class QuitOnCloseService: ObservableObject {
 
     private var exceptionSet: Set<String> = []
     private var hadWindows: Set<pid_t> = []
+    private var observers: [pid_t: AXObserver] = [:]
     private var pendingChecks: [pid_t: DispatchWorkItem] = [:]
     private var isMonitoring: Bool = false
     private var cancellables: Set<AnyCancellable> = []
@@ -34,9 +35,14 @@ final class QuitOnCloseService: ObservableObject {
     // Default system apps that should never be auto-quit
     private static let defaultExcludedBundleIDs: Set<String> = [
         "com.apple.finder",
-        "com.apple.Safari",
-        "com.apple.Preview",
         Bundle.main.bundleIdentifier ?? "NihanviBuilds.NewNet"
+    ]
+
+    private static let appNotifications = [
+        kAXWindowCreatedNotification,
+        kAXMainWindowChangedNotification,
+        kAXFocusedWindowChangedNotification,
+        kAXApplicationActivatedNotification
     ]
 
     init() {
@@ -90,35 +96,48 @@ final class QuitOnCloseService: ObservableObject {
             return
         }
         hasPermissionError = false
-
         isMonitoring = true
 
-        NSWorkspace.shared.notificationCenter.addObserver(
+        let center = NSWorkspace.shared.notificationCenter
+        center.addObserver(
             self,
-            selector: #selector(handleAppDeactivated(_:)),
-            name: NSWorkspace.didDeactivateApplicationNotification,
+            selector: #selector(handleAppLaunched(_:)),
+            name: NSWorkspace.didLaunchApplicationNotification,
             object: nil
         )
-
-        NSWorkspace.shared.notificationCenter.addObserver(
+        center.addObserver(
+            self,
+            selector: #selector(handleAppActivated(_:)),
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil
+        )
+        center.addObserver(
             self,
             selector: #selector(handleAppTerminated(_:)),
             name: NSWorkspace.didTerminateApplicationNotification,
             object: nil
         )
 
-        // Seed initial apps that have windows
-        updateInitialWindowedApps()
-        Self.logger.info("Quit on Close monitoring started")
+        for app in NSWorkspace.shared.runningApplications where app.activationPolicy == .regular {
+            attach(app)
+        }
+
+        Self.logger.info("Quit on Close monitoring started with AXObserver")
     }
 
     func stopMonitoring() {
         guard isMonitoring else { return }
         isMonitoring = false
 
-        NSWorkspace.shared.notificationCenter.removeObserver(self, name: NSWorkspace.didDeactivateApplicationNotification, object: nil)
-        NSWorkspace.shared.notificationCenter.removeObserver(self, name: NSWorkspace.didTerminateApplicationNotification, object: nil)
+        let center = NSWorkspace.shared.notificationCenter
+        center.removeObserver(self, name: NSWorkspace.didLaunchApplicationNotification, object: nil)
+        center.removeObserver(self, name: NSWorkspace.didActivateApplicationNotification, object: nil)
+        center.removeObserver(self, name: NSWorkspace.didTerminateApplicationNotification, object: nil)
 
+        for pid in Array(observers.keys) {
+            detach(pid: pid)
+        }
+        observers.removeAll()
         pendingChecks.values.forEach { $0.cancel() }
         pendingChecks.removeAll()
         hadWindows.removeAll()
@@ -126,96 +145,180 @@ final class QuitOnCloseService: ObservableObject {
         Self.logger.info("Quit on Close monitoring stopped")
     }
 
-    private func updateInitialWindowedApps() {
-        for app in NSWorkspace.shared.runningApplications where app.activationPolicy == .regular {
-            if countWindows(for: app) > 0 {
-                hadWindows.insert(app.processIdentifier)
-            }
-        }
-    }
+    // MARK: - AXObserver Attachment
 
-    @objc private func handleAppDeactivated(_ notification: Notification) {
-        guard isEnabled else { return }
-        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else {
-            return
-        }
-
+    private func attach(_ app: NSRunningApplication) {
         let pid = app.processIdentifier
         let bundleID = app.bundleIdentifier ?? ""
 
-        // Exclude background agents, system apps, and user exceptions
         guard app.activationPolicy == .regular else { return }
-        guard !Self.defaultExcludedBundleIDs.contains(bundleID) else { return }
-        guard !exceptionSet.contains(bundleID) else { return }
+        guard !Self.defaultExcludedBundleIDs.contains(bundleID), !exceptionSet.contains(bundleID) else { return }
+        guard observers[pid] == nil else { return }
 
-        // If the app currently has windows, register it
-        let currentWindowCount = countWindows(for: app)
-        if currentWindowCount > 0 {
-            hadWindows.insert(pid)
-            return
+        var observerRef: AXObserver?
+        guard AXObserverCreate(
+            pid,
+            { (observer, element, notification, refcon) in
+                guard let refcon = refcon else { return }
+                let service = Unmanaged<QuitOnCloseService>.fromOpaque(refcon).takeUnretainedValue()
+                Task { @MainActor in
+                    service.handleAXNotification(observer: observer, element: element, notification: notification as String)
+                }
+            },
+            &observerRef
+        ) == .success,
+        let observer = observerRef else { return }
+
+        let refcon = Unmanaged.passUnretained(self).toOpaque()
+        let appElement = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(appElement, 0.35)
+
+        for notification in Self.appNotifications {
+            AXObserverAddNotification(observer, appElement, notification as CFString, refcon)
         }
 
-        // Only auto-quit apps that have previously presented a window in this session
-        guard hadWindows.contains(pid) else { return }
+        CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .commonModes)
+        observers[pid] = observer
 
-        // Schedule check with a brief debounce so dialogs or new windows have time to render
-        pendingChecks[pid]?.cancel()
-        let workItem = DispatchWorkItem { [weak self] in
-            Task { @MainActor [weak self] in
-                self?.performQuitCheck(for: app)
-            }
-        }
-        pendingChecks[pid] = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
+        refreshWindows(pid: pid, observer: observer)
     }
 
-    @objc private func handleAppTerminated(_ notification: Notification) {
-        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else {
-            return
+    private func detach(pid: pid_t) {
+        if let observer = observers[pid] {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .commonModes)
         }
-        let pid = app.processIdentifier
+        observers.removeValue(forKey: pid)
         hadWindows.remove(pid)
         pendingChecks[pid]?.cancel()
         pendingChecks.removeValue(forKey: pid)
     }
 
-    private func performQuitCheck(for app: NSRunningApplication) {
-        let pid = app.processIdentifier
-        pendingChecks.removeValue(forKey: pid)
+    private func refreshWindows(pid: pid_t, observer: AXObserver) {
+        let refcon = Unmanaged.passUnretained(self).toOpaque()
+        let appElement = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(appElement, 0.35)
 
-        guard !app.isTerminated else {
-            hadWindows.remove(pid)
+        let windows = standardWindows(of: appElement)
+        if !windows.isEmpty {
+            hadWindows.insert(pid)
+        }
+
+        for window in windows {
+            AXObserverAddNotification(observer, window, kAXUIElementDestroyedNotification as CFString, refcon)
+        }
+    }
+
+    // MARK: - Event Handling
+
+    func handleAXNotification(observer: AXObserver, element: AXUIElement, notification: String) {
+        var pid: pid_t = 0
+        AXUIElementGetPid(element, &pid)
+        if pid == 0 {
+            pid = observers.first(where: { CFEqual($0.value, observer) })?.key ?? 0
+        }
+        guard pid != 0 else { return }
+
+        if notification == (kAXWindowCreatedNotification as String) {
+            hadWindows.insert(pid)
+            pendingChecks[pid]?.cancel()
+            pendingChecks.removeValue(forKey: pid)
+            refreshWindows(pid: pid, observer: observer)
             return
         }
 
-        let windowCount = countWindows(for: app)
-        if windowCount == 0 && hadWindows.contains(pid) {
-            Self.logger.info("Auto-quitting application: \(app.localizedName ?? "\(pid)")")
-            hadWindows.remove(pid)
+        if notification == (kAXUIElementDestroyedNotification as String) ||
+           notification == (kAXMainWindowChangedNotification as String) {
+            guard hadWindows.contains(pid) else { return }
+            scheduleQuitCheck(pid: pid)
+        }
+    }
+
+    private func scheduleQuitCheck(pid: pid_t) {
+        pendingChecks[pid]?.cancel()
+
+        let workItem = DispatchWorkItem { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self = self, self.isMonitoring else { return }
+                self.performQuitCheck(pid: pid)
+            }
+        }
+        pendingChecks[pid] = workItem
+        // Brief debounce to allow new windows/tabs to open or dialogs to appear
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: workItem)
+    }
+
+    private func performQuitCheck(pid: pid_t) {
+        pendingChecks.removeValue(forKey: pid)
+
+        guard let app = NSRunningApplication(processIdentifier: pid),
+              !app.isTerminated,
+              app.activationPolicy == .regular else {
+            detach(pid: pid)
+            return
+        }
+
+        let bundleID = app.bundleIdentifier ?? ""
+        guard !Self.defaultExcludedBundleIDs.contains(bundleID), !exceptionSet.contains(bundleID) else { return }
+
+        let appElement = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(appElement, 0.35)
+        let windows = standardWindows(of: appElement)
+
+        if windows.isEmpty && hadWindows.contains(pid) {
+            Self.logger.info("QuitOnClose: Terminating \(app.localizedName ?? "\(pid)") because its last standard window was closed")
+            detach(pid: pid)
             app.terminate()
         }
     }
 
-    private func countWindows(for app: NSRunningApplication) -> Int {
-        let appElement = AXUIElementCreateApplication(app.processIdentifier)
+    // MARK: - App Notifications
+
+    @objc private func handleAppLaunched(_ notification: Notification) {
+        guard isEnabled else { return }
+        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
+        attach(app)
+    }
+
+    @objc private func handleAppActivated(_ notification: Notification) {
+        guard isEnabled else { return }
+        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
+        attach(app)
+    }
+
+    @objc private func handleAppTerminated(_ notification: Notification) {
+        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
+        detach(pid: app.processIdentifier)
+    }
+
+    // MARK: - Window Inspection
+
+    private func standardWindows(of appElement: AXUIElement) -> [AXUIElement] {
         var windowsRef: CFTypeRef?
         let result = AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef)
 
         guard result == .success, let windows = windowsRef as? [AXUIElement] else {
-            return 0
+            return []
         }
 
-        // Filter out minimized or hidden sheets if needed
-        var standardWindows = 0
-        for window in windows {
-            var roleRef: CFTypeRef?
-            if AXUIElementCopyAttributeValue(window, kAXRoleAttribute as CFString, &roleRef) == .success,
-               let role = roleRef as? String,
-               role == kAXWindowRole as String {
-                standardWindows += 1
+        return windows.filter { isStandardWindow($0) }
+    }
+
+    private func isStandardWindow(_ window: AXUIElement) -> Bool {
+        var roleRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(window, kAXRoleAttribute as CFString, &roleRef) == .success,
+              let role = roleRef as? String,
+              role == (kAXWindowRole as String) else {
+            return false
+        }
+
+        var subroleRef: CFTypeRef?
+        if AXUIElementCopyAttributeValue(window, kAXSubroleAttribute as CFString, &subroleRef) == .success,
+           let subrole = subroleRef as? String {
+            if subrole == (kAXFloatingWindowSubrole as String) || subrole == (kAXSystemDialogSubrole as String) {
+                return false
             }
         }
 
-        return standardWindows
+        return true
     }
 }
