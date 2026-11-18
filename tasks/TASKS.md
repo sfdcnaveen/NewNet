@@ -68,3 +68,14 @@
    Done by: CODEX
    Done at: 2026-11-07T05:53:30Z
 
+7. fix-utilities-keepawake-quit-scroll
+   Id: 7-fix-utilities-keepawake-quit-scroll
+   Scope: Utilities
+   Files: NewNet/Services/Utilities/KeepAwakeService.swift NewNet/Services/Utilities/QuitOnCloseService.swift NewNet/Services/Utilities/ScrollInverterService.swift NewNet/Views/Utilities/UtilitiesDashboardView.swift
+   Note: Finished clamshell keep-awake via pmset -a, AXObserver quit-on-close, and physical mouse scroll inversion; make diagnose, make build, and make test all succeed with zero warnings.
+   Detail: tasks/details/7-fix-utilities-keepawake-quit-scroll.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-18T05:55:51Z
+   Done by: CODEX
+   Done at: 2026-11-18T06:05:36Z
+

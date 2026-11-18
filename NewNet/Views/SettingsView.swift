@@ -279,12 +279,6 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
 
                     if settings.scrollInversionEnabled {
-                        HStack(spacing: 16) {
-                            Toggle("Vertical", isOn: $settings.scrollInvertVertical)
-                            Toggle("Horizontal", isOn: $settings.scrollInvertHorizontal)
-                        }
-                        .font(.system(size: 11))
-
                         if !SystemPermissionsHelper.isAccessibilityGranted {
                             HStack {
                                 Image(systemName: "exclamationmark.triangle.fill")

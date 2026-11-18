@@ -236,15 +236,28 @@ struct UtilitiesDashboardView: View {
                 }
 
                 Spacer()
+            }
 
-                // Lid closed sleep toggle
-                Toggle(isOn: $keepAwake.preventLidSleep) {
-                    Text("Lid Closed?")
-                        .font(.system(size: 10, weight: .medium))
+            Divider()
+                .opacity(0.35)
+                .padding(.vertical, 2)
+
+            // Clamshell Keep Awake Toggle
+            HStack {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Keep awake when lid is closed")
+                        .font(.system(size: 11, weight: .medium))
+                    Text("Prevents Mac sleep or lock when the display lid is shut")
+                        .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                 }
-                .toggleStyle(.checkbox)
-                .help("Prevents Mac sleep even when the MacBook lid is closed")
+
+                Spacer()
+
+                Toggle("", isOn: $keepAwake.preventLidSleep)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
             }
 
             if let battery = keepAwake.batteryPercentage {

@@ -748,6 +748,31 @@ final class UtilitiesServicesTests: XCTestCase {
         XCTAssertFalse(service.exceptions.contains(testBundle))
     }
 
+    func testQuitOnCloseBrowserAndFinderExclusion() {
+        let service = QuitOnCloseService()
+
+        // Finder and own app excluded
+        XCTAssertTrue(service.isExcluded(bundleID: "com.apple.finder"))
+        XCTAssertTrue(service.isExcluded(bundleID: Bundle.main.bundleIdentifier ?? "NihanviBuilds.NewNet"))
+
+        // Standard browsers excluded
+        XCTAssertTrue(service.isExcluded(bundleID: "com.apple.Safari"))
+        XCTAssertTrue(service.isExcluded(bundleID: "com.google.Chrome"))
+        XCTAssertTrue(service.isExcluded(bundleID: "org.mozilla.firefox"))
+        XCTAssertTrue(service.isExcluded(bundleID: "com.brave.Browser"))
+        XCTAssertTrue(service.isExcluded(bundleID: "company.thebrowser.Browser"))
+
+        // Standard user apps are NOT excluded by default
+        XCTAssertFalse(service.isExcluded(bundleID: "com.apple.calculator"))
+        XCTAssertFalse(service.isExcluded(bundleID: "com.apple.TextEdit"))
+
+        // Adding user exception
+        service.addException(bundleIdentifier: "com.apple.TextEdit")
+        XCTAssertTrue(service.isExcluded(bundleID: "com.apple.TextEdit"))
+        service.removeException(bundleIdentifier: "com.apple.TextEdit")
+        XCTAssertFalse(service.isExcluded(bundleID: "com.apple.TextEdit"))
+    }
+
     // MARK: - NewNetTab Tests
 
     func testNewNetTabIncludesUtilitiesAndClipboard() {

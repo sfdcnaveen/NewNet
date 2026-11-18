@@ -13,10 +13,14 @@ final class KeepAwakeService: ObservableObject {
     @Published private(set) var remainingSeconds: Int? = nil
     @Published var preventLidSleep: Bool = false {
         didSet {
+            guard oldValue != preventLidSleep else { return }
+            if preventLidSleep {
+                setPmsetDisableSleep(true)
+            } else {
+                setPmsetDisableSleep(false)
+            }
             if isActive {
                 applyAssertions()
-            } else if !preventLidSleep {
-                setPmsetDisableSleep(false)
             }
         }
     }
@@ -47,10 +51,8 @@ final class KeepAwakeService: ObservableObject {
     private var endDate: Date?
 
     init() {
-        // Clear any orphaned sleepDisabled setting from unexpected app exit
-        if UserDefaults.standard.bool(forKey: "settings.sleepDisabledFlag") {
-            setPmsetDisableSleep(false)
-        }
+        // Clear any orphaned sleepDisabled setting from unexpected app exit or reboot
+        setPmsetDisableSleep(false)
 
         updateBatteryStatus()
         startBatteryMonitoring()
@@ -256,22 +258,34 @@ final class KeepAwakeService: ObservableObject {
         let flag = disable ? "1" : "0"
         UserDefaults.standard.set(disable, forKey: "settings.sleepDisabledFlag")
 
-        let execute = {
-            let sudoProcess = Process()
-            sudoProcess.executableURL = URL(fileURLWithPath: "/usr/bin/sudo")
-            sudoProcess.arguments = ["-n", "/usr/bin/pmset", "disablesleep", flag]
-            do {
-                try sudoProcess.run()
-                sudoProcess.waitUntilExit()
-                if sudoProcess.terminationStatus != 0 {
-                    let directProcess = Process()
-                    directProcess.executableURL = URL(fileURLWithPath: "/usr/bin/pmset")
-                    directProcess.arguments = ["disablesleep", flag]
-                    try? directProcess.run()
-                    directProcess.waitUntilExit()
+        let execute: @Sendable () -> Void = {
+            func runCmd(_ executable: String, _ args: [String]) -> Int32 {
+                let proc = Process()
+                proc.executableURL = URL(fileURLWithPath: executable)
+                proc.arguments = args
+                proc.standardError = Pipe()
+                proc.standardOutput = Pipe()
+                do {
+                    try proc.run()
+                    proc.waitUntilExit()
+                    return proc.terminationStatus
+                } catch {
+                    return -1
                 }
-            } catch {
-                Self.logger.error("pmset disablesleep failed: \(error.localizedDescription)")
+            }
+
+            // 1. Try sudo -n with -a flag
+            var status = runCmd("/usr/bin/sudo", ["-n", "/usr/bin/pmset", "-a", "disablesleep", flag])
+            // 2. Try sudo -n without -a flag (matches standard sudoers rules)
+            if status != 0 {
+                status = runCmd("/usr/bin/sudo", ["-n", "/usr/bin/pmset", "disablesleep", flag])
+            }
+            // 3. Direct invocation fallback
+            if status != 0 {
+                status = runCmd("/usr/bin/pmset", ["-a", "disablesleep", flag])
+            }
+            if status != 0 {
+                _ = runCmd("/usr/bin/pmset", ["disablesleep", flag])
             }
         }
 

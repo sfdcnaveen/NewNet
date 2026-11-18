@@ -25,7 +25,6 @@ final class ScrollInverterService: ObservableObject {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var cancellables: Set<AnyCancellable> = []
-    private var lastGesturePhaseTimestamp: UInt64 = 0
 
     init() {
         let storedEnabled = UserDefaults.standard.bool(forKey: "settings.scrollInversionEnabled")
@@ -136,54 +135,24 @@ final class ScrollInverterService: ObservableObject {
             return Unmanaged.passUnretained(event)
         }
 
-        let isContinuous = event.getIntegerValueField(.scrollWheelEventIsContinuous) != 0
         let momentumPhase = event.getIntegerValueField(.scrollWheelEventMomentumPhase)
         let scrollPhase = event.getIntegerValueField(.scrollWheelEventScrollPhase)
-        let scrollCount = event.getIntegerValueField(.scrollWheelEventScrollCount)
 
-        let now = mach_absolute_time()
-
-        // Phased gestures (trackpad or Magic Mouse swipe) always carry momentum or scroll phase
-        if momentumPhase != 0 || scrollPhase != 0 {
-            lastGesturePhaseTimestamp = now
+        // Detect physical mouse wheels using momentumPhase == 0 && scrollPhase == 0 instead of rejecting continuous events
+        guard momentumPhase == 0 && scrollPhase == 0 else {
             return Unmanaged.passUnretained(event)
         }
 
-        // Touch devices can emit a phaseless transition event between gesture end and momentum start
-        // that still carries scrollCount. Physical mouse wheels never emit gesture phases.
-        if isContinuous && scrollCount != 0 {
-            var timebase = mach_timebase_info_data_t()
-            mach_timebase_info(&timebase)
-            let elapsedNanos = (now - lastGesturePhaseTimestamp) * UInt64(timebase.numer) / UInt64(timebase.denom)
-            let elapsedSeconds = Double(elapsedNanos) / 1_000_000_000.0
-            if elapsedSeconds <= 0.35 {
-                return Unmanaged.passUnretained(event)
-            }
-        }
+        // Invert scrollWheelEventDeltaAxis1 and scrollWheelEventFixedPtDeltaAxis1 (using getDoubleValueField / setDoubleValueField)
+        let delta1 = event.getDoubleValueField(.scrollWheelEventDeltaAxis1)
+        let fixed1 = event.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1)
+        let point1 = event.getIntegerValueField(.scrollWheelEventPointDeltaAxis1)
 
-        // Physical mouse wheel detected: Apply vertical inversion
-        if invertVertical {
-            let line1 = event.getIntegerValueField(.scrollWheelEventDeltaAxis1)
-            let point1 = event.getIntegerValueField(.scrollWheelEventPointDeltaAxis1)
-            let fixed1 = event.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1)
-
-            if line1 != 0 || point1 != 0 || fixed1 != 0 {
-                event.setIntegerValueField(.scrollWheelEventDeltaAxis1, value: -line1)
+        if delta1 != 0 || fixed1 != 0 || point1 != 0 {
+            event.setDoubleValueField(.scrollWheelEventDeltaAxis1, value: -delta1)
+            event.setDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1, value: -fixed1)
+            if point1 != 0 {
                 event.setIntegerValueField(.scrollWheelEventPointDeltaAxis1, value: -point1)
-                event.setDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1, value: -fixed1)
-            }
-        }
-
-        // Apply horizontal inversion
-        if invertHorizontal {
-            let line2 = event.getIntegerValueField(.scrollWheelEventDeltaAxis2)
-            let point2 = event.getIntegerValueField(.scrollWheelEventPointDeltaAxis2)
-            let fixed2 = event.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis2)
-
-            if line2 != 0 || point2 != 0 || fixed2 != 0 {
-                event.setIntegerValueField(.scrollWheelEventDeltaAxis2, value: -line2)
-                event.setIntegerValueField(.scrollWheelEventPointDeltaAxis2, value: -point2)
-                event.setDoubleValueField(.scrollWheelEventFixedPtDeltaAxis2, value: -fixed2)
             }
         }
 

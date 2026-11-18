@@ -38,8 +38,81 @@ final class QuitOnCloseService: ObservableObject {
         Bundle.main.bundleIdentifier ?? "NihanviBuilds.NewNet"
     ]
 
+    private static let knownBrowserBundleIDs: Set<String> = [
+        "com.apple.Safari",
+        "com.apple.SafariTechnologyPreview",
+        "com.google.Chrome",
+        "com.google.Chrome.canary",
+        "com.google.Chrome.beta",
+        "com.google.Chrome.dev",
+        "org.mozilla.firefox",
+        "org.mozilla.firefoxdeveloperedition",
+        "org.mozilla.nightly",
+        "com.microsoft.edgemac",
+        "com.microsoft.edgemac.Canary",
+        "com.microsoft.edgemac.Dev",
+        "com.microsoft.edgemac.Beta",
+        "com.brave.Browser",
+        "com.brave.Browser.beta",
+        "com.brave.Browser.nightly",
+        "company.thebrowser.Browser",
+        "com.operasoftware.Opera",
+        "com.operasoftware.OperaNext",
+        "com.operasoftware.OperaDeveloper",
+        "com.operasoftware.OperaGX",
+        "com.vivaldi.Vivaldi",
+        "com.kagi.kagimacOS",
+        "org.torproject.torbrowser",
+        "com.duckduckgo.macos.browser",
+        "com.sigmaos.sigmaos.macos",
+        "app.zen-browser.zen",
+        "org.zen-browser.zen",
+        "org.chromium.Chromium",
+        "org.mozilla.librewolf",
+        "net.waterfox.waterfox",
+        "net.imput.helium"
+    ]
+
+    private func isBrowser(bundleIdentifier: String) -> Bool {
+        if Self.knownBrowserBundleIDs.contains(bundleIdentifier) {
+            return true
+        }
+        let lower = bundleIdentifier.lowercased()
+        if lower.contains("browser") ||
+           lower.hasPrefix("com.google.chrome") ||
+           lower.hasPrefix("org.mozilla.firefox") ||
+           lower.hasPrefix("com.brave.browser") ||
+           lower.hasPrefix("company.thebrowser") {
+            return true
+        }
+        if let httpsURL = URL(string: "https://apple.com") {
+            let browserURLs = NSWorkspace.shared.urlsForApplications(toOpen: httpsURL)
+            for url in browserURLs {
+                if Bundle(url: url)?.bundleIdentifier == bundleIdentifier {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    func isExcluded(bundleID: String) -> Bool {
+        guard !bundleID.isEmpty else { return false }
+        if Self.defaultExcludedBundleIDs.contains(bundleID) {
+            return true
+        }
+        if exceptionSet.contains(bundleID) {
+            return true
+        }
+        if isBrowser(bundleIdentifier: bundleID) {
+            return true
+        }
+        return false
+    }
+
     private static let appNotifications = [
         kAXWindowCreatedNotification,
+        kAXUIElementDestroyedNotification,
         kAXMainWindowChangedNotification,
         kAXFocusedWindowChangedNotification,
         kAXApplicationActivatedNotification
@@ -152,7 +225,7 @@ final class QuitOnCloseService: ObservableObject {
         let bundleID = app.bundleIdentifier ?? ""
 
         guard app.activationPolicy == .regular else { return }
-        guard !Self.defaultExcludedBundleIDs.contains(bundleID), !exceptionSet.contains(bundleID) else { return }
+        guard !isExcluded(bundleID: bundleID) else { return }
         guard observers[pid] == nil else { return }
 
         var observerRef: AXObserver?
@@ -226,14 +299,20 @@ final class QuitOnCloseService: ObservableObject {
             return
         }
 
-        if notification == (kAXUIElementDestroyedNotification as String) ||
-           notification == (kAXMainWindowChangedNotification as String) {
+        if notification == (kAXUIElementDestroyedNotification as String) {
             guard hadWindows.contains(pid) else { return }
-            scheduleQuitCheck(pid: pid)
+            performQuitCheck(pid: pid)
+            scheduleQuitCheck(pid: pid, delay: 0.05)
+            return
+        }
+
+        if notification == (kAXMainWindowChangedNotification as String) {
+            guard hadWindows.contains(pid) else { return }
+            scheduleQuitCheck(pid: pid, delay: 0.1)
         }
     }
 
-    private func scheduleQuitCheck(pid: pid_t) {
+    private func scheduleQuitCheck(pid: pid_t, delay: TimeInterval = 0.05) {
         pendingChecks[pid]?.cancel()
 
         let workItem = DispatchWorkItem { [weak self] in
@@ -243,8 +322,7 @@ final class QuitOnCloseService: ObservableObject {
             }
         }
         pendingChecks[pid] = workItem
-        // Brief debounce to allow new windows/tabs to open or dialogs to appear
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: workItem)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
     }
 
     private func performQuitCheck(pid: pid_t) {
@@ -258,14 +336,14 @@ final class QuitOnCloseService: ObservableObject {
         }
 
         let bundleID = app.bundleIdentifier ?? ""
-        guard !Self.defaultExcludedBundleIDs.contains(bundleID), !exceptionSet.contains(bundleID) else { return }
+        guard !isExcluded(bundleID: bundleID) else { return }
 
         let appElement = AXUIElementCreateApplication(pid)
         AXUIElementSetMessagingTimeout(appElement, 0.35)
         let windows = standardWindows(of: appElement)
 
         if windows.isEmpty && hadWindows.contains(pid) {
-            Self.logger.info("QuitOnClose: Terminating \(app.localizedName ?? "\(pid)") because its last standard window was closed")
+            Self.logger.info("QuitOnClose: Terminating \(app.localizedName ?? "\(pid)") because its standard window count dropped to 0")
             detach(pid: pid)
             app.terminate()
         }
@@ -312,13 +390,11 @@ final class QuitOnCloseService: ObservableObject {
         }
 
         var subroleRef: CFTypeRef?
-        if AXUIElementCopyAttributeValue(window, kAXSubroleAttribute as CFString, &subroleRef) == .success,
-           let subrole = subroleRef as? String {
-            if subrole == (kAXFloatingWindowSubrole as String) || subrole == (kAXSystemDialogSubrole as String) {
-                return false
-            }
+        guard AXUIElementCopyAttributeValue(window, kAXSubroleAttribute as CFString, &subroleRef) == .success,
+              let subrole = subroleRef as? String else {
+            return false
         }
 
-        return true
+        return subrole == (kAXStandardWindowSubrole as String) || subrole == "AXFullScreenWindow"
     }
 }
