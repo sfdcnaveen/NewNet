@@ -90,3 +90,14 @@
    Done by: GEMINI
    Done at: 2026-11-20T05:47:57Z
 
+9. design-polish-settings-media-menubar
+   Id: 9-design-polish-settings-media-menubar
+   Scope: Settings declutter, sleek media player redesign, and menu bar coffee indicator
+   Files: NewNet/Views/SettingsView.swift NewNet/Views/MusicDashboardView.swift NewNet/Views/MenuBarSpeedIndicator.swift NewNet/App/StatusBarController.swift
+   Note: Design polish complete: Settings declutter, sleek media player redesign, menu bar coffee indicator; make diagnose, make build, and make test all pass.
+   Detail: tasks/details/9-design-polish-settings-media-menubar.md
+   Claimed by: GEMINI
+   Claimed at: 2026-11-20T06:30:48Z
+   Done by: GEMINI
+   Done at: 2026-11-20T06:40:14Z
+

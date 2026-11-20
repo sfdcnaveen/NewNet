@@ -32,28 +32,24 @@ struct SettingsView: View {
             Section("General") {
                 Toggle("Open NewNet at login", isOn: launchAtLoginBinding)
 
-                HStack {
+                HStack(spacing: 8) {
                     Text("Panel size")
+                        .font(.system(size: 13))
+
                     Spacer()
-                    Text("\(Int((settings.menuBarPanelScale * 100).rounded()))%")
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
 
-                Slider(value: menuBarPanelScaleBinding, in: 0.85...1.25, step: 0.05) {
-                    Text("Panel size")
-                } minimumValueLabel: {
-                    Text("Smaller")
-                        .font(.system(size: 10, weight: .medium))
-                } maximumValueLabel: {
-                    Text("Larger")
-                        .font(.system(size: 10, weight: .medium))
-                }
-
-                Picker("App theme", selection: $settings.appTheme) {
-                    ForEach(AppTheme.allCases) { theme in
-                        Text(theme.rawValue).tag(theme)
+                    Slider(value: menuBarPanelScaleBinding, in: 0.85...1.25, step: 0.05) {
+                        Text("Panel size")
+                    } minimumValueLabel: {
+                        Image(systemName: "rectangle")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    } maximumValueLabel: {
+                        Image(systemName: "rectangle.fill")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(.secondary)
                     }
+                    .frame(width: 170)
                 }
 
                 Toggle("Resume downloads after app restart", isOn: autoResumeBinding)
@@ -144,164 +140,7 @@ struct SettingsView: View {
                 }
             }
 
-            // MARK: - 3. macOS Utilities
-            Section("macOS Utilities") {
-                // Keep Awake
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Image(systemName: "cup.and.saucer.fill")
-                            .foregroundStyle(.orange)
-                        Text("Keep Awake")
-                            .font(.system(size: 13, weight: .medium))
-                        Spacer()
-                        if let coord = utilitiesCoordinator, coord.keepAwake.isActive {
-                            Text(coord.keepAwake.remainingTimeFormatted)
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(.orange)
-                        }
-                    }
-
-                    Picker("Default duration", selection: $settings.keepAwakeDurationMinutes) {
-                        Text("Indefinite").tag(0)
-                        Text("15 Minutes").tag(15)
-                        Text("30 Minutes").tag(30)
-                        Text("1 Hour").tag(60)
-                        Text("2 Hours").tag(120)
-                    }
-
-                    Toggle("Keep awake when lid is closed", isOn: $settings.keepAwakePreventDisplaySleep)
-                }
-                .padding(.vertical, 2)
-
-                // Clipboard History
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Image(systemName: "doc.on.clipboard.fill")
-                            .foregroundStyle(.blue)
-                        Text("Clipboard History")
-                            .font(.system(size: 13, weight: .medium))
-                        Spacer()
-                        Toggle("", isOn: $settings.clipboardHistoryEnabled)
-                            .labelsHidden()
-                    }
-
-                    if settings.clipboardHistoryEnabled {
-                        Stepper("History limit: \(settings.clipboardHistoryLimit) items", value: $settings.clipboardHistoryLimit, in: 10...200, step: 10)
-                            .font(.system(size: 12))
-
-                        if let coord = utilitiesCoordinator {
-                            Button("Clear Clipboard History") {
-                                coord.clipboardHistory.clearHistory()
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(.red)
-                            .font(.system(size: 11))
-                        }
-                    }
-                }
-                .padding(.vertical, 2)
-
-                // Mouse Scroll Inverter
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Image(systemName: "computermouse.fill")
-                            .foregroundStyle(.cyan)
-                        Text("Inverse Mouse Scrolling")
-                            .font(.system(size: 13, weight: .medium))
-                        Spacer()
-                        Toggle("", isOn: $settings.scrollInversionEnabled)
-                            .labelsHidden()
-                    }
-
-                    Text("Reverses physical mouse wheel scrolling without affecting trackpad natural scrolling.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-
-                    if settings.scrollInversionEnabled && !SystemPermissionsHelper.isAccessibilityGranted {
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.orange)
-                            Text("Requires Accessibility permission")
-                                .font(.system(size: 11))
-                            Spacer()
-                            Button("Grant") {
-                                SystemPermissionsHelper.requestAccessibility()
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.small)
-                        }
-                    }
-                }
-                .padding(.vertical, 2)
-
-                // Finder Cut & Paste
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Image(systemName: "scissors")
-                            .foregroundStyle(.purple)
-                        Text("Finder Cut & Paste")
-                            .font(.system(size: 13, weight: .medium))
-                        Spacer()
-                        Toggle("", isOn: $settings.finderCutPasteEnabled)
-                            .labelsHidden()
-                    }
-
-                    Text("Enables ⌘X to cut and ⌘V to move files directly in Finder.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-
-                    if settings.finderCutPasteEnabled && !SystemPermissionsHelper.isAccessibilityGranted {
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.orange)
-                            Text("Requires Accessibility permission")
-                                .font(.system(size: 11))
-                            Spacer()
-                            Button("Grant") {
-                                SystemPermissionsHelper.requestAccessibility()
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.small)
-                        }
-                    }
-                }
-                .padding(.vertical, 2)
-
-                // Quit on Close
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Image(systemName: "xmark.app.fill")
-                            .foregroundStyle(.red)
-                        Text("Quit on Close")
-                            .font(.system(size: 13, weight: .medium))
-                        Spacer()
-                        Toggle("", isOn: $settings.autoQuitEnabled)
-                            .labelsHidden()
-                    }
-
-                    Text("Automatically quits applications when their last window is closed.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-
-                    if settings.autoQuitEnabled && !SystemPermissionsHelper.isAccessibilityGranted {
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.orange)
-                            Text("Requires Accessibility permission")
-                                .font(.system(size: 11))
-                            Spacer()
-                            Button("Grant") {
-                                SystemPermissionsHelper.requestAccessibility()
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.small)
-                        }
-                    }
-                }
-                .padding(.vertical, 2)
-            }
-
-            // MARK: - 4. Music Scrobbling
+            // MARK: - 3. Music Scrobbling
             Section("Music Scrobbling") {
                 VStack(spacing: 10) {
                     // Last.fm Card

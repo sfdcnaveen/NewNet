@@ -834,6 +834,22 @@ final class UtilitiesServicesTests: XCTestCase {
         XCTAssertEqual(NewNetTab.utilities.systemImage, "wrench.and.screwdriver")
     }
 
+    @MainActor
+    func testMenuBarSpeedIndicatorKeepAwakeIndicator() {
+        let indicator = MenuBarSpeedIndicator(frame: .zero)
+        let initialWidth = indicator.preferredWidth
+        XCTAssertFalse(indicator.isKeepAwakeActive)
+
+        indicator.isKeepAwakeActive = true
+        let activeWidth = indicator.preferredWidth
+        // Width must expand to accommodate the coffee cup icon (14pt + 4pt spacing = 18pt)
+        XCTAssertGreaterThan(activeWidth, initialWidth)
+        XCTAssertEqual(activeWidth - initialWidth, 18, accuracy: 1)
+
+        indicator.isKeepAwakeActive = false
+        XCTAssertEqual(indicator.preferredWidth, initialWidth)
+    }
+
     // MARK: - Coordinator Integration
 
     func testUtilitiesCoordinatorInitialization() {

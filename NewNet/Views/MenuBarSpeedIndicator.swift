@@ -13,6 +13,14 @@ final class MenuBarSpeedIndicator: NSView {
         }
     }
 
+    var isKeepAwakeActive: Bool = false {
+        didSet {
+            if oldValue != isKeepAwakeActive {
+                needsDisplay = true
+            }
+        }
+    }
+
     override func hitTest(_ point: NSPoint) -> NSView? {
         // Allow clicks to pass through to the status bar button.
         nil
@@ -44,6 +52,13 @@ final class MenuBarSpeedIndicator: NSView {
 
     private let horizontalInset: CGFloat = 6
     private let activeLineSpacing: CGFloat = -1
+    private let coffeeIconWidth: CGFloat = 14
+    private let coffeeIconHeight: CGFloat = 11
+    private let coffeeIconSpacing: CGFloat = 4
+
+    private var extraCoffeeWidth: CGFloat {
+        isKeepAwakeActive ? (coffeeIconWidth + coffeeIconSpacing) : 0
+    }
 
     private var idleFont: NSFont {
         NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
@@ -66,45 +81,46 @@ final class MenuBarSpeedIndicator: NSView {
     }
 
     private var contentWidth: CGFloat {
+        let baseWidth: CGFloat
         if let quickText {
-            return measuredWidth(for: quickText, font: quickFont) + (horizontalInset * 2)
+            baseWidth = measuredWidth(for: quickText, font: quickFont)
+        } else if snapshot.downloadBytesPerSecond <= 0, snapshot.uploadBytesPerSecond <= 0 {
+            baseWidth = measuredWidth(for: "0", font: idleFont)
+        } else {
+            baseWidth = max(
+                measuredWidth(for: uploadText, font: activeFont),
+                measuredWidth(for: downloadText, font: activeFont)
+            )
         }
 
-        if snapshot.downloadBytesPerSecond <= 0, snapshot.uploadBytesPerSecond <= 0 {
-            return measuredWidth(for: "0", font: idleFont) + (horizontalInset * 2)
-        }
-
-        let widestLine = max(
-            measuredWidth(for: uploadText, font: activeFont),
-            measuredWidth(for: downloadText, font: activeFont)
-        )
-
-        return widestLine + (horizontalInset * 2)
+        return baseWidth + (horizontalInset * 2) + extraCoffeeWidth
     }
 
     private func drawQuickText(_ text: String, in rect: NSRect) {
         let attributed = NSAttributedString(string: text, attributes: textAttributes(for: quickFont))
         let size = attributed.size()
         let drawRect = NSRect(
-            x: rect.maxX - horizontalInset - size.width,
+            x: rect.maxX - horizontalInset - extraCoffeeWidth - size.width,
             y: floor((rect.height - size.height) / 2),
             width: size.width,
             height: size.height
         )
         attributed.draw(in: drawRect)
+        drawCoffeeIcon(in: rect)
     }
 
     private func drawIdleState(in rect: NSRect) {
         let text = NSAttributedString(string: "0", attributes: textAttributes(for: idleFont))
         let size = text.size()
         let drawRect = NSRect(
-            x: rect.maxX - horizontalInset - size.width,
+            x: rect.maxX - horizontalInset - extraCoffeeWidth - size.width,
             y: floor((rect.height - size.height) / 2),
             width: size.width,
             height: size.height
         )
 
         text.draw(in: drawRect)
+        drawCoffeeIcon(in: rect)
     }
 
     private func drawActiveState(in rect: NSRect) {
@@ -117,14 +133,14 @@ final class MenuBarSpeedIndicator: NSView {
         let startY = floor((rect.height - totalHeight) / 2)
 
         let topRect = NSRect(
-            x: rect.maxX - horizontalInset - topSize.width,
+            x: rect.maxX - horizontalInset - extraCoffeeWidth - topSize.width,
             y: startY,
             width: topSize.width,
             height: topSize.height
         )
 
         let bottomRect = NSRect(
-            x: rect.maxX - horizontalInset - bottomSize.width,
+            x: rect.maxX - horizontalInset - extraCoffeeWidth - bottomSize.width,
             y: startY + topSize.height + activeLineSpacing,
             width: bottomSize.width,
             height: bottomSize.height
@@ -132,6 +148,23 @@ final class MenuBarSpeedIndicator: NSView {
 
         topText.draw(in: topRect)
         bottomText.draw(in: bottomRect)
+        drawCoffeeIcon(in: rect)
+    }
+
+    private func drawCoffeeIcon(in rect: NSRect) {
+        guard isKeepAwakeActive else { return }
+        let config = NSImage.SymbolConfiguration(pointSize: 10, weight: .semibold)
+            .applying(NSImage.SymbolConfiguration(paletteColors: [NSColor.labelColor]))
+        guard let image = NSImage(systemSymbolName: "cup.and.saucer.fill", accessibilityDescription: "Keep Awake Active")?.withSymbolConfiguration(config) else {
+            return
+        }
+        let iconRect = NSRect(
+            x: rect.maxX - horizontalInset - coffeeIconWidth,
+            y: floor((rect.height - coffeeIconHeight) / 2),
+            width: coffeeIconWidth,
+            height: coffeeIconHeight
+        )
+        image.draw(in: iconRect, from: .zero, operation: .sourceOver, fraction: 1.0)
     }
 
     private func textAttributes(for font: NSFont) -> [NSAttributedString.Key: Any] {

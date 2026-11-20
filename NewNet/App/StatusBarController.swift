@@ -41,6 +41,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         )
         bindSnapshot(menuBarViewModel)
         bindSettings(settings)
+        bindUtilities(utilitiesCoordinator)
         observeDismissalEvents()
     }
 
@@ -139,6 +140,19 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
         updatePopoverSize(scale: settings.menuBarPanelScale)
         updatePopoverAppearance()
+    }
+
+    private func bindUtilities(_ utilitiesCoordinator: UtilitiesCoordinator) {
+        utilitiesCoordinator.keepAwake.$isActive
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] active in
+                guard let self else { return }
+                self.indicatorView.isKeepAwakeActive = active
+                if let button = self.statusItem.button {
+                    self.applyWidth(self.indicatorView.preferredWidth, to: button)
+                }
+            }
+            .store(in: &cancellables)
     }
 
     private func observeDismissalEvents() {
