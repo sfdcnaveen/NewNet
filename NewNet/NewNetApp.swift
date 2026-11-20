@@ -70,6 +70,9 @@ struct NewNetApp: App {
             Task { @MainActor in
                 updateManager.checkForUpdatesOnLaunch()
             }
+            Task(priority: .background) {
+                await YTDLPService.preflightOrBootstrap(settings: settings)
+            }
         }
     }
 

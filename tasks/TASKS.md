@@ -123,3 +123,14 @@
    Done by: CODEX
    Done at: 2026-11-20T07:00:17Z
 
+12. fix-ytdlp-first-install-auto-bootstrap-updater
+   Id: 12-fix-ytdlp-first-install-auto-bootstrap-updater
+   Scope: YTDLPService, SettingsView, makedmg
+   Files: NewNet/Services/YTDLPService.swift NewNet/Views/SettingsView.swift makedmg.sh
+   Note: Bundled yt-dlp binary in release DMG, added automatic bootstrap fallback on first use, stripped quarantine attributes, added background preflight, and added Media Downloader Engine (yt-dlp) manager in Settings. All 43 tests pass.
+   Detail: tasks/details/12-fix-ytdlp-first-install-auto-bootstrap-updater.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-20T14:02:10Z
+   Done by: CODEX
+   Done at: 2026-11-20T14:10:35Z
+

@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 enum YTDLPEvent {
     case title(String)
@@ -28,8 +29,9 @@ actor YTDLPInstaller {
     private let fileManager = FileManager.default
     private var installTask: Task<URL, Error>?
 
-    func ensureInstalled(targetURL: URL, downloadURL: URL, releaseTag: String) async throws -> URL {
-        if fileManager.isExecutableFile(atPath: targetURL.path(percentEncoded: false)),
+    func ensureInstalled(targetURL: URL, downloadURL: URL, releaseTag: String, force: Bool = false) async throws -> URL {
+        if !force,
+           fileManager.isExecutableFile(atPath: targetURL.path(percentEncoded: false)),
            installedReleaseTag(for: targetURL) == releaseTag
         {
             return targetURL
@@ -50,10 +52,14 @@ actor YTDLPInstaller {
             }
 
             try self.fileManager.moveItem(at: temporaryURL, to: targetURL)
+            let path = targetURL.path(percentEncoded: false)
             try self.fileManager.setAttributes(
                 [.posixPermissions: NSNumber(value: Int16(0o755))],
-                ofItemAtPath: targetURL.path(percentEncoded: false)
+                ofItemAtPath: path
             )
+
+            // Remove quarantine extended attribute so macOS Gatekeeper permits execution
+            _ = removexattr(path, "com.apple.quarantine", 0)
 
             try releaseTag.write(to: self.versionMarkerURL(for: targetURL), atomically: true, encoding: .utf8)
 
@@ -86,8 +92,9 @@ actor FFmpegInstaller {
     private let fileManager = FileManager.default
     private var installTask: Task<URL, Error>?
 
-    func ensureInstalled(targetURL: URL, downloadURL: URL, releaseTag: String) async throws -> URL {
-        if fileManager.isExecutableFile(atPath: targetURL.path(percentEncoded: false)),
+    func ensureInstalled(targetURL: URL, downloadURL: URL, releaseTag: String, force: Bool = false) async throws -> URL {
+        if !force,
+           fileManager.isExecutableFile(atPath: targetURL.path(percentEncoded: false)),
            installedReleaseTag(for: targetURL) == releaseTag
         {
             return targetURL
@@ -108,10 +115,15 @@ actor FFmpegInstaller {
             }
 
             try self.fileManager.moveItem(at: temporaryURL, to: targetURL)
+            let path = targetURL.path(percentEncoded: false)
             try self.fileManager.setAttributes(
                 [.posixPermissions: NSNumber(value: Int16(0o755))],
-                ofItemAtPath: targetURL.path(percentEncoded: false)
+                ofItemAtPath: path
             )
+
+            // Remove quarantine extended attribute so macOS Gatekeeper permits execution
+            _ = removexattr(path, "com.apple.quarantine", 0)
+
             try releaseTag.write(
                 to: self.versionMarkerURL(for: targetURL),
                 atomically: true,
@@ -199,13 +211,30 @@ final class YTDLPService {
         "soundcloud.com"
     ]
 
+    private static let directLatestBinaryURL = URL(string: "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos")!
+
+    private static var bundledYTDLPCandidates: [String] {
+        var candidates: [String] = []
+
+        if let auxPath = Bundle.main.path(forAuxiliaryExecutable: "yt-dlp"), !auxPath.isEmpty {
+            candidates.append(auxPath)
+        }
+
+        if let resourceURL = Bundle.main.resourceURL {
+            candidates.append(resourceURL.appendingPathComponent("yt-dlp").path(percentEncoded: false))
+            candidates.append(resourceURL.appendingPathComponent("yt-dlp_macos").path(percentEncoded: false))
+        }
+
+        return candidates
+    }
+
     private static var commonBinaryPaths: [String] {
         [
             managedBinaryURL.path(percentEncoded: false),
             "/opt/homebrew/bin/yt-dlp",
             "/usr/local/bin/yt-dlp",
             "/usr/bin/yt-dlp"
-        ]
+        ] + bundledYTDLPCandidates
     }
 
     private static var commonFFmpegPaths: [String] {
@@ -326,7 +355,8 @@ final class YTDLPService {
             return installedURL
         }
 
-        throw YTDLPServiceError.binaryNotFound
+        // Auto-bootstrap yt-dlp on first launch/use if missing on the system
+        return try await updateManagedBinary(force: false)
     }
 
     func isInstalled(settings: AppSettings) -> Bool {
@@ -338,12 +368,19 @@ final class YTDLPService {
             return binaryURL
         }
 
-        return try await updateManagedBinary()
+        return try await updateManagedBinary(force: false)
     }
 
     func update(settings: AppSettings) async throws -> URL {
         _ = settings
-        return try await updateManagedBinary()
+        return try await updateManagedBinary(force: true)
+    }
+
+    static func preflightOrBootstrap(settings: AppSettings) async {
+        let service = YTDLPService()
+        if service.resolvedBinaryURL(settings: settings) == nil {
+            _ = try? await service.ensureInstalled(settings: settings)
+        }
     }
 
     func installedVersion(settings: AppSettings) async -> String? {
@@ -353,7 +390,7 @@ final class YTDLPService {
             let markerURL = Self.managedBinaryURL.deletingLastPathComponent().appendingPathComponent(".ytdlp-release")
             if let marker = try? String(contentsOf: markerURL, encoding: .utf8) {
                 let trimmed = marker.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !trimmed.isEmpty { return trimmed }
+                if !trimmed.isEmpty, trimmed != "latest" { return trimmed }
             }
         }
 
@@ -361,10 +398,11 @@ final class YTDLPService {
     }
 
     func latestVersion() async throws -> String {
-        let release = try await latestRelease()
-        let version = release.tagName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !version.isEmpty else { throw YTDLPServiceError.inspectionFailed("The yt-dlp release did not include a version.") }
-        return version
+        if let release = try? await latestRelease() {
+            let version = release.tagName.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !version.isEmpty { return version }
+        }
+        return "latest"
     }
 
     private func executableVersion(at url: URL) -> String? {
@@ -388,20 +426,43 @@ final class YTDLPService {
         }
     }
 
-    private func updateManagedBinary() async throws -> URL {
-        do {
-            let release = try await latestRelease()
+    private func updateManagedBinary(force: Bool = false) async throws -> URL {
+        // Attempt 1: Fetch latest release metadata from GitHub API
+        if let release = try? await latestRelease() {
             let downloadURL = release.assets.first(where: { $0.name == "yt-dlp_macos" })?.browserDownloadURL
-                ?? Self.releaseBinaryURL
+                ?? Self.directLatestBinaryURL
             let releaseTag = release.tagName.isEmpty ? Self.ytDLPReleaseTag : release.tagName
-            return try await Self.installer.ensureInstalled(
+            if let installed = try? await Self.installer.ensureInstalled(
                 targetURL: Self.managedBinaryURL,
                 downloadURL: downloadURL,
-                releaseTag: releaseTag
+                releaseTag: releaseTag,
+                force: force
+            ) {
+                return installed
+            }
+        }
+
+        // Attempt 2: Direct release download URL (avoids GitHub API rate limiting)
+        if let installed = try? await Self.installer.ensureInstalled(
+            targetURL: Self.managedBinaryURL,
+            downloadURL: Self.directLatestBinaryURL,
+            releaseTag: "latest",
+            force: force
+        ) {
+            return installed
+        }
+
+        // Attempt 3: Pinned fallback release URL
+        do {
+            return try await Self.installer.ensureInstalled(
+                targetURL: Self.managedBinaryURL,
+                downloadURL: Self.releaseBinaryURL,
+                releaseTag: Self.ytDLPReleaseTag,
+                force: force
             )
         } catch {
             throw YTDLPServiceError.installFailed(
-                "NewNet could not download the latest yt-dlp release. Check your connection and try again."
+                "NewNet could not download yt-dlp. Check your internet connection and try again."
             )
         }
     }

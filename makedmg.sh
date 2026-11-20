@@ -44,6 +44,22 @@ if [[ ! -x "$RESOURCE_DIR/ffmpeg-x64" ]]; then
   chmod +x "$RESOURCE_DIR/ffmpeg-x64"
 fi
 
+echo "Bundling yt-dlp binary..."
+if [[ ! -x "$RESOURCE_DIR/yt-dlp" ]]; then
+  curl -L -f "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos" -o "$RESOURCE_DIR/yt-dlp"
+  chmod +x "$RESOURCE_DIR/yt-dlp"
+fi
+
+# Clear quarantine flags on all bundled binaries
+xattr -cr "$RESOURCE_DIR" 2>/dev/null || true
+
+echo "Signing helper binaries..."
+for bin in "$RESOURCE_DIR"/ffmpeg* "$RESOURCE_DIR"/yt-dlp*; do
+  if [[ -f "$bin" ]]; then
+    codesign --force --sign - "$bin" 2>/dev/null || true
+  fi
+done
+
 echo "Ad-hoc signing the app bundle with stable Designated Requirement..."
 if [[ -d "$APP_PATH/Contents/Frameworks" ]]; then
   for fw in "$APP_PATH/Contents/Frameworks"/*; do
