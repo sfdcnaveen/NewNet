@@ -9,9 +9,14 @@ struct SettingsView: View {
     @ObservedObject var speedTestService: SpeedTestService
     @ObservedObject var scrobbleCoordinator: ScrobbleCoordinator
     var utilitiesCoordinator: UtilitiesCoordinator? = nil
+    private let ytDLPService = YTDLPService()
 
     @State private var loginErrorMessage: String?
     @State private var showLoginError = false
+    @State private var isUpdatingYTDLP = false
+    @State private var ytdlpUpdateMessage: String?
+    @State private var installedYTDLPVersion: String?
+    @State private var showCustomYTDLPPath = false
 
     @State private var inputLastFMAPIKey = ""
     @State private var inputLastFMAPISecret = ""
@@ -145,7 +150,91 @@ struct SettingsView: View {
                 }
             }
 
-            // MARK: - 3. Music Scrobbling
+            // MARK: - 3. Media Downloader Engine
+            Section("Media Downloader Engine") {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color.accentColor)
+
+                        Text("yt-dlp Engine")
+                            .font(.system(size: 12, weight: .semibold))
+
+                        Spacer()
+
+                        Button {
+                            updateYTDLP()
+                        } label: {
+                            if isUpdatingYTDLP {
+                                HStack(spacing: 4) {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                    Text("Updating…")
+                                }
+                            } else {
+                                Text("Update yt-dlp")
+                            }
+                        }
+                        .buttonStyle(LiquidGlassButtonStyle(tint: .accentColor, cornerRadius: DesignTokens.Radius.chip))
+                        .controlSize(.small)
+                        .disabled(isUpdatingYTDLP)
+                    }
+
+                    HStack {
+                        Text("Status")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+
+                        Spacer()
+
+                        if let version = installedYTDLPVersion {
+                            HStack(spacing: 5) {
+                                Circle()
+                                    .fill(Color.green)
+                                    .frame(width: 6, height: 6)
+                                Text(version)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(.primary)
+                                    .monospacedDigit()
+                            }
+                        } else if isUpdatingYTDLP {
+                            Text("Installing…")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("Ready on demand")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    if let message = ytdlpUpdateMessage {
+                        Text(message)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    DisclosureGroup("Custom Binary Path (Advanced)", isExpanded: $showCustomYTDLPPath) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            TextField("/opt/homebrew/bin/yt-dlp", text: ytDLPPathBinding)
+                                .textFieldStyle(.roundedBorder)
+                                .font(.system(size: 11))
+
+                            Text("Leave blank to use the bundled or auto-managed version.")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding(.top, 4)
+                    }
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                }
+                .padding(12)
+                .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium)
+            }
+
+            // MARK: - 4. Music Scrobbling
             Section("Music Scrobbling") {
                 VStack(spacing: 10) {
                     // Last.fm Card
@@ -366,11 +455,36 @@ struct SettingsView: View {
             if let savedSecret = scrobbleCoordinator.getSavedLastFMAPISecret() {
                 inputLastFMAPISecret = savedSecret
             }
+            installedYTDLPVersion = await ytDLPService.installedVersion(settings: settings)
         }
         .alert("Unable to Update Login Item", isPresented: $showLoginError) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(loginErrorMessage ?? "NewNet could not update the login item.")
+        }
+    }
+
+    private var ytDLPPathBinding: Binding<String> {
+        Binding(
+            get: { settings.ytDLPPath },
+            set: { settings.ytDLPPath = $0 }
+        )
+    }
+
+    private func updateYTDLP() {
+        isUpdatingYTDLP = true
+        ytdlpUpdateMessage = nil
+
+        Task { @MainActor in
+            do {
+                _ = try await ytDLPService.update(settings: settings)
+                let version = await ytDLPService.installedVersion(settings: settings) ?? "Up to date"
+                installedYTDLPVersion = version
+                ytdlpUpdateMessage = "yt-dlp is updated to \(version)."
+            } catch {
+                ytdlpUpdateMessage = error.localizedDescription
+            }
+            isUpdatingYTDLP = false
         }
     }
 

@@ -648,6 +648,25 @@ final class YTDLPServiceHostTests: XCTestCase {
         )
         XCTAssertTrue(service.requiresFFmpeg(for: item))
     }
+
+    func testCustomYTDLPPathOverrideResolution() {
+        let settings = AppSettings()
+        let service = YTDLPService()
+        
+        // Custom valid executable path (e.g. /bin/ls)
+        settings.ytDLPPath = "/bin/ls"
+        let resolved = service.resolvedBinaryURL(settings: settings)
+        XCTAssertEqual(resolved?.path(percentEncoded: false), "/bin/ls")
+
+        // Reset
+        settings.ytDLPPath = ""
+    }
+
+    func testYTDLPLatestVersionFallback() async throws {
+        let service = YTDLPService()
+        let version = try await service.latestVersion()
+        XCTAssertFalse(version.isEmpty)
+    }
 }
 
 @MainActor
