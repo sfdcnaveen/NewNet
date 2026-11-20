@@ -32,24 +32,29 @@ struct SettingsView: View {
             Section("General") {
                 Toggle("Open NewNet at login", isOn: launchAtLoginBinding)
 
-                HStack(spacing: 8) {
+                HStack(spacing: 12) {
                     Text("Panel size")
-                        .font(.system(size: 13))
+                        .font(.system(size: 13, weight: .regular))
 
                     Spacer()
 
                     Slider(value: menuBarPanelScaleBinding, in: 0.85...1.25, step: 0.05) {
-                        Text("Panel size")
+                        Text("")
                     } minimumValueLabel: {
-                        Image(systemName: "rectangle")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(.secondary)
+                        AnyView(
+                            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                .strokeBorder(Color.white, lineWidth: 1.25)
+                                .frame(width: 9, height: 9)
+                        )
                     } maximumValueLabel: {
-                        Image(systemName: "rectangle.fill")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(.secondary)
+                        AnyView(
+                            RoundedRectangle(cornerRadius: 2.5, style: .continuous)
+                                .fill(Color.white)
+                                .frame(width: 13, height: 13)
+                        )
                     }
-                    .frame(width: 170)
+                    .labelsHidden()
+                    .frame(width: 160)
                 }
 
                 Toggle("Resume downloads after app restart", isOn: autoResumeBinding)

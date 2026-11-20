@@ -101,3 +101,14 @@
    Done by: GEMINI
    Done at: 2026-11-20T06:40:14Z
 
+10. fix-duplicate-panel-size-slider-icons
+   Id: 10-fix-duplicate-panel-size-slider-icons
+   Scope: Fix duplicate panel size label and upgrade slider symbols
+   Files: NewNet/Views/SettingsView.swift
+   Note: Fixed duplicate Panel size label and upgraded slider icons to crisp white Apple-style boxes
+   Detail: tasks/details/10-fix-duplicate-panel-size-slider-icons.md
+   Claimed by: GEMINI
+   Claimed at: 2026-11-20T06:53:02Z
+   Done by: GEMINI
+   Done at: 2026-11-20T06:56:36Z
+
