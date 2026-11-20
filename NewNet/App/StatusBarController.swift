@@ -41,6 +41,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         )
         bindSnapshot(menuBarViewModel)
         bindSettings(settings)
+        bindUtilities(utilitiesCoordinator)
         observeDismissalEvents()
     }
 
@@ -139,6 +140,19 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
         updatePopoverSize(scale: settings.menuBarPanelScale)
         updatePopoverAppearance()
+    }
+
+    private func bindUtilities(_ utilitiesCoordinator: UtilitiesCoordinator) {
+        utilitiesCoordinator.keepAwake.$isActive
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] active in
+                guard let self else { return }
+                self.indicatorView.isKeepAwakeActive = active
+                if let button = self.statusItem.button {
+                    self.applyWidth(self.indicatorView.preferredWidth, to: button)
+                }
+            }
+            .store(in: &cancellables)
     }
 
     private func observeDismissalEvents() {
@@ -277,18 +291,20 @@ private struct MenuBarPanelHost: View {
         ZStack {
             if showingSettings {
                 VStack(spacing: 0) {
-                    HStack {
+                    HStack(alignment: .center) {
                         Button {
                             withAnimation(DesignTokens.Animation.transition) {
                                 showingSettings = false
                             }
                         } label: {
                             Image(systemName: "chevron.left")
-                                .font(.system(size: 13, weight: .bold))
+                                .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(.primary)
                                 .frame(width: 28, height: 28)
+                                .contentShape(Circle())
                         }
-                        .buttonStyle(LiquidGlassButtonStyle(cornerRadius: 14))
+                        .buttonStyle(LiquidGlassButtonStyle(cornerRadius: 14, isCircular: true))
+                        .clipShape(Circle())
                         
                         Text("Settings")
                             .font(.system(size: 15, weight: .semibold))

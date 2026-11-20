@@ -79,3 +79,47 @@
    Done by: CODEX
    Done at: 2026-11-18T06:05:36Z
 
+8. settings-modernization-tab-visibility
+   Id: 8-settings-modernization-tab-visibility
+   Scope: Settings UI modernization and tab visibility controls
+   Files: NewNet/App/StatusBarController.swift NewNet/Models/AppSettings.swift NewNet/Views/SettingsView.swift NewNet/Views/DropdownPanel.swift
+   Note: Completed Settings UI modernization, circular back button, tab visibility toggle, and test suite verification; make diagnose, make build, and make test all pass.
+   Detail: tasks/details/8-settings-modernization-tab-visibility.md
+   Claimed by: GEMINI
+   Claimed at: 2026-11-20T05:39:00Z
+   Done by: GEMINI
+   Done at: 2026-11-20T05:47:57Z
+
+9. design-polish-settings-media-menubar
+   Id: 9-design-polish-settings-media-menubar
+   Scope: Settings declutter, sleek media player redesign, and menu bar coffee indicator
+   Files: NewNet/Views/SettingsView.swift NewNet/Views/MusicDashboardView.swift NewNet/Views/MenuBarSpeedIndicator.swift NewNet/App/StatusBarController.swift
+   Note: Design polish complete: Settings declutter, sleek media player redesign, menu bar coffee indicator; make diagnose, make build, and make test all pass.
+   Detail: tasks/details/9-design-polish-settings-media-menubar.md
+   Claimed by: GEMINI
+   Claimed at: 2026-11-20T06:30:48Z
+   Done by: GEMINI
+   Done at: 2026-11-20T06:40:14Z
+
+10. fix-duplicate-panel-size-slider-icons
+   Id: 10-fix-duplicate-panel-size-slider-icons
+   Scope: Fix duplicate panel size label and upgrade slider symbols
+   Files: NewNet/Views/SettingsView.swift
+   Note: Fixed duplicate Panel size label and upgraded slider icons to crisp white Apple-style boxes
+   Detail: tasks/details/10-fix-duplicate-panel-size-slider-icons.md
+   Claimed by: GEMINI
+   Claimed at: 2026-11-20T06:53:02Z
+   Done by: GEMINI
+   Done at: 2026-11-20T06:56:36Z
+
+11. fix-upside-down-coffee-icon-orange
+   Id: 11-fix-upside-down-coffee-icon-orange
+   Scope: MenuBarSpeedIndicator
+   Files: NewNet/Views/MenuBarSpeedIndicator.swift
+   Note: Fixed upside-down coffee icon rendering with respectFlipped: true and changed color to systemOrange; all builds and 41 tests pass
+   Detail: tasks/details/11-fix-upside-down-coffee-icon-orange.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-20T06:59:42Z
+   Done by: CODEX
+   Done at: 2026-11-20T07:00:17Z
+

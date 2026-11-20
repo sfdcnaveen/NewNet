@@ -68,6 +68,56 @@ final class TabOrderAndNavigationTests: XCTestCase {
         // Missing default tabs should be appended automatically without duplicates
         XCTAssertEqual(settings.tabOrder, [.music, .network, .ytdlp, .clipboard, .utilities])
     }
+
+    func testTabVisibilityToggleAndPersistence() {
+        let settings = AppSettings(defaults: testDefaults)
+        XCTAssertTrue(settings.isTabVisible(.music))
+        XCTAssertEqual(settings.visibleTabs.count, 5)
+
+        // Hide .music
+        settings.toggleTabVisibility(.music)
+        XCTAssertFalse(settings.isTabVisible(.music))
+        XCTAssertEqual(settings.visibleTabs, [.network, .ytdlp, .clipboard, .utilities])
+
+        // Verify persistence across new instance
+        let reloaded = AppSettings(defaults: testDefaults)
+        XCTAssertFalse(reloaded.isTabVisible(.music))
+        XCTAssertEqual(reloaded.visibleTabs, [.network, .ytdlp, .clipboard, .utilities])
+
+        // Unhide .music
+        reloaded.toggleTabVisibility(.music)
+        XCTAssertTrue(reloaded.isTabVisible(.music))
+        XCTAssertEqual(reloaded.visibleTabs, [.network, .ytdlp, .music, .clipboard, .utilities])
+    }
+
+    func testCannotHideAllTabs() {
+        let settings = AppSettings(defaults: testDefaults)
+        // Hide 4 tabs
+        settings.toggleTabVisibility(.network)
+        settings.toggleTabVisibility(.ytdlp)
+        settings.toggleTabVisibility(.music)
+        settings.toggleTabVisibility(.clipboard)
+        XCTAssertEqual(settings.visibleTabs, [.utilities])
+
+        // Attempting to hide the last visible tab should be blocked
+        settings.toggleTabVisibility(.utilities)
+        XCTAssertEqual(settings.visibleTabs, [.utilities])
+        XCTAssertTrue(settings.isTabVisible(.utilities))
+    }
+
+    func testRestoreDefaultOrderUnhidesAllTabs() {
+        let settings = AppSettings(defaults: testDefaults)
+        settings.tabOrder = [.utilities, .clipboard, .music, .ytdlp, .network]
+        settings.toggleTabVisibility(.music)
+        settings.toggleTabVisibility(.ytdlp)
+        XCTAssertEqual(settings.visibleTabs, [.utilities, .clipboard, .network])
+
+        settings.restoreDefaultTabOrder()
+        XCTAssertEqual(settings.tabOrder, [.network, .ytdlp, .music, .clipboard, .utilities])
+        XCTAssertEqual(settings.visibleTabs, [.network, .ytdlp, .music, .clipboard, .utilities])
+        XCTAssertTrue(settings.isTabVisible(.music))
+        XCTAssertTrue(settings.isTabVisible(.ytdlp))
+    }
 }
 
 @MainActor
@@ -782,6 +832,22 @@ final class UtilitiesServicesTests: XCTestCase {
         XCTAssertEqual(NewNetTab.utilities.title, "Utilities")
         XCTAssertEqual(NewNetTab.clipboard.systemImage, "doc.on.clipboard")
         XCTAssertEqual(NewNetTab.utilities.systemImage, "wrench.and.screwdriver")
+    }
+
+    @MainActor
+    func testMenuBarSpeedIndicatorKeepAwakeIndicator() {
+        let indicator = MenuBarSpeedIndicator(frame: .zero)
+        let initialWidth = indicator.preferredWidth
+        XCTAssertFalse(indicator.isKeepAwakeActive)
+
+        indicator.isKeepAwakeActive = true
+        let activeWidth = indicator.preferredWidth
+        // Width must expand to accommodate the coffee cup icon (14pt + 4pt spacing = 18pt)
+        XCTAssertGreaterThan(activeWidth, initialWidth)
+        XCTAssertEqual(activeWidth - initialWidth, 18, accuracy: 1)
+
+        indicator.isKeepAwakeActive = false
+        XCTAssertEqual(indicator.preferredWidth, initialWidth)
     }
 
     // MARK: - Coordinator Integration

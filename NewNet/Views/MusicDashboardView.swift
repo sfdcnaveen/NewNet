@@ -36,45 +36,39 @@ struct MusicDashboardView: View {
     }
 
     private var currentTrackSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        Group {
             if let track = scrobbleCoordinator.currentTrack {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(track.title)
-                                .font(.system(size: 13, weight: .semibold))
-                                .lineLimit(1)
-
-                            Text(track.artist)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-
-                            if let album = track.album, !album.isEmpty {
-                                Text(album)
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(.tertiary)
-                                    .lineLimit(1)
-                            }
-                        }
-                        Spacer()
-                        playbackBadge
-                    }
-
+                VStack(spacing: 12) {
                     HStack(spacing: 6) {
                         Label(track.player.rawValue, systemImage: track.player.iconName)
                             .font(.system(size: 10, weight: .medium))
                             .foregroundStyle(.secondary)
+                        Spacer()
+                        topRightStatusIndicator
                     }
-                }
 
-                if track.duration > 0 {
+                    VStack(spacing: 3) {
+                        Text(track.title)
+                            .font(.system(size: 15, weight: .bold))
+                            .lineLimit(1)
+                            .multilineTextAlignment(.center)
+
+                        let secondaryText = [track.artist, track.album].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " — ")
+                        Text(secondaryText)
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 4)
+
                     playbackProgressView(track: track)
+
+                    mediaControlsSection
                 }
-
-                mediaControlsSection
-
-                statusBannerView
+                .padding(14)
+                .liquidGlassCard(cornerRadius: 18)
             } else {
                 HStack(spacing: 10) {
                     Image(systemName: "music.note")
@@ -94,22 +88,63 @@ struct MusicDashboardView: View {
                 .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium)
             }
         }
-        .padding(14)
-        .liquidGlassCard(cornerRadius: DesignTokens.Radius.large)
+    }
+
+    @ViewBuilder
+    private var topRightStatusIndicator: some View {
+        if !scrobbleCoordinator.playbackState.isPlaying {
+            Circle()
+                .fill(Color.orange)
+                .frame(width: 7, height: 7)
+        } else {
+            switch scrobbleCoordinator.submissionStatus {
+            case .idle:
+                EmptyView()
+            case .detected:
+                Image(systemName: "eye.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.blue)
+            case .playing:
+                Image(systemName: "music.note")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color.accentColor)
+            case .waitingForEligibility:
+                ProgressView()
+                    .controlSize(.mini)
+            case .scrobbled:
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.green)
+            case .pendingRetry:
+                ProgressView()
+                    .controlSize(.mini)
+            case .failed:
+                Image(systemName: "exclamationmark.circle.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.red)
+            }
+        }
     }
 
     private var mediaControlsSection: some View {
-        HStack(spacing: 24) {
+        HStack(spacing: 20) {
             Spacer()
+
+            Button {
+                // shuffle toggle
+            } label: {
+                Image(systemName: "shuffle")
+                    .font(.system(size: 12))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help("Shuffle")
 
             Button {
                 scrobbleCoordinator.previousTrack()
             } label: {
                 Image(systemName: "backward.fill")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Color.primary.opacity(0.85))
-                    .frame(width: 36, height: 36)
-                    .contentShape(Circle())
+                    .font(.system(size: 15))
             }
             .buttonStyle(MediaControlGlyphButtonStyle())
             .help("Previous Track")
@@ -118,54 +153,35 @@ struct MusicDashboardView: View {
                 scrobbleCoordinator.togglePlayPause()
             } label: {
                 Image(systemName: scrobbleCoordinator.playbackState.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(Color.white)
-                    .frame(width: 44, height: 44)
-                    .background(
-                        Circle()
-                            .fill(Color.accentColor)
-                            .overlay {
-                                Circle()
-                                    .strokeBorder(
-                                        LinearGradient(
-                                            colors: [Color.white.opacity(0.60), Color.white.opacity(0.15)],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        ),
-                                        lineWidth: 1
-                                    )
-                            }
-                            .shadow(color: Color.accentColor.opacity(0.40), radius: 8, x: 0, y: 3)
-                    )
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 42, height: 42)
+                    .background(Circle().fill(Color.accentColor))
+                    .shadow(color: Color.accentColor.opacity(0.35), radius: 6, y: 2)
             }
-            .buttonStyle(ScaleButtonStyle())
+            .buttonStyle(.plain)
             .help(scrobbleCoordinator.playbackState.isPlaying ? "Pause" : "Play")
 
             Button {
                 scrobbleCoordinator.nextTrack()
             } label: {
                 Image(systemName: "forward.fill")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Color.primary.opacity(0.85))
-                    .frame(width: 36, height: 36)
-                    .contentShape(Circle())
+                    .font(.system(size: 15))
             }
             .buttonStyle(MediaControlGlyphButtonStyle())
             .help("Next Track")
 
-            Spacer()
-        }
-        .padding(.vertical, 6)
-    }
+            Button {
+                // repeat toggle
+            } label: {
+                Image(systemName: "repeat")
+                    .font(.system(size: 12))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help("Repeat")
 
-    private var playbackBadge: some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(scrobbleCoordinator.playbackState.isPlaying ? Color.green : Color.orange)
-                .frame(width: 6, height: 6)
-            Text(scrobbleCoordinator.playbackState.isPlaying ? "Playing" : "Paused")
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.secondary)
+            Spacer()
         }
     }
 
@@ -174,17 +190,23 @@ struct MusicDashboardView: View {
         let dur = track.duration
         let progress = dur > 0 ? min(max(pos / dur, 0), 1.0) : 0
 
-        return VStack(spacing: 3) {
+        return VStack(spacing: 4) {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
                         .fill(Color.secondary.opacity(0.2))
+                        .frame(height: 4)
                     Capsule()
                         .fill(Color.accentColor)
-                        .frame(width: geo.size.width * CGFloat(progress))
+                        .frame(width: geo.size.width * CGFloat(progress), height: 4)
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 10, height: 10)
+                        .shadow(color: Color.black.opacity(0.15), radius: 2)
+                        .offset(x: max(0, min(geo.size.width * CGFloat(progress) - 5, geo.size.width - 10)))
                 }
             }
-            .frame(height: 4)
+            .frame(height: 10)
 
             HStack {
                 Text(formatDuration(pos))
@@ -198,50 +220,6 @@ struct MusicDashboardView: View {
                     .monospacedDigit()
             }
         }
-    }
-
-    private var statusBannerView: some View {
-        HStack(spacing: 6) {
-            switch scrobbleCoordinator.submissionStatus {
-            case .idle:
-                EmptyView()
-            case .detected:
-                Image(systemName: "eye.fill")
-                    .foregroundStyle(.blue)
-                Text("Track detected")
-                    .font(.system(size: 10, weight: .medium))
-            case .playing:
-                Image(systemName: "play.circle.fill")
-                    .foregroundStyle(.blue)
-                Text(scrobbleCoordinator.submissionStatus.badgeText)
-                    .font(.system(size: 10, weight: .medium))
-            case .waitingForEligibility(let rem):
-                Image(systemName: "timer")
-                    .foregroundStyle(.blue)
-                Text("Waiting to scrobble: \(Int(max(rem, 0)))s remaining")
-                    .font(.system(size: 10, weight: .medium))
-            case .scrobbled:
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                Text("Scrobbled successfully")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.green)
-            case .pendingRetry(let reason):
-                Image(systemName: "arrow.clockwise.circle.fill")
-                    .foregroundStyle(.orange)
-                Text("Pending retry: \(reason)")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.orange)
-            case .failed(let reason):
-                Image(systemName: "exclamationmark.circle.fill")
-                    .foregroundStyle(.red)
-                Text("Scrobble failed: \(reason)")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.red)
-            }
-            Spacer()
-        }
-        .padding(.top, 2)
     }
 
     private var providersStatusSection: some View {

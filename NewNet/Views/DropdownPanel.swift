@@ -49,6 +49,16 @@ struct DropdownPanel: View {
         }
         .onAppear {
             shouldShowYTDLPPrompt = !downloadManagerViewModel.isYTDLPInstalled
+            if !settings.visibleTabs.contains(selectedTab) {
+                selectedTab = settings.visibleTabs.first ?? .network
+            }
+        }
+        .onChange(of: settings.visibleTabs) { _, newVisible in
+            if !newVisible.contains(selectedTab) {
+                withAnimation(DesignTokens.Animation.transition) {
+                    selectedTab = newVisible.first ?? .network
+                }
+            }
         }
         .alert("Download yt-dlp to enable social-media downloads?", isPresented: $shouldShowYTDLPPrompt) {
             Button("Download yt-dlp") {
@@ -132,7 +142,7 @@ struct DropdownPanel: View {
             // Left section: Tabs wrapped in GlassEffectContainer with sliding morphing indicator
             GlassEffectContainer {
                 HStack(spacing: 3) {
-                    ForEach(settings.tabOrder) { tab in
+                    ForEach(settings.visibleTabs) { tab in
                         tabButton(tab: tab)
                     }
                 }

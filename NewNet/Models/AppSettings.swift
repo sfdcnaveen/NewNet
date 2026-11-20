@@ -32,6 +32,7 @@ final class AppSettings: ObservableObject {
         static let appTheme = "settings.appTheme"
         static let showActiveApplications = "settings.showActiveApplications"
         static let tabOrder = "settings.tabOrder"
+        static let hiddenTabs = "settings.hiddenTabs"
         static let isLastFMEnabled = "settings.isLastFMEnabled"
         static let isListenBrainzEnabled = "settings.isListenBrainzEnabled"
         static let lastFMUsername = "settings.lastFMUsername"
@@ -139,6 +140,31 @@ final class AppSettings: ObservableObject {
                 return
             }
             defaults.set(normalized.map(\.rawValue), forKey: Keys.tabOrder)
+        }
+    }
+
+    @Published var hiddenTabRawValues: [String] {
+        didSet {
+            defaults.set(hiddenTabRawValues, forKey: Keys.hiddenTabs)
+        }
+    }
+
+    var visibleTabs: [NewNetTab] {
+        let visible = tabOrder.filter { !hiddenTabRawValues.contains($0.rawValue) }
+        return visible.isEmpty ? [tabOrder.first ?? .network] : visible
+    }
+
+    func isTabVisible(_ tab: NewNetTab) -> Bool {
+        !hiddenTabRawValues.contains(tab.rawValue)
+    }
+
+    func toggleTabVisibility(_ tab: NewNetTab) {
+        if isTabVisible(tab) {
+            // Guard: Keep at least 1 tab visible at all times
+            guard visibleTabs.count > 1 else { return }
+            hiddenTabRawValues.append(tab.rawValue)
+        } else {
+            hiddenTabRawValues.removeAll { $0 == tab.rawValue }
         }
     }
 
@@ -254,7 +280,15 @@ final class AppSettings: ObservableObject {
         ) ?? .system
         showActiveApplications = defaults.object(forKey: Keys.showActiveApplications) as? Bool ?? true
         let storedTabOrder = defaults.stringArray(forKey: Keys.tabOrder) ?? []
-        tabOrder = Self.normalizedTabOrder(storedTabOrder.compactMap(NewNetTab.init(rawValue:)))
+        let resolvedTabOrder = Self.normalizedTabOrder(storedTabOrder.compactMap(NewNetTab.init(rawValue:)))
+        tabOrder = resolvedTabOrder
+        let storedHiddenTabs = defaults.stringArray(forKey: Keys.hiddenTabs) ?? []
+        let validHidden = storedHiddenTabs.filter { NewNetTab(rawValue: $0) != nil }
+        if validHidden.count >= resolvedTabOrder.count {
+            hiddenTabRawValues = []
+        } else {
+            hiddenTabRawValues = validHidden
+        }
         isLastFMEnabled = defaults.bool(forKey: Keys.isLastFMEnabled)
         isListenBrainzEnabled = defaults.bool(forKey: Keys.isListenBrainzEnabled)
         lastFMUsername = defaults.string(forKey: Keys.lastFMUsername) ?? ""
@@ -273,6 +307,7 @@ final class AppSettings: ObservableObject {
 
     func restoreDefaultTabOrder() {
         tabOrder = NewNetTab.defaultOrder
+        hiddenTabRawValues = []
     }
 
     func moveTab(from source: IndexSet, to destination: Int) {
