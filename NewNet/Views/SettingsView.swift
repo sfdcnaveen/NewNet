@@ -9,13 +9,9 @@ struct SettingsView: View {
     @ObservedObject var speedTestService: SpeedTestService
     @ObservedObject var scrobbleCoordinator: ScrobbleCoordinator
     var utilitiesCoordinator: UtilitiesCoordinator? = nil
-    private let ytDLPService = YTDLPService()
-    private let externalToolsService = ExternalToolsService()
+
     @State private var loginErrorMessage: String?
     @State private var showLoginError = false
-    @State private var isUpdatingYTDLP = false
-    @State private var ytdlpUpdateMessage: String?
-    @State private var installedYTDLPVersion: String?
 
     @State private var inputLastFMAPIKey = ""
     @State private var inputLastFMAPISecret = ""
@@ -32,38 +28,10 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("Download Engine") {
-                Stepper(value: maxSegmentsBinding, in: 1...8) {
-                    HStack {
-                        Text("Parallel segments")
-                        Spacer()
-                        Text("\(settings.maxSegments)")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                HStack {
-                    Text("Speed limit")
-                    Spacer()
-                    TextField(
-                        "Unlimited",
-                        value: speedLimitBinding,
-                        formatter: NumberFormatter.integerFormatter
-                    )
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 96)
-                    Text("KB/s")
-                        .foregroundStyle(.secondary)
-                }
-
-                Toggle("Resume downloads after app restart", isOn: autoResumeBinding)
-            }
-
-            Section("Startup") {
+            // MARK: - 1. General
+            Section("General") {
                 Toggle("Open NewNet at login", isOn: launchAtLoginBinding)
-            }
 
-            Section("Menu Bar Panel") {
                 HStack {
                     Text("Panel size")
                     Spacer()
@@ -81,131 +49,102 @@ struct SettingsView: View {
                     Text("Larger")
                         .font(.system(size: 10, weight: .medium))
                 }
+
+                Picker("App theme", selection: $settings.appTheme) {
+                    ForEach(AppTheme.allCases) { theme in
+                        Text(theme.rawValue).tag(theme)
+                    }
+                }
+
+                Toggle("Resume downloads after app restart", isOn: autoResumeBinding)
             }
 
-            Section("Network Monitoring") {
-                LabeledContent("Status") {
-                    Text(networkMonitor.connectionStatus.title)
+            // MARK: - 2. Navigation & Tabs
+            Section("Navigation & Tab Ordering") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Drag or use arrows to customize tab order. Toggle the eye to show or hide tabs in the menu bar:")
+                        .font(.system(size: 11))
                         .foregroundStyle(.secondary)
-                }
-                LabeledContent("Active interface") {
-                    Text(networkMonitor.activeInterfaceName ?? "None")
-                        .foregroundStyle(.secondary)
-                }
-                Toggle("Measure active applications", isOn: activeApplicationsBinding)
-                    .onChange(of: settings.showActiveApplications) { _, enabled in
-                        networkMonitor.setProcessMonitoringEnabled(enabled)
-                    }
-            }
 
-            Section("Updates") {
-                if let update = updateManager.availableUpdate, !updateManager.isUpdateNotificationSuppressed {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Label("Version \(update.displayVersionString) is available", systemImage: "arrow.down.app.fill")
-                            .font(.headline)
+                    ForEach(Array(settings.tabOrder.enumerated()), id: \.element.id) { index, tab in
+                        HStack(spacing: 10) {
+                            Image(systemName: "line.3.horizontal")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(.secondary.opacity(0.8))
+                                .frame(width: 16)
+                                .help("Drag to reorder")
 
-                        if updateManager.isDownloadingUpdate {
-                            ProgressView(value: updateManager.updateDownloadProgress)
-                        }
+                            Image(systemName: tab.systemImage)
+                                .font(.system(size: 13, weight: .semibold))
+                                .frame(width: 20)
+                                .foregroundStyle(Color.accentColor)
 
-                        HStack {
-                            Button(updateManager.isDownloadingUpdate ? "Installing…" : "Install Update") {
-                                updateManager.installUpdate()
+                            Text(tab.title)
+                                .font(.system(size: 12, weight: .medium))
+
+                            Spacer()
+
+                            HStack(spacing: 8) {
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        settings.toggleTabVisibility(tab)
+                                    }
+                                } label: {
+                                    Image(systemName: settings.isTabVisible(tab) ? "eye" : "eye.slash")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundStyle(settings.isTabVisible(tab) ? Color.primary : Color.secondary.opacity(0.6))
+                                        .frame(width: 20, height: 20)
+                                }
+                                .buttonStyle(.plain)
+                                .help(settings.isTabVisible(tab) ? "Hide tab from menu bar" : "Show tab in menu bar")
+                                .disabled(settings.isTabVisible(tab) && settings.visibleTabs.count <= 1)
+
+                                Button {
+                                    moveTabUp(at: index)
+                                } label: {
+                                    Image(systemName: "chevron.up")
+                                        .font(.system(size: 11, weight: .bold))
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(index == 0)
+                                .help("Move up")
+
+                                Button {
+                                    moveTabDown(at: index)
+                                } label: {
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 11, weight: .bold))
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(index == settings.tabOrder.count - 1)
+                                .help("Move down")
                             }
-                            .disabled(updateManager.isDownloadingUpdate)
-
-                            Button("Dismiss") {
-                                updateManager.dismissAvailableUpdate()
-                            }
-                            .buttonStyle(.link)
                         }
+                        .padding(.vertical, 6)
+                        .padding(.horizontal, 10)
+                        .opacity(settings.isTabVisible(tab) ? 1.0 : 0.65)
+                        .liquidGlassControl(isActive: draggedTab == tab)
+                        .onDrag {
+                            draggedTab = tab
+                            return NSItemProvider(object: tab.rawValue as NSString)
+                        }
+                        .onDrop(of: [.text], delegate: TabDropDelegate(destinationTab: tab, settings: settings, draggedTab: $draggedTab))
                     }
-                    .padding(.vertical, 4)
-                } else if updateManager.isCheckingForUpdates {
-                    Label("Checking for updates…", systemImage: "arrow.triangle.2.circlepath")
-                        .foregroundStyle(.secondary)
-                } else if let error = updateManager.lastErrorMessage {
-                    Label(error, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                } else if updateManager.isUpdateNotificationSuppressed {
+
                     HStack {
-                        Text("Update postponed")
-                            .foregroundStyle(.secondary)
                         Spacer()
-                        Button("Show Again") {
-                            updateManager.showDismissedUpdateAgain()
+                        Button("Restore Default Order") {
+                            withAnimation {
+                                settings.restoreDefaultTabOrder()
+                            }
                         }
-                        .buttonStyle(.link)
+                        .controlSize(.small)
                     }
-                }
-
-                Button("Check for Updates (System)…") {
-                    updateManager.checkForUpdatesManually()
-                }
-                .disabled(!updateManager.canCheckForUpdates || updateManager.isCheckingForUpdates)
-
-                if let lastCheckDate = updateManager.lastCheckDate {
-                    Text("Last checked \(lastCheckDate.formatted(date: .omitted, time: .shortened))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    .padding(.top, 4)
                 }
             }
 
-            Section("yt-dlp") {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Override path")
-                    Spacer()
-                    RightAlignedTextField(
-                        placeholder: "/opt/homebrew/bin/yt-dlp",
-                        text: ytDLPPathBinding
-                    )
-                    .frame(width: 220, height: 22)
-                }
-
-                Picker("Default social-media mode", selection: preferredMediaBinding) {
-                    ForEach(DownloadContentPreference.allCases) { preference in
-                        Text(preference.title).tag(preference)
-                    }
-                }
-
-                LabeledContent("Installed version") {
-                    Text(installedYTDLPVersion ?? "Not installed")
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
-
-                HStack {
-                    Text("yt-dlp")
-
-                    Spacer()
-
-                    Button {
-                        updateYTDLP()
-                    } label: {
-                        if isUpdatingYTDLP {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else {
-                            Text("Update yt-dlp")
-                        }
-                    }
-                    .disabled(isUpdatingYTDLP)
-                }
-
-                if let ytdlpUpdateMessage {
-                    Text(ytdlpUpdateMessage)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
-
-            }
-
-            Section("Smart Features") {
-                Toggle("Detect links copied to clipboard", isOn: clipboardBinding)
-                Toggle("Battery saver mode", isOn: powerSavingBinding)
-            }
-
+            // MARK: - 3. macOS Utilities
             Section("macOS Utilities") {
                 // Keep Awake
                 VStack(alignment: .leading, spacing: 6) {
@@ -230,7 +169,7 @@ struct SettingsView: View {
                         Text("2 Hours").tag(120)
                     }
 
-                    Toggle("Lid Closed? (Prevent sleep with lid closed)", isOn: $settings.keepAwakePreventDisplaySleep)
+                    Toggle("Keep awake when lid is closed", isOn: $settings.keepAwakePreventDisplaySleep)
                 }
                 .padding(.vertical, 2)
 
@@ -278,20 +217,18 @@ struct SettingsView: View {
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
 
-                    if settings.scrollInversionEnabled {
-                        if !SystemPermissionsHelper.isAccessibilityGranted {
-                            HStack {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundStyle(.orange)
-                                Text("Requires Accessibility permission")
-                                    .font(.system(size: 11))
-                                Spacer()
-                                Button("Grant") {
-                                    SystemPermissionsHelper.requestAccessibility()
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .controlSize(.small)
+                    if settings.scrollInversionEnabled && !SystemPermissionsHelper.isAccessibilityGranted {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                            Text("Requires Accessibility permission")
+                                .font(.system(size: 11))
+                            Spacer()
+                            Button("Grant") {
+                                SystemPermissionsHelper.requestAccessibility()
                             }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
                         }
                     }
                 }
@@ -364,73 +301,7 @@ struct SettingsView: View {
                 .padding(.vertical, 2)
             }
 
-            Section("Navigation & Tab Ordering") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Drag or use arrows to customize tab order in the menu bar:")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-
-                    ForEach(Array(settings.tabOrder.enumerated()), id: \.element.id) { index, tab in
-                        HStack(spacing: 10) {
-                            Image(systemName: "line.3.horizontal")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(.secondary.opacity(0.8))
-                                .frame(width: 16)
-                                .help("Drag to reorder")
-
-                            Image(systemName: tab.systemImage)
-                                .font(.system(size: 13, weight: .semibold))
-                                .frame(width: 20)
-                                .foregroundStyle(Color.accentColor)
-
-                            Text(tab.title)
-                                .font(.system(size: 12, weight: .medium))
-
-                            Spacer()
-
-                            Button {
-                                moveTabUp(at: index)
-                            } label: {
-                                Image(systemName: "chevron.up")
-                                    .font(.system(size: 11, weight: .bold))
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(index == 0)
-                            .help("Move up")
-
-                            Button {
-                                moveTabDown(at: index)
-                            } label: {
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 11, weight: .bold))
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(index == settings.tabOrder.count - 1)
-                            .help("Move down")
-                        }
-                        .padding(.vertical, 6)
-                        .padding(.horizontal, 10)
-                        .liquidGlassControl(isActive: draggedTab == tab)
-                        .onDrag {
-                            draggedTab = tab
-                            return NSItemProvider(object: tab.rawValue as NSString)
-                        }
-                        .onDrop(of: [.text], delegate: TabDropDelegate(destinationTab: tab, settings: settings, draggedTab: $draggedTab))
-                    }
-
-                    HStack {
-                        Spacer()
-                        Button("Restore Default Order") {
-                            withAnimation {
-                                settings.restoreDefaultTabOrder()
-                            }
-                        }
-                        .controlSize(.small)
-                    }
-                    .padding(.top, 4)
-                }
-            }
-
+            // MARK: - 4. Music Scrobbling
             Section("Music Scrobbling") {
                 VStack(spacing: 10) {
                     // Last.fm Card
@@ -494,7 +365,7 @@ struct SettingsView: View {
                                     }
                                     .buttonStyle(LiquidGlassButtonStyle(cornerRadius: DesignTokens.Radius.chip))
                                     .controlSize(.small)
-                                }
+                                    }
 
                                 if let error = lastFMErrorMessage {
                                     Text(error)
@@ -627,7 +498,7 @@ struct SettingsView: View {
                     .padding(12)
                     .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium)
 
-                    // Privacy notice: Simple, concise, legible in dark mode
+                    // Privacy notice
                     HStack(spacing: 6) {
                         Image(systemName: "lock.shield.fill")
                             .font(.system(size: 12))
@@ -643,9 +514,8 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
-        .padding(10)
+        .padding(DesignTokens.Spacing.small)
         .task {
-            installedYTDLPVersion = await ytDLPService.installedVersion(settings: settings)
             if let savedKey = scrobbleCoordinator.getSavedLastFMAPIKey() {
                 inputLastFMAPIKey = savedKey
             }
@@ -658,27 +528,6 @@ struct SettingsView: View {
         } message: {
             Text(loginErrorMessage ?? "NewNet could not update the login item.")
         }
-    }
-
-    private var maxSegmentsBinding: Binding<Int> {
-        Binding(
-            get: { settings.maxSegments },
-            set: { settings.maxSegments = $0 }
-        )
-    }
-
-    private var speedLimitBinding: Binding<Int> {
-        Binding(
-            get: { settings.speedLimitKBps },
-            set: { settings.speedLimitKBps = $0 }
-        )
-    }
-
-    private var clipboardBinding: Binding<Bool> {
-        Binding(
-            get: { settings.clipboardMonitoringEnabled },
-            set: { settings.clipboardMonitoringEnabled = $0 }
-        )
     }
 
     private var autoResumeBinding: Binding<Bool> {
@@ -704,59 +553,10 @@ struct SettingsView: View {
         )
     }
 
-    private var powerSavingBinding: Binding<Bool> {
-        Binding(
-            get: { settings.powerSavingEnabled },
-            set: { settings.powerSavingEnabled = $0 }
-        )
-    }
-
     private var menuBarPanelScaleBinding: Binding<Double> {
         Binding(
             get: { settings.menuBarPanelScale },
             set: { settings.menuBarPanelScale = $0 }
-        )
-    }
-
-    private var ytDLPPathBinding: Binding<String> {
-        Binding(
-            get: { settings.ytDLPPath },
-            set: { settings.ytDLPPath = $0 }
-        )
-    }
-
-    private var activeApplicationsBinding: Binding<Bool> {
-        Binding(
-            get: { settings.showActiveApplications },
-            set: { settings.showActiveApplications = $0 }
-        )
-    }
-
-    private func updateYTDLP() {
-        isUpdatingYTDLP = true
-        ytdlpUpdateMessage = nil
-
-        Task { @MainActor in
-            do {
-                let latestVersion = try await ytDLPService.latestVersion()
-                if installedYTDLPVersion == latestVersion {
-                    ytdlpUpdateMessage = "yt-dlp \(latestVersion) is up to date."
-                } else {
-                    _ = try await ytDLPService.update(settings: settings)
-                    installedYTDLPVersion = await ytDLPService.installedVersion(settings: settings) ?? latestVersion
-                    ytdlpUpdateMessage = "yt-dlp updated to \(installedYTDLPVersion ?? latestVersion)."
-                }
-            } catch {
-                ytdlpUpdateMessage = error.localizedDescription
-            }
-            isUpdatingYTDLP = false
-        }
-    }
-
-    private var preferredMediaBinding: Binding<DownloadContentPreference> {
-        Binding(
-            get: { settings.preferredMediaType },
-            set: { settings.preferredMediaType = $0 }
         )
     }
 
@@ -851,18 +651,6 @@ struct SettingsView: View {
     }
 }
 
-
-
-private extension NumberFormatter {
-    static let integerFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .none
-        formatter.minimum = 0
-        formatter.maximum = 999_999
-        return formatter
-    }()
-}
-
 struct TabDropDelegate: DropDelegate {
     let destinationTab: NewNetTab
     let settings: AppSettings
@@ -886,59 +674,5 @@ struct TabDropDelegate: DropDelegate {
     func performDrop(info: DropInfo) -> Bool {
         draggedTab = nil
         return true
-    }
-}
-
-struct RightAlignedTextField: NSViewRepresentable {
-    var placeholder: String
-    @Binding var text: String
-
-    func makeNSView(context: Context) -> NSTextField {
-        let textField = NSTextField()
-        textField.alignment = .right
-        textField.isBordered = true
-        textField.bezelStyle = .roundedBezel
-        textField.delegate = context.coordinator
-        textField.font = .systemFont(ofSize: NSFont.systemFontSize(for: .regular))
-        applyPlaceholder(to: textField)
-        textField.stringValue = text
-        return textField
-    }
-
-    func updateNSView(_ nsView: NSTextField, context: Context) {
-        if nsView.stringValue != text {
-            nsView.stringValue = text
-        }
-        applyPlaceholder(to: nsView)
-    }
-
-    private func applyPlaceholder(to textField: NSTextField) {
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = .right
-        textField.placeholderAttributedString = NSAttributedString(
-            string: placeholder,
-            attributes: [
-                .foregroundColor: NSColor.placeholderTextColor,
-                .paragraphStyle: paragraph,
-                .font: NSFont.systemFont(ofSize: NSFont.systemFontSize(for: .regular))
-            ]
-        )
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    final class Coordinator: NSObject, NSTextFieldDelegate {
-        var parent: RightAlignedTextField
-
-        init(_ parent: RightAlignedTextField) {
-            self.parent = parent
-        }
-
-        func controlTextDidChange(_ obj: Notification) {
-            guard let textField = obj.object as? NSTextField else { return }
-            parent.text = textField.stringValue
-        }
     }
 }

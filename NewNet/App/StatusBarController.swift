@@ -277,18 +277,20 @@ private struct MenuBarPanelHost: View {
         ZStack {
             if showingSettings {
                 VStack(spacing: 0) {
-                    HStack {
+                    HStack(alignment: .center) {
                         Button {
                             withAnimation(DesignTokens.Animation.transition) {
                                 showingSettings = false
                             }
                         } label: {
                             Image(systemName: "chevron.left")
-                                .font(.system(size: 13, weight: .bold))
+                                .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(.primary)
                                 .frame(width: 28, height: 28)
+                                .contentShape(Circle())
                         }
-                        .buttonStyle(LiquidGlassButtonStyle(cornerRadius: 14))
+                        .buttonStyle(LiquidGlassButtonStyle(cornerRadius: 14, isCircular: true))
+                        .clipShape(Circle())
                         
                         Text("Settings")
                             .font(.system(size: 15, weight: .semibold))

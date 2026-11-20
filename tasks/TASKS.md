@@ -79,3 +79,14 @@
    Done by: CODEX
    Done at: 2026-11-18T06:05:36Z
 
+8. settings-modernization-tab-visibility
+   Id: 8-settings-modernization-tab-visibility
+   Scope: Settings UI modernization and tab visibility controls
+   Files: NewNet/App/StatusBarController.swift NewNet/Models/AppSettings.swift NewNet/Views/SettingsView.swift NewNet/Views/DropdownPanel.swift
+   Note: Completed Settings UI modernization, circular back button, tab visibility toggle, and test suite verification; make diagnose, make build, and make test all pass.
+   Detail: tasks/details/8-settings-modernization-tab-visibility.md
+   Claimed by: GEMINI
+   Claimed at: 2026-11-20T05:39:00Z
+   Done by: GEMINI
+   Done at: 2026-11-20T05:47:57Z
+
