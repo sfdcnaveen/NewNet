@@ -112,3 +112,14 @@
    Done by: GEMINI
    Done at: 2026-11-20T06:56:36Z
 
+11. fix-upside-down-coffee-icon-orange
+   Id: 11-fix-upside-down-coffee-icon-orange
+   Scope: MenuBarSpeedIndicator
+   Files: NewNet/Views/MenuBarSpeedIndicator.swift
+   Note: Fixed upside-down coffee icon rendering with respectFlipped: true and changed color to systemOrange; all builds and 41 tests pass
+   Detail: tasks/details/11-fix-upside-down-coffee-icon-orange.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-20T06:59:42Z
+   Done by: CODEX
+   Done at: 2026-11-20T07:00:17Z
+

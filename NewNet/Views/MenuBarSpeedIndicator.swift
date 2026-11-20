@@ -153,18 +153,34 @@ final class MenuBarSpeedIndicator: NSView {
 
     private func drawCoffeeIcon(in rect: NSRect) {
         guard isKeepAwakeActive else { return }
+
+        // Use systemOrange for a vibrant, native Apple accent
         let config = NSImage.SymbolConfiguration(pointSize: 10, weight: .semibold)
-            .applying(NSImage.SymbolConfiguration(paletteColors: [NSColor.labelColor]))
-        guard let image = NSImage(systemSymbolName: "cup.and.saucer.fill", accessibilityDescription: "Keep Awake Active")?.withSymbolConfiguration(config) else {
+            .applying(NSImage.SymbolConfiguration(paletteColors: [NSColor.systemOrange]))
+
+        guard let image = NSImage(
+            systemSymbolName: "cup.and.saucer.fill",
+            accessibilityDescription: "Keep Awake Active"
+        )?.withSymbolConfiguration(config) else {
             return
         }
+
         let iconRect = NSRect(
             x: rect.maxX - horizontalInset - coffeeIconWidth,
             y: floor((rect.height - coffeeIconHeight) / 2),
             width: coffeeIconWidth,
             height: coffeeIconHeight
         )
-        image.draw(in: iconRect, from: .zero, operation: .sourceOver, fraction: 1.0)
+
+        // respectFlipped: true ensures the image draws right-side-up in a flipped NSView
+        image.draw(
+            in: iconRect,
+            from: NSRect(origin: .zero, size: image.size),
+            operation: .sourceOver,
+            fraction: 1.0,
+            respectFlipped: true,
+            hints: nil
+        )
     }
 
     private func textAttributes(for font: NSFont) -> [NSAttributedString.Key: Any] {
