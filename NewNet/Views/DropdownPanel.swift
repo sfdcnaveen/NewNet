@@ -26,7 +26,8 @@ struct DropdownPanel: View {
                 if let pendingSelection = downloadManagerViewModel.pendingMediaSelection {
                     MediaFormatSelectionScreen(
                         pendingSelection: pendingSelection,
-                        downloadManagerViewModel: downloadManagerViewModel
+                        downloadManagerViewModel: downloadManagerViewModel,
+                        onSettingsTapped: onSettingsTapped
                     )
                 } else {
                     mainPanel
@@ -433,16 +434,63 @@ struct DropdownPanel: View {
             }
 
             if let validationMessage = downloadManagerViewModel.validationMessage {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.red)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.red)
+                            .padding(.top, 2)
+                        
+                        Text(validationMessage)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Spacer(minLength: 0)
+
+                        Button {
+                            downloadManagerViewModel.validationMessage = nil
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
                         .padding(.top, 2)
-                    
-                    Text(validationMessage)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.primary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    if validationMessage.contains("Settings") || validationMessage.contains("Full Disk Access") {
+                        HStack(spacing: 8) {
+                            if validationMessage.contains("Full Disk Access") || validationMessage.contains("System Settings") {
+                                Button {
+                                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
+                                        NSWorkspace.shared.open(url)
+                                    }
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "lock.shield")
+                                        Text("Open System Settings")
+                                    }
+                                }
+                                .buttonStyle(LiquidGlassButtonStyle(tint: .accentColor, cornerRadius: DesignTokens.Radius.chip))
+                                .controlSize(.small)
+                            }
+
+                            if let onSettingsTapped {
+                                Button {
+                                    onSettingsTapped()
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "gearshape")
+                                        Text("NewNet Settings")
+                                    }
+                                }
+                                .buttonStyle(LiquidGlassButtonStyle(cornerRadius: DesignTokens.Radius.chip))
+                                .controlSize(.small)
+                            }
+                        }
+                        .padding(.leading, 22)
+                    }
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
@@ -555,6 +603,7 @@ struct DropdownPanel: View {
 private struct MediaFormatSelectionScreen: View {
     let pendingSelection: PendingMediaSelection
     @ObservedObject var downloadManagerViewModel: DownloadManagerViewModel
+    var onSettingsTapped: (() -> Void)? = nil
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -614,16 +663,63 @@ private struct MediaFormatSelectionScreen: View {
             .scrollIndicators(.automatic)
 
             if let validationMessage = downloadManagerViewModel.validationMessage {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.red)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.red)
+                            .padding(.top, 2)
+                        
+                        Text(validationMessage)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Spacer(minLength: 0)
+
+                        Button {
+                            downloadManagerViewModel.validationMessage = nil
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
                         .padding(.top, 2)
-                    
-                    Text(validationMessage)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.primary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    if validationMessage.contains("Settings") || validationMessage.contains("Full Disk Access") {
+                        HStack(spacing: 8) {
+                            if validationMessage.contains("Full Disk Access") || validationMessage.contains("System Settings") {
+                                Button {
+                                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
+                                        NSWorkspace.shared.open(url)
+                                    }
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "lock.shield")
+                                        Text("Open System Settings")
+                                    }
+                                }
+                                .buttonStyle(LiquidGlassButtonStyle(tint: .accentColor, cornerRadius: DesignTokens.Radius.chip))
+                                .controlSize(.small)
+                            }
+
+                            if let onSettingsTapped {
+                                Button {
+                                    onSettingsTapped()
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "gearshape")
+                                        Text("NewNet Settings")
+                                    }
+                                }
+                                .buttonStyle(LiquidGlassButtonStyle(cornerRadius: DesignTokens.Radius.chip))
+                                .controlSize(.small)
+                            }
+                        }
+                        .padding(.leading, 22)
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)

@@ -167,3 +167,14 @@
    Done by: CODEX
    Done at: 2026-11-23T11:14:56Z
 
+16. youtube-bot-check-cookies
+   Id: 16-youtube-bot-check-cookies
+   Scope: Feature/UI
+   Files: NewNet/Models/AppSettings.swift,NewNet/Services/YTDLPService.swift,NewNet/Views/SettingsView.swift,NewNet/Views/DropdownPanel.swift
+   Note: Added browser cookies support including Safari with Full Disk Access detection, humanized YouTube bot check and extractor errors, enhanced error UI cards with 1-click action buttons, passed 50 unit tests, built NewNet.dmg
+   Detail: tasks/details/16-youtube-bot-check-cookies.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-23T11:31:29Z
+   Done by: CODEX
+   Done at: 2026-11-23T11:49:54Z
+

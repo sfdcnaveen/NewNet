@@ -232,6 +232,105 @@ struct SettingsView: View {
                 }
                 .padding(12)
                 .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium)
+
+                // Browser Cookies & Authentication Card
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Image(systemName: settings.browserCookieSource.iconName)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color.accentColor)
+
+                        Text("Browser Cookies")
+                            .font(.system(size: 12, weight: .semibold))
+
+                        Spacer()
+
+                        Picker("", selection: $settings.browserCookieSource) {
+                            ForEach(BrowserCookieSource.availableSources) { source in
+                                Text(source.displayName).tag(source)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(width: 140)
+                    }
+
+                    Text("Uses your active browser login to prevent YouTube bot verification and access age-restricted or members-only videos.")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if settings.browserCookieSource == .safari {
+                        if AppSettings.isSafariCookiesReadable {
+                            HStack(spacing: 5) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                                    .font(.system(size: 11))
+                                Text("Safari cookies connected")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                            }
+                        } else {
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack(alignment: .top, spacing: 6) {
+                                    Image(systemName: "lock.shield")
+                                        .foregroundStyle(.orange)
+                                        .font(.system(size: 12))
+                                        .padding(.top, 1)
+
+                                    Text("Safari cookies require Full Disk Access in macOS System Settings so NewNet can use your active YouTube login.")
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+
+                                Button {
+                                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
+                                        NSWorkspace.shared.open(url)
+                                    }
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "arrow.up.forward.app")
+                                        Text("Grant Full Disk Access…")
+                                    }
+                                }
+                                .buttonStyle(LiquidGlassButtonStyle(tint: .accentColor, cornerRadius: DesignTokens.Radius.chip))
+                                .controlSize(.small)
+                                .padding(.top, 2)
+                            }
+                            .padding(8)
+                            .liquidGlassCard(cornerRadius: DesignTokens.Radius.small, tint: .orange.opacity(0.12))
+                        }
+                    } else if settings.browserCookieSource == .custom {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 6) {
+                                TextField("Path to cookies.txt", text: $settings.customCookiesPath)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.system(size: 11))
+
+                                Button("Browse…") {
+                                    selectCustomCookiesFile()
+                                }
+                                .buttonStyle(LiquidGlassButtonStyle(cornerRadius: DesignTokens.Radius.chip))
+                                .controlSize(.small)
+                            }
+
+                            Text("Select a Netscape-formatted cookies.txt file exported from your browser.")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.tertiary)
+                        }
+                    } else if settings.browserCookieSource != .none {
+                        HStack(spacing: 5) {
+                            Image(systemName: "info.circle")
+                                .foregroundStyle(.secondary)
+                                .font(.system(size: 11))
+                            Text("NewNet will read YouTube cookies directly from \(settings.browserCookieSource.displayName).")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .padding(12)
+                .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium)
             }
 
             // MARK: - 4. Music Scrobbling
@@ -605,6 +704,19 @@ struct SettingsView: View {
                 listenBrainzError = error.localizedDescription
             }
             isValidatingListenBrainz = false
+        }
+    }
+
+    private func selectCustomCookiesFile() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Choose"
+        panel.message = "Choose a Netscape cookies.txt file"
+
+        if panel.runModal() == .OK, let url = panel.url {
+            settings.customCookiesPath = url.path(percentEncoded: false)
         }
     }
 }

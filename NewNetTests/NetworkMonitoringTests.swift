@@ -726,6 +726,80 @@ final class YTDLPServiceHostTests: XCTestCase {
         let version = try await service.latestVersion()
         XCTAssertFalse(version.isEmpty)
     }
+
+    @MainActor
+    func testHumanizeYouTubeBotCheckError() {
+        let rawBotError = "ERROR: [youtube] yfHDJWWm0LE: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
+
+        // Default / no settings
+        let humanizedDefault = YTDLPHumanError.humanize(rawBotError, settings: nil)
+        XCTAssertTrue(humanizedDefault.contains("YouTube requires verification"))
+        XCTAssertTrue(humanizedDefault.contains("Browser Cookies in NewNet Settings"))
+        XCTAssertFalse(humanizedDefault.contains("https://"))
+        XCTAssertFalse(humanizedDefault.contains("--cookies-from-browser"))
+
+        // Chrome configured
+        let chromeSettings = AppSettings()
+        chromeSettings.browserCookieSource = .chrome
+        let humanizedChrome = YTDLPHumanError.humanize(rawBotError, settings: chromeSettings)
+        XCTAssertTrue(humanizedChrome.contains("Google Chrome"))
+        XCTAssertTrue(humanizedChrome.contains("signed in to YouTube"))
+    }
+
+    func testHumanizeSafariOperationNotPermittedError() {
+        let rawSafariError = "ERROR: [Errno 1] Operation not permitted: '/Users/nn/Library/Containers/com.apple.Safari/Data/Library/Cookies/Cookies.binarycookies'"
+        let humanized = YTDLPHumanError.humanize(rawSafariError)
+        XCTAssertTrue(humanized.contains("Full Disk Access"))
+        XCTAssertTrue(humanized.contains("Safari cookies"))
+        XCTAssertTrue(humanized.contains("System Settings"))
+    }
+
+    func testHumanizeAgeRestrictionAndPrivateErrors() {
+        let ageError = "ERROR: [youtube] 12345: Sign in to confirm your age. This video may be inappropriate for some users."
+        let humanizedAge = YTDLPHumanError.humanize(ageError)
+        XCTAssertTrue(humanizedAge.contains("age-restricted"))
+        XCTAssertFalse(humanizedAge.contains("ERROR: [youtube]"))
+
+        let privateError = "ERROR: [youtube] 12345: Private video. Sign in if you've been granted access to this video"
+        let humanizedPrivate = YTDLPHumanError.humanize(privateError)
+        XCTAssertTrue(humanizedPrivate.contains("private or members-only"))
+
+        let geoError = "ERROR: [youtube] 12345: The uploader has not made this video available in your country"
+        let humanizedGeo = YTDLPHumanError.humanize(geoError)
+        XCTAssertTrue(humanizedGeo.contains("geographic restrictions"))
+    }
+
+    @MainActor
+    func testBrowserCookieArguments() {
+        let settings = AppSettings()
+        let service = YTDLPService()
+        let item = DownloadItem(
+            sourceURL: URL(string: "https://www.youtube.com/watch?v=dQw4w9WgXcQ")!,
+            fileName: "video.mp4",
+            contentPreference: .video
+        )
+
+        // None
+        settings.browserCookieSource = .none
+        XCTAssertNil(YTDLPService.cookieArguments(settings: settings))
+
+        // Chrome
+        settings.browserCookieSource = .chrome
+        let chromeArgs = YTDLPService.cookieArguments(settings: settings)
+        XCTAssertEqual(chromeArgs, ["--cookies-from-browser", "chrome"])
+
+        let downloadArgs = service.arguments(for: item, settings: settings)
+        XCTAssertTrue(downloadArgs.contains("--cookies-from-browser"))
+        XCTAssertTrue(downloadArgs.contains("chrome"))
+
+        // Firefox
+        settings.browserCookieSource = .firefox
+        let firefoxArgs = YTDLPService.cookieArguments(settings: settings)
+        XCTAssertEqual(firefoxArgs, ["--cookies-from-browser", "firefox"])
+
+        // Reset
+        settings.browserCookieSource = .safari
+    }
 }
 
 @MainActor
