@@ -4,6 +4,7 @@
   <p><strong>The ultimate lightweight, native macOS menu-bar utility suite and media manager.</strong></p>
 
   [![macOS](https://img.shields.io/badge/macOS-15.0+-000000.svg?logo=apple&style=flat-square)](https://apple.com/macos)
+  [![Architecture](https://img.shields.io/badge/Architecture-Apple%20Silicon%20(arm64)-orange.svg?logo=apple&style=flat-square)](https://apple.com/mac)
   [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
   [![GitHub release (latest by date)](https://img.shields.io/github/v/release/sfdcnaveen/NewNet?style=flat-square)](https://github.com/sfdcnaveen/NewNet/releases)
   [![Downloads](https://img.shields.io/github/downloads/sfdcnaveen/NewNet/total?style=flat-square)](https://github.com/sfdcnaveen/NewNet/releases)
@@ -12,6 +13,9 @@
 <br>
 
 **NewNet** is a high-performance, native macOS menu-bar companion crafted with SwiftUI and Apple's Liquid Glass design language. It combines a lightning-fast media downloader powered by `yt-dlp` and bundled `ffmpeg`, automated music scrobbling, live network speed monitoring, and a powerful suite of native macOS workflow utilities—all residing discreetly in your menu bar.
+
+> [!IMPORTANT]
+> **System Requirements:** NewNet is built exclusively for **Apple Silicon Macs** (M1, M2, M3, M4 or later) running macOS 15.0 or later. Intel-based Macs are not supported.
 
 ---
 
@@ -105,7 +109,7 @@ brew install --cask newnet
 ## 💻 Building from Source
 
 ### Prerequisites
-* macOS 15.0+ with Xcode 16+ / Command Line Tools
+* Apple Silicon Mac (M-series, arm64) running macOS 15.0+ with Xcode 16+ / Command Line Tools
 * `python3`, `xcodegen`, `xcbeautify`
 
 ```bash

@@ -145,3 +145,14 @@
    Done by: CODEX
    Done at: 2026-11-23T08:50:44Z
 
+14. remove-ffmpeg-x64-apple-silicon-only
+   Id: 14-remove-ffmpeg-x64-apple-silicon-only
+   Scope: Build/Packaging & Documentation
+   Files: makedmg.sh README.md NewNet/Services/YTDLPService.swift
+   Note: Removed ffmpeg-x64 from packaging scripts and bundle, dropping DMG size from 83.2 MB down to 58.5 MB (-25 MB). Updated README.md with Apple Silicon (arm64) badge and requirements callout.
+   Detail: tasks/details/14-remove-ffmpeg-x64-apple-silicon-only.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-23T09:18:08Z
+   Done by: CODEX
+   Done at: 2026-11-23T09:20:30Z
+

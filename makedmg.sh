@@ -15,7 +15,6 @@ ICON_ICNS="$BUILD_DIR/.VolumeIcon.icns"
 FFMPEG_TAG="b6.1.1"
 FFMPEG_BASE_URL="https://github.com/eugeneware/ffmpeg-static/releases/download/${FFMPEG_TAG}"
 FFMPEG_ARM_URL="${FFMPEG_BASE_URL}/ffmpeg-darwin-arm64"
-FFMPEG_X64_URL="${FFMPEG_BASE_URL}/ffmpeg-darwin-x64"
 
 mkdir -p "$BUILD_DIR"
 
@@ -32,16 +31,13 @@ if [[ ! -d "$APP_PATH" ]]; then
   exit 1
 fi
 
-echo "Bundling ffmpeg binaries..."
+echo "Bundling ffmpeg binary for Apple Silicon (arm64)..."
 RESOURCE_DIR="$APP_PATH/Contents/Resources"
 mkdir -p "$RESOURCE_DIR"
+rm -f "$RESOURCE_DIR/ffmpeg-x64"
 if [[ ! -x "$RESOURCE_DIR/ffmpeg-arm64" ]]; then
   curl -L -f "$FFMPEG_ARM_URL" -o "$RESOURCE_DIR/ffmpeg-arm64"
   chmod +x "$RESOURCE_DIR/ffmpeg-arm64"
-fi
-if [[ ! -x "$RESOURCE_DIR/ffmpeg-x64" ]]; then
-  curl -L -f "$FFMPEG_X64_URL" -o "$RESOURCE_DIR/ffmpeg-x64"
-  chmod +x "$RESOURCE_DIR/ffmpeg-x64"
 fi
 
 echo "Bundling yt-dlp binary..."
