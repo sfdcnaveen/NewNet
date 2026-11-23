@@ -1,6 +1,62 @@
 import Combine
 import Foundation
 import SwiftUI
+import AppKit
+
+enum BrowserCookieSource: String, CaseIterable, Identifiable, Sendable {
+    case safari = "Safari"
+    case chrome = "Google Chrome"
+    case brave = "Brave"
+    case edge = "Microsoft Edge"
+    case firefox = "Firefox"
+    case custom = "Custom File"
+    case none = "None"
+
+    nonisolated var id: String { rawValue }
+
+    nonisolated var displayName: String { rawValue }
+
+    nonisolated var ytDLPBrowserArg: String? {
+        switch self {
+        case .safari: return "safari"
+        case .chrome: return "chrome"
+        case .brave: return "brave"
+        case .edge: return "edge"
+        case .firefox: return "firefox"
+        case .custom, .none: return nil
+        }
+    }
+
+    nonisolated var iconName: String {
+        switch self {
+        case .safari: return "safari"
+        case .chrome, .brave, .edge, .firefox: return "globe"
+        case .custom: return "doc.text"
+        case .none: return "slash.circle"
+        }
+    }
+
+    @MainActor
+    var isInstalled: Bool {
+        switch self {
+        case .none, .custom, .safari:
+            return true
+        case .chrome:
+            return NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.google.Chrome") != nil
+        case .brave:
+            return NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.brave.Browser") != nil
+        case .edge:
+            return NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.microsoft.edgemac") != nil
+        case .firefox:
+            return NSWorkspace.shared.urlForApplication(withBundleIdentifier: "org.mozilla.firefox") != nil
+        }
+    }
+
+    @MainActor
+    static var availableSources: [BrowserCookieSource] {
+        allCases.filter(\.isInstalled)
+    }
+}
 
 enum AppTheme: String, CaseIterable, Identifiable {
     case system = "System"
@@ -47,6 +103,17 @@ final class AppSettings: ObservableObject {
         static let finderCutPasteEnabled = "settings.finderCutPasteEnabled"
         static let autoQuitEnabled = "settings.autoQuitEnabled"
         static let autoQuitExceptions = "settings.autoQuitExceptions"
+        static let browserCookieSource = "settings.browserCookieSource"
+        static let customCookiesPath = "settings.customCookiesPath"
+    }
+
+    nonisolated static var safariCookiesURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Containers/com.apple.Safari/Data/Library/Cookies/Cookies.binarycookies")
+    }
+
+    nonisolated static var isSafariCookiesReadable: Bool {
+        FileManager.default.isReadableFile(atPath: safariCookiesURL.path)
     }
 
     private let defaults: UserDefaults
@@ -257,6 +324,18 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    @Published var browserCookieSource: BrowserCookieSource {
+        didSet {
+            defaults.set(browserCookieSource.rawValue, forKey: Keys.browserCookieSource)
+        }
+    }
+
+    @Published var customCookiesPath: String {
+        didSet {
+            defaults.set(customCookiesPath.trimmingCharacters(in: .whitespacesAndNewlines), forKey: Keys.customCookiesPath)
+        }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
 
@@ -303,6 +382,9 @@ final class AppSettings: ObservableObject {
         finderCutPasteEnabled = defaults.bool(forKey: Keys.finderCutPasteEnabled)
         autoQuitEnabled = defaults.bool(forKey: Keys.autoQuitEnabled)
         autoQuitExceptions = defaults.stringArray(forKey: Keys.autoQuitExceptions) ?? []
+        let storedCookieSource = defaults.string(forKey: Keys.browserCookieSource)
+        browserCookieSource = BrowserCookieSource(rawValue: storedCookieSource ?? "") ?? .safari
+        customCookiesPath = defaults.string(forKey: Keys.customCookiesPath) ?? ""
     }
 
     func restoreDefaultTabOrder() {

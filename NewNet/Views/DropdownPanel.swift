@@ -26,7 +26,8 @@ struct DropdownPanel: View {
                 if let pendingSelection = downloadManagerViewModel.pendingMediaSelection {
                     MediaFormatSelectionScreen(
                         pendingSelection: pendingSelection,
-                        downloadManagerViewModel: downloadManagerViewModel
+                        downloadManagerViewModel: downloadManagerViewModel,
+                        onSettingsTapped: onSettingsTapped
                     )
                 } else {
                     mainPanel
@@ -433,16 +434,63 @@ struct DropdownPanel: View {
             }
 
             if let validationMessage = downloadManagerViewModel.validationMessage {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.red)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.red)
+                            .padding(.top, 2)
+                        
+                        Text(validationMessage)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Spacer(minLength: 0)
+
+                        Button {
+                            downloadManagerViewModel.validationMessage = nil
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
                         .padding(.top, 2)
-                    
-                    Text(validationMessage)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.primary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    if validationMessage.contains("Settings") || validationMessage.contains("Full Disk Access") {
+                        HStack(spacing: 8) {
+                            if validationMessage.contains("Full Disk Access") || validationMessage.contains("System Settings") {
+                                Button {
+                                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
+                                        NSWorkspace.shared.open(url)
+                                    }
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "lock.shield")
+                                        Text("Open System Settings")
+                                    }
+                                }
+                                .buttonStyle(LiquidGlassButtonStyle(tint: .accentColor, cornerRadius: DesignTokens.Radius.chip))
+                                .controlSize(.small)
+                            }
+
+                            if let onSettingsTapped {
+                                Button {
+                                    onSettingsTapped()
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "gearshape")
+                                        Text("NewNet Settings")
+                                    }
+                                }
+                                .buttonStyle(LiquidGlassButtonStyle(cornerRadius: DesignTokens.Radius.chip))
+                                .controlSize(.small)
+                            }
+                        }
+                        .padding(.leading, 22)
+                    }
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
@@ -555,6 +603,7 @@ struct DropdownPanel: View {
 private struct MediaFormatSelectionScreen: View {
     let pendingSelection: PendingMediaSelection
     @ObservedObject var downloadManagerViewModel: DownloadManagerViewModel
+    var onSettingsTapped: (() -> Void)? = nil
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -585,6 +634,17 @@ private struct MediaFormatSelectionScreen: View {
                         )
                     }
 
+                    if pendingSelection.selectedPreference == .audio {
+                        AudioClipEditor(
+                            pendingSelection: pendingSelection,
+                            onToggleTrim: downloadManagerViewModel.toggleAudioTrim,
+                            onStartChange: downloadManagerViewModel.setAudioStartText,
+                            onEndChange: downloadManagerViewModel.setAudioEndText,
+                            onPreset: downloadManagerViewModel.applyAudioPreset,
+                            onFormatChange: downloadManagerViewModel.setAudioFormat
+                        )
+                    }
+
                     LazyVStack(spacing: 8) {
                         ForEach(pendingSelection.availableOptions) { option in
                             MediaFormatOptionRow(
@@ -604,16 +664,63 @@ private struct MediaFormatSelectionScreen: View {
             .scrollIndicators(.automatic)
 
             if let validationMessage = downloadManagerViewModel.validationMessage {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.red)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.red)
+                            .padding(.top, 2)
+                        
+                        Text(validationMessage)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Spacer(minLength: 0)
+
+                        Button {
+                            downloadManagerViewModel.validationMessage = nil
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
                         .padding(.top, 2)
-                    
-                    Text(validationMessage)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.primary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    if validationMessage.contains("Settings") || validationMessage.contains("Full Disk Access") {
+                        HStack(spacing: 8) {
+                            if validationMessage.contains("Full Disk Access") || validationMessage.contains("System Settings") {
+                                Button {
+                                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
+                                        NSWorkspace.shared.open(url)
+                                    }
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "lock.shield")
+                                        Text("Open System Settings")
+                                    }
+                                }
+                                .buttonStyle(LiquidGlassButtonStyle(tint: .accentColor, cornerRadius: DesignTokens.Radius.chip))
+                                .controlSize(.small)
+                            }
+
+                            if let onSettingsTapped {
+                                Button {
+                                    onSettingsTapped()
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "gearshape")
+                                        Text("NewNet Settings")
+                                    }
+                                }
+                                .buttonStyle(LiquidGlassButtonStyle(cornerRadius: DesignTokens.Radius.chip))
+                                .controlSize(.small)
+                            }
+                        }
+                        .padding(.leading, 22)
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
@@ -649,7 +756,7 @@ private struct MediaFormatSelectionScreen: View {
                     downloadManagerViewModel.confirmPendingSelection()
                 }
                 .buttonStyle(LiquidGlassButtonStyle(tint: .accentColor, isProminent: true, cornerRadius: DesignTokens.Radius.medium))
-                .disabled(pendingSelection.selectedOption == nil)
+                .disabled(pendingSelection.selectedOption == nil || (pendingSelection.selectedPreference == .audio && pendingSelection.isAudioTrimEnabled && !pendingSelection.isAudioRangeValid))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -852,6 +959,206 @@ private struct GIFClipEditor: View {
     private func durationString(_ duration: TimeInterval) -> String {
         let totalSeconds = Int(duration.rounded())
         return "\(totalSeconds / 60):\(String(format: "%02d", totalSeconds % 60))"
+    }
+}
+
+private struct AudioClipEditor: View {
+    let pendingSelection: PendingMediaSelection
+    let onToggleTrim: @MainActor @Sendable () -> Void
+    let onStartChange: @MainActor @Sendable (String) -> Void
+    let onEndChange: @MainActor @Sendable (String) -> Void
+    let onPreset: @MainActor @Sendable (TimeInterval, TimeInterval) -> Void
+    let onFormatChange: @MainActor @Sendable (AudioOutputFormat) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Header with toggle
+            HStack(spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: "scissors")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(pendingSelection.isAudioTrimEnabled ? Color.orange : Color.secondary)
+                        .padding(5)
+                        .background(
+                            Circle()
+                                .fill(pendingSelection.isAudioTrimEnabled ? Color.orange.opacity(0.18) : Color.primary.opacity(0.06))
+                        )
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        HStack(spacing: 4) {
+                            Text("Audio Cutter")
+                                .font(.system(size: 12, weight: .semibold))
+                            if pendingSelection.isAudioTrimEnabled {
+                                Text("ACTIVE")
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1.5)
+                                    .background(Capsule().fill(Color.orange))
+                            }
+                        }
+                        Text(pendingSelection.isAudioTrimEnabled ? "Trim range in MM:SS" : "Download a specific section of the audio")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                Toggle("", isOn: Binding(
+                    get: { pendingSelection.isAudioTrimEnabled },
+                    set: { _ in
+                        withAnimation(DesignTokens.Animation.transition) {
+                            onToggleTrim()
+                        }
+                    }
+                ))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.small)
+            }
+
+            // Expanded Cutter controls
+            if pendingSelection.isAudioTrimEnabled {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 10) {
+                        timeInput(
+                            title: "From",
+                            text: pendingSelection.audioStartText,
+                            onChange: onStartChange
+                        )
+
+                        timeInput(
+                            title: "To",
+                            text: pendingSelection.audioEndText,
+                            onChange: onEndChange
+                        )
+
+                        Spacer()
+
+                        // Duration badge
+                        HStack(spacing: 3) {
+                            Image(systemName: "timer")
+                                .font(.system(size: 9))
+                            Text(TimeFormatting.formatTimestamp(pendingSelection.audioDuration))
+                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        }
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(pendingSelection.isAudioRangeValid ? Color.orange.opacity(0.15) : Color.red.opacity(0.15))
+                        )
+                        .foregroundStyle(pendingSelection.isAudioRangeValid ? Color.orange : Color.red)
+                        .help("Selected cut duration")
+                    }
+
+                    // Format selector: [ M4R (iPhone) | MP3 ]
+                    HStack(spacing: 6) {
+                        Text("Format:")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.secondary)
+
+                        ForEach(AudioOutputFormat.allCases) { format in
+                            Button {
+                                onFormatChange(format)
+                            } label: {
+                                HStack(spacing: 3) {
+                                    if format == .m4r {
+                                        Image(systemName: "applelogo")
+                                            .font(.system(size: 8))
+                                    }
+                                    Text(format.displayName)
+                                }
+                                .font(.system(size: 10, weight: pendingSelection.audioFormat == format ? .semibold : .regular))
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(
+                                    RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
+                                        .fill(pendingSelection.audioFormat == format ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.04))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
+                                        .stroke(pendingSelection.audioFormat == format ? Color.accentColor.opacity(0.4) : Color.clear, lineWidth: 1)
+                                )
+                                .foregroundStyle(pendingSelection.audioFormat == format ? Color.accentColor : Color.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        Spacer()
+                    }
+
+                    // Quick presets
+                    HStack(spacing: 6) {
+                        let totalDuration = pendingSelection.mediaInfo.duration ?? 180
+
+                        presetButton(title: "Full Track") {
+                            onPreset(0, totalDuration)
+                        }
+
+                        presetButton(title: "First 30s") {
+                            onPreset(0, min(30, totalDuration))
+                        }
+
+                        presetButton(title: "First 60s") {
+                            onPreset(0, min(60, totalDuration))
+                        }
+
+                        if pendingSelection.audioStart > 0 {
+                            presetButton(title: "+30s from start") {
+                                onPreset(pendingSelection.audioStart, min(pendingSelection.audioStart + 30, totalDuration))
+                            }
+                        }
+
+                        Spacer()
+                    }
+
+                    if !pendingSelection.isAudioRangeValid {
+                        Text("End time must be greater than start time.")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.red)
+                    } else if pendingSelection.audioDuration > 0 {
+                        Text("Extracts \(pendingSelection.audioFormat.displayName) from \(pendingSelection.audioStartText) to \(pendingSelection.audioEndText)")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .padding(12)
+        .liquidGlassControl()
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Audio cutter range")
+    }
+
+    private func timeInput(title: String, text: String, onChange: @escaping @MainActor @Sendable (String) -> Void) -> some View {
+        HStack(spacing: 5) {
+            Text(title)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+
+            TextField("0:00", text: Binding(get: { text }, set: onChange))
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .frame(width: 58)
+                .multilineTextAlignment(.center)
+                .accessibilityLabel("\(title) time in MM:SS")
+        }
+    }
+
+    private func presetButton(title: String, action: @escaping @MainActor @Sendable () -> Void) -> some View {
+        Button(title, action: action)
+            .buttonStyle(.plain)
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3.5)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.primary.opacity(0.06))
+            )
     }
 }
 

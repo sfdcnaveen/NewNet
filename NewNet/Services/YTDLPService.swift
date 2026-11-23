@@ -8,6 +8,182 @@ enum YTDLPEvent {
     case terminated(exitCode: Int32, message: String?)
 }
 
+struct CookieConfiguration: Sendable {
+    let source: BrowserCookieSource
+    let customCookiesPath: String
+    let isSafariCookiesReadable: Bool
+    let arguments: [String]?
+
+    @MainActor
+    init(settings: AppSettings) {
+        self.source = settings.browserCookieSource
+        self.customCookiesPath = settings.customCookiesPath
+        self.isSafariCookiesReadable = AppSettings.isSafariCookiesReadable
+        self.arguments = Self.buildArguments(
+            source: settings.browserCookieSource,
+            customCookiesPath: settings.customCookiesPath,
+            isSafariCookiesReadable: AppSettings.isSafariCookiesReadable
+        )
+    }
+
+    init(
+        source: BrowserCookieSource = .safari,
+        customCookiesPath: String = "",
+        isSafariCookiesReadable: Bool = AppSettings.isSafariCookiesReadable
+    ) {
+        self.source = source
+        self.customCookiesPath = customCookiesPath
+        self.isSafariCookiesReadable = isSafariCookiesReadable
+        self.arguments = Self.buildArguments(
+            source: source,
+            customCookiesPath: customCookiesPath,
+            isSafariCookiesReadable: isSafariCookiesReadable
+        )
+    }
+
+    private static func buildArguments(
+        source: BrowserCookieSource,
+        customCookiesPath: String,
+        isSafariCookiesReadable: Bool
+    ) -> [String]? {
+        switch source {
+        case .none:
+            return nil
+        case .safari:
+            if isSafariCookiesReadable {
+                return ["--cookies-from-browser", "safari"]
+            }
+            return nil
+        case .chrome, .brave, .edge, .firefox:
+            if let browserArg = source.ytDLPBrowserArg {
+                return ["--cookies-from-browser", browserArg]
+            }
+            return nil
+        case .custom:
+            let customPath = customCookiesPath.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !customPath.isEmpty, FileManager.default.fileExists(atPath: customPath) {
+                return ["--cookies", customPath]
+            }
+            return nil
+        }
+    }
+}
+
+enum YTDLPHumanError: Sendable {
+    nonisolated static func humanize(_ raw: String, cookieConfig: CookieConfiguration? = nil) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return "Unable to prepare media download."
+        }
+
+        let lower = trimmed.lowercased()
+
+        // 1. YouTube Bot Check / Sign in to confirm you're not a bot
+        if lower.contains("confirm you're not a bot") ||
+           lower.contains("confirm you’re not a bot") ||
+           (lower.contains("sign in to confirm") && (lower.contains("bot") || lower.contains("robot") || lower.contains("not a"))) ||
+           lower.contains("protect our community") {
+
+            if let cookieConfig {
+                if cookieConfig.source == .safari && !cookieConfig.isSafariCookiesReadable {
+                    return "YouTube requires verification. Safari cookies are selected, but Full Disk Access is needed for NewNet to read them. Grant Full Disk Access in macOS System Settings > Privacy & Security, or choose another browser in NewNet Settings."
+                } else if cookieConfig.source != .none {
+                    return "YouTube is requesting human verification for this video. Please ensure you are signed in to YouTube in \(cookieConfig.source.displayName), or try again shortly."
+                }
+            }
+            return "YouTube requires verification to confirm you are not a bot. You can resolve this by enabling Browser Cookies in NewNet Settings."
+        }
+
+        // 2. Safari Cookies Permission Denied
+        if (lower.contains("operation not permitted") || lower.contains("errno 1")) &&
+           (lower.contains("cookies.binarycookies") || lower.contains("safari")) {
+            return "NewNet could not read Safari cookies because macOS requires Full Disk Access. Grant NewNet Full Disk Access in System Settings > Privacy & Security > Full Disk Access, or select another browser in NewNet Settings."
+        }
+
+        // 3. Browser Cookie Database Locked or Missing
+        if lower.contains("could not find") && lower.contains("cookies database") {
+            let browser = cookieConfig?.source.displayName ?? "the selected browser"
+            return "Could not find \(browser) cookie data. Please make sure \(browser) is installed, or select another browser in Settings."
+        }
+
+        if lower.contains("database is locked") || (lower.contains("could not copy") && lower.contains("cookie")) {
+            let browser = cookieConfig?.source.displayName ?? "Your browser"
+            return "\(browser) cookie database is locked. Try quitting \(browser) temporarily so NewNet can read the session cookies."
+        }
+
+        // 4. Age Restriction
+        if lower.contains("sign in to confirm your age") ||
+           lower.contains("confirm your age") ||
+           lower.contains("inappropriate for some users") ||
+           lower.contains("age-restricted") {
+            return "This video is age-restricted by YouTube. Enable Browser Cookies in NewNet Settings with an account of legal age to download it."
+        }
+
+        // 5. Private / Members Only
+        if lower.contains("private video") ||
+           lower.contains("this video is private") ||
+           lower.contains("join this channel") ||
+           lower.contains("members-only") {
+            return "This video is private or members-only. To download it, enable Browser Cookies in Settings with an account that has access."
+        }
+
+        // 6. Geographic / Region Restriction
+        if lower.contains("not made this video available in your country") ||
+           lower.contains("not available in your country") ||
+           lower.contains("geoblocked") ||
+           lower.contains("geo-restricted") {
+            return "This video is not available in your region due to geographic restrictions."
+        }
+
+        // 7. Video Removed or Unavailable
+        if lower.contains("video unavailable") ||
+           lower.contains("removed by the uploader") ||
+           lower.contains("terminated") ||
+           lower.contains("no longer available") {
+            return "This video is unavailable or has been removed."
+        }
+
+        // 8. Live stream pending / ongoing
+        if lower.contains("live stream recording is not available") ||
+           lower.contains("live event will begin in") ||
+           lower.contains("premieres in") {
+            return "This live stream has not started or is still in progress. Please try again after the broadcast finishes."
+        }
+
+        // 9. Rate Limited
+        if lower.contains("too many requests") || lower.contains("http error 429") {
+            return "Too many requests sent. Please wait a few moments before trying again."
+        }
+
+        // 10. Clean up generic yt-dlp technical errors
+        var cleaned = trimmed
+        if let regex = try? NSRegularExpression(pattern: #"^ERROR:\s*(\[[^\]]+\]\s*)?([a-zA-Z0-9_-]+:\s*)?"#, options: .caseInsensitive) {
+            let range = NSRange(location: 0, length: (cleaned as NSString).length)
+            cleaned = regex.stringByReplacingMatches(in: cleaned, range: range, withTemplate: "")
+        }
+        if let urlRegex = try? NSRegularExpression(pattern: #"https?://\S+"#, options: .caseInsensitive) {
+            let range = NSRange(location: 0, length: (cleaned as NSString).length)
+            cleaned = urlRegex.stringByReplacingMatches(in: cleaned, range: range, withTemplate: "")
+        }
+        if let flagRegex = try? NSRegularExpression(pattern: #"Use --\S+.*"#, options: .caseInsensitive) {
+            let range = NSRange(location: 0, length: (cleaned as NSString).length)
+            cleaned = flagRegex.stringByReplacingMatches(in: cleaned, range: range, withTemplate: "")
+        }
+
+        cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+        if cleaned.isEmpty {
+            return "Unable to process this link with the media engine."
+        }
+        return cleaned
+    }
+
+    @MainActor
+    static func humanize(_ raw: String, settings: AppSettings?) -> String {
+        let config = settings.map { CookieConfiguration(settings: $0) }
+        return humanize(raw, cookieConfig: config)
+    }
+}
+
 enum YTDLPServiceError: LocalizedError {
     case binaryNotFound
     case installFailed(String)
@@ -625,13 +801,14 @@ final class YTDLPService {
     ) async throws -> YTDLPMediaInfo {
         _ = preferredContent
         let binaryURL = try await ensureInstalled(settings: settings)
+        let cookieConfig = CookieConfiguration(settings: settings)
         
         var effectiveURL = url
         var titleOverride: String? = nil
 
         let output: Data
         do {
-            output = try await runInspection(binaryURL: binaryURL, url: effectiveURL)
+            output = try await runInspection(binaryURL: binaryURL, url: effectiveURL, cookieConfig: cookieConfig)
         } catch {
             let errStr = error.localizedDescription
             let isRedditIssue = Self.isReddit(url: url) || errStr.localizedCaseInsensitiveContains("Reddit") || errStr.localizedCaseInsensitiveContains("authentication is required")
@@ -639,7 +816,7 @@ final class YTDLPService {
             if isRedditIssue, let resolved = await resolveRedditMedia(from: url) {
                 effectiveURL = resolved.streamURL
                 titleOverride = resolved.title
-                output = try await runInspection(binaryURL: binaryURL, url: effectiveURL)
+                output = try await runInspection(binaryURL: binaryURL, url: effectiveURL, cookieConfig: cookieConfig)
             } else if isRedditIssue {
                 throw YTDLPServiceError.inspectionFailed(
                     "Reddit requires browser verification for this link. Please check that this Reddit post has media or try opening it in your browser."
@@ -752,6 +929,7 @@ final class YTDLPService {
             }
         }
         let stderrAccumulator = LineAccumulator()
+        let cookieConfig = CookieConfiguration(settings: settings)
 
         let runningTask = YTDLPRunningTask(
             process: process,
@@ -786,15 +964,16 @@ final class YTDLPService {
         process.terminationHandler = { process in
             runningTask.finishIO()
             progressAccumulator.finish()
-            let message = stderrAccumulator.lastSignificantLine
-            onEvent(.terminated(exitCode: process.terminationStatus, message: message))
+            let rawMessage = stderrAccumulator.lastSignificantLine
+            let humanizedMessage = rawMessage.map { YTDLPHumanError.humanize($0, cookieConfig: cookieConfig) }
+            onEvent(.terminated(exitCode: process.terminationStatus, message: humanizedMessage))
         }
 
         try process.run()
         return runningTask
     }
 
-    private func arguments(for item: DownloadItem, settings: AppSettings) -> [String] {
+    func arguments(for item: DownloadItem, settings: AppSettings) -> [String] {
         let downloadsDirectory = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
         let outputTemplate: String
         let customName = item.fileName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -851,10 +1030,18 @@ final class YTDLPService {
 
             if configuration.extractAudio {
                 arguments.append("--extract-audio")
-                if let audioFormat = configuration.audioFormat, !audioFormat.isEmpty {
-                    arguments += ["--audio-format", audioFormat]
+                if configuration.audioFormat == "m4r" {
+                    arguments += [
+                        "--audio-format", "m4a",
+                        "--audio-quality", "0",
+                        "--postprocessor-args", "ExtractAudio:-b:a 256k"
+                    ]
+                } else {
+                    if let audioFormat = configuration.audioFormat, !audioFormat.isEmpty {
+                        arguments += ["--audio-format", audioFormat]
+                    }
+                    arguments += ["--audio-quality", "0"]
                 }
-                arguments += ["--audio-quality", "0"]
             }
 
             if configuration.contentPreference != .gif,
@@ -880,21 +1067,36 @@ final class YTDLPService {
             }
         }
 
+        if let cookieArgs = Self.cookieArguments(settings: settings) {
+            arguments += cookieArgs
+        }
+
         arguments.append(item.sourceURL.absoluteString)
         return arguments
     }
 
-    private func runInspection(binaryURL: URL, url: URL) async throws -> Data {
+    @MainActor
+    static func cookieArguments(settings: AppSettings) -> [String]? {
+        CookieConfiguration(settings: settings).arguments
+    }
+
+    private func runInspection(binaryURL: URL, url: URL, cookieConfig: CookieConfiguration) async throws -> Data {
         let task = Task.detached(priority: .utility) {
             let process = Process()
             process.executableURL = binaryURL
-            process.arguments = [
+
+            var inspectionArgs = [
                 "--dump-single-json",
                 "--no-playlist",
                 "--no-warnings",
-                "--skip-download",
-                url.absoluteString
+                "--skip-download"
             ]
+            if let cookieArgs = cookieConfig.arguments {
+                inspectionArgs += cookieArgs
+            }
+            inspectionArgs.append(url.absoluteString)
+            process.arguments = inspectionArgs
+
             process.environment = {
                 var environment = ProcessInfo.processInfo.environment
                 environment["PYTHONIOENCODING"] = "utf-8"
@@ -920,11 +1122,12 @@ final class YTDLPService {
             let stderrData = await stderrTask.value
 
             guard process.terminationStatus == 0 else {
-                let message = String(data: stderrData, encoding: .utf8)?
+                let rawMessage = String(data: stderrData, encoding: .utf8)?
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                     .ifEmpty("NewNet could not inspect this link.")
                     ?? "NewNet could not inspect this link."
-                throw YTDLPServiceError.inspectionFailed(message)
+                let humanized = YTDLPHumanError.humanize(rawMessage, cookieConfig: cookieConfig)
+                throw YTDLPServiceError.inspectionFailed(humanized)
             }
 
             return stdoutData
@@ -945,7 +1148,7 @@ final class YTDLPService {
         return data[firstBrace...lastBrace]
     }
 
-    private func buildVideoOptions(from formats: [YTDLPInspectionFormat]) -> [YTDLPDownloadOption] {
+    func buildVideoOptions(from formats: [YTDLPInspectionFormat]) -> [YTDLPDownloadOption] {
         let combinedFormats = formats
             .filter(\.hasVideo)
             .filter(\.hasAudio)
@@ -963,16 +1166,23 @@ final class YTDLPService {
 
         var options: [YTDLPDownloadOption] = []
         var seenIDs: Set<String> = []
+        var seenVisualKeys: Set<String> = []
 
         for format in combinedFormats {
-            let option = makeCombinedVideoOption(from: format)
-            if seenIDs.insert(option.id).inserted {
-                options.append(option)
+            let key = Self.visualDeduplicationKey(for: format)
+            if seenVisualKeys.insert(key).inserted {
+                let option = makeCombinedVideoOption(from: format)
+                if seenIDs.insert(option.id).inserted {
+                    options.append(option)
+                }
             }
         }
 
         for format in videoOnlyFormats {
+            let key = Self.visualDeduplicationKey(for: format)
+            guard !seenVisualKeys.contains(key) else { continue }
             guard let audio = bestCompatibleAudio(for: format, from: audioOnlyFormats) else { continue }
+            seenVisualKeys.insert(key)
             let option = makeMuxedVideoOption(video: format, audio: audio)
             if seenIDs.insert(option.id).inserted {
                 options.append(option)
@@ -1013,14 +1223,32 @@ final class YTDLPService {
             )
         )
 
-        let ringtoneOption = YTDLPDownloadOption(
+        let m4rRingtoneOption = YTDLPDownloadOption(
+            id: "audio-ringtone-m4r-29s",
+            label: "iPhone Ringtone (M4R)",
+            detail: "Native Apple 256k AAC (trimmed to 29 seconds)",
+            estimatedBytes: nil,
+            configuration: YTDLPDownloadConfiguration(
+                formatExpression: formatExpression,
+                displayName: "iPhone Ringtone (M4R)",
+                detailText: "Native Apple 256k AAC (trimmed to 29 seconds)",
+                contentPreference: .audio,
+                extractAudio: true,
+                audioFormat: "m4r",
+                mergeOutputFormat: nil,
+                clipStart: 0,
+                clipEnd: 29
+            )
+        )
+
+        let mp3RingtoneOption = YTDLPDownloadOption(
             id: "audio-ringtone-29s",
-            label: "Ringtone",
+            label: "MP3 Ringtone",
             detail: "High quality MP3 (trimmed to 29 seconds)",
             estimatedBytes: nil,
             configuration: YTDLPDownloadConfiguration(
                 formatExpression: formatExpression,
-                displayName: "Ringtone",
+                displayName: "MP3 Ringtone",
                 detailText: "High quality MP3 (trimmed to 29 seconds)",
                 contentPreference: .audio,
                 extractAudio: true,
@@ -1031,7 +1259,7 @@ final class YTDLPService {
             )
         )
 
-        return [fullOption, ringtoneOption]
+        return [fullOption, m4rRingtoneOption, mp3RingtoneOption]
     }
 
 
@@ -1141,21 +1369,34 @@ final class YTDLPService {
         return nil
     }
 
-    nonisolated private static func isPreferredVideoFormat(_ lhs: YTDLPInspectionFormat, _ rhs: YTDLPInspectionFormat) -> Bool {
+    nonisolated static func isPreferredVideoFormat(_ lhs: YTDLPInspectionFormat, _ rhs: YTDLPInspectionFormat) -> Bool {
         if lhs.height != rhs.height { return (lhs.height ?? 0) > (rhs.height ?? 0) }
         if lhs.fps != rhs.fps { return (lhs.fps ?? 0) > (rhs.fps ?? 0) }
         if lhs.dynamicRangePriority != rhs.dynamicRangePriority {
             return lhs.dynamicRangePriority > rhs.dynamicRangePriority
         }
-        return (lhs.tbr ?? 0) > (rhs.tbr ?? 0)
-    }
-
-    nonisolated private static func isPreferredAudioFormat(_ lhs: YTDLPInspectionFormat, _ rhs: YTDLPInspectionFormat) -> Bool {
-        if lhs.audioBitrate != rhs.audioBitrate { return lhs.audioBitrate > rhs.audioBitrate }
+        if lhs.protocolPriority != rhs.protocolPriority {
+            return lhs.protocolPriority > rhs.protocolPriority
+        }
+        if lhs.videoCodecPriority != rhs.videoCodecPriority {
+            return lhs.videoCodecPriority > rhs.videoCodecPriority
+        }
+        if lhs.tbr != rhs.tbr { return (lhs.tbr ?? 0) > (rhs.tbr ?? 0) }
         return (lhs.fileSize ?? 0) > (rhs.fileSize ?? 0)
     }
 
-    nonisolated private static func videoQualityLabel(for format: YTDLPInspectionFormat) -> String {
+    nonisolated static func isPreferredAudioFormat(_ lhs: YTDLPInspectionFormat, _ rhs: YTDLPInspectionFormat) -> Bool {
+        if lhs.protocolPriority != rhs.protocolPriority {
+            return lhs.protocolPriority > rhs.protocolPriority
+        }
+        if lhs.audioBitrate != rhs.audioBitrate { return lhs.audioBitrate > rhs.audioBitrate }
+        if lhs.audioCodecPriority != rhs.audioCodecPriority {
+            return lhs.audioCodecPriority > rhs.audioCodecPriority
+        }
+        return (lhs.fileSize ?? 0) > (rhs.fileSize ?? 0)
+    }
+
+    nonisolated static func videoQualityLabel(for format: YTDLPInspectionFormat) -> String {
         if let height = format.height {
             if let fps = format.fps, fps >= 50 {
                 return "\(height)p\(Int(fps.rounded()))"
@@ -1164,7 +1405,25 @@ final class YTDLPService {
             return "\(height)p"
         }
 
-        return format.resolution?.nilIfNone ?? format.formatNote?.nilIfNone ?? "Video"
+        if let resolution = format.resolution?.nilIfNone {
+            let parts = resolution.split(separator: "x")
+            if parts.count == 2, let h = Int(parts[1]) {
+                if let fps = format.fps, fps >= 50 {
+                    return "\(h)p\(Int(fps.rounded()))"
+                }
+                return "\(h)p"
+            }
+            return resolution
+        }
+
+        return format.formatNote?.nilIfNone ?? "Video"
+    }
+
+    nonisolated static func visualDeduplicationKey(for format: YTDLPInspectionFormat) -> String {
+        let quality = videoQualityLabel(for: format)
+        let ext = format.ext?.lowercased() ?? "video"
+        let dr = format.dynamicRangePriority
+        return "\(quality)_\(ext)_\(dr)"
     }
 
     nonisolated private static func audioQualityLabel(for format: YTDLPInspectionFormat) -> String {
@@ -1419,6 +1678,7 @@ struct YTDLPInspectionFormat: Decodable, Sendable {
     let vcodec: String?
     let acodec: String?
     let dynamicRange: String?
+    let formatProtocol: String?
 
     init(
         formatId: String,
@@ -1436,7 +1696,8 @@ struct YTDLPInspectionFormat: Decodable, Sendable {
         fileSizeApprox: Int64? = nil,
         vcodec: String? = nil,
         acodec: String? = nil,
-        dynamicRange: String? = nil
+        dynamicRange: String? = nil,
+        formatProtocol: String? = nil
     ) {
         self.formatId = formatId
         self.formatNote = formatNote
@@ -1454,6 +1715,7 @@ struct YTDLPInspectionFormat: Decodable, Sendable {
         self.vcodec = vcodec
         self.acodec = acodec
         self.dynamicRange = dynamicRange
+        self.formatProtocol = formatProtocol
     }
 
     nonisolated var hasVideo: Bool {
@@ -1470,6 +1732,53 @@ struct YTDLPInspectionFormat: Decodable, Sendable {
 
     nonisolated var audioBitrate: Double {
         abr ?? tbr ?? 0
+    }
+
+    nonisolated var isHLS: Bool {
+        guard let proto = formatProtocol?.lowercased() else { return false }
+        return proto.contains("m3u8")
+    }
+
+    nonisolated var protocolPriority: Int {
+        guard let proto = formatProtocol?.lowercased() else { return 1 }
+        if proto.starts(with: "http") || proto.starts(with: "https") {
+            return 2
+        }
+        if proto.contains("m3u8") {
+            return 0
+        }
+        return 1
+    }
+
+    nonisolated var videoCodecPriority: Int {
+        guard let vcodec = vcodec?.lowercased(), !vcodec.isEmpty, vcodec != "none" else { return 0 }
+        if vcodec.starts(with: "avc1") || vcodec.starts(with: "h264") {
+            return 4
+        }
+        if vcodec.starts(with: "hvc1") || vcodec.starts(with: "hev1") || vcodec.starts(with: "hevc") {
+            return 3
+        }
+        if vcodec.starts(with: "av01") || vcodec.starts(with: "av1") {
+            return 2
+        }
+        if vcodec.starts(with: "vp09") || vcodec.starts(with: "vp9") {
+            return 1
+        }
+        return 0
+    }
+
+    nonisolated var audioCodecPriority: Int {
+        guard let acodec = acodec?.lowercased(), !acodec.isEmpty, acodec != "none" else { return 0 }
+        if acodec.contains("mp4a") || acodec.contains("aac") {
+            return 3
+        }
+        if acodec.contains("opus") {
+            return 2
+        }
+        if acodec.contains("mp3") {
+            return 1
+        }
+        return 0
     }
 
     nonisolated var dynamicRangePriority: Int {
@@ -1500,6 +1809,7 @@ struct YTDLPInspectionFormat: Decodable, Sendable {
         case vcodec
         case acodec
         case dynamicRange = "dynamic_range"
+        case formatProtocol = "protocol"
     }
 
     init(from decoder: Decoder) throws {
@@ -1520,6 +1830,7 @@ struct YTDLPInspectionFormat: Decodable, Sendable {
         vcodec = try container.decodeIfPresent(String.self, forKey: .vcodec)
         acodec = try container.decodeIfPresent(String.self, forKey: .acodec)
         dynamicRange = try container.decodeIfPresent(String.self, forKey: .dynamicRange)
+        formatProtocol = try container.decodeIfPresent(String.self, forKey: .formatProtocol)
     }
 }
 

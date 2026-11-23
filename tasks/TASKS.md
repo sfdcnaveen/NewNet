@@ -156,3 +156,47 @@
    Done by: CODEX
    Done at: 2026-11-23T09:20:30Z
 
+15. audio-cutter-mmss
+   Id: 15-audio-cutter-mmss
+   Scope: DownloadManager & UI
+   Files: NewNet/ViewModels/DownloadManagerViewModel.swift NewNet/Views/DropdownPanel.swift NewNet/Services/YTDLPService.swift NewNetTests/YTDLPServiceHostTests.swift
+   Note: Implemented Audio Cutter with MM:SS time range selection, dynamic duration pill, preset chips, and yt-dlp section cutting arguments. All 46 tests pass, make diagnose and package pass.
+   Detail: tasks/details/15-audio-cutter-mmss.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-23T11:06:02Z
+   Done by: CODEX
+   Done at: 2026-11-23T11:14:56Z
+
+16. youtube-bot-check-cookies
+   Id: 16-youtube-bot-check-cookies
+   Scope: Feature/UI
+   Files: NewNet/Models/AppSettings.swift,NewNet/Services/YTDLPService.swift,NewNet/Views/SettingsView.swift,NewNet/Views/DropdownPanel.swift
+   Note: Added browser cookies support including Safari with Full Disk Access detection, humanized YouTube bot check and extractor errors, enhanced error UI cards with 1-click action buttons, passed 50 unit tests, built NewNet.dmg
+   Detail: tasks/details/16-youtube-bot-check-cookies.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-23T11:31:29Z
+   Done by: CODEX
+   Done at: 2026-11-23T11:49:54Z
+
+17. m4r-iphone-ringtone-support
+   Id: 17-m4r-iphone-ringtone-support
+   Scope: Feature/UI
+   Files: NewNet/Services/YTDLPService.swift,NewNet/ViewModels/DownloadManagerViewModel.swift,NewNet/Views/DropdownPanel.swift,NewNetTests/NetworkMonitoringTests.swift
+   Note: Added native M4R iPhone ringtone support with 256k AAC, format selector, and tests
+   Detail: tasks/details/17-m4r-iphone-ringtone-support.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-23T12:58:05Z
+   Done by: CODEX
+   Done at: 2026-11-23T13:08:07Z
+
+18. deduplicate-video-format-options
+   Id: 18-deduplicate-video-format-options
+   Scope: Feature/Backend
+   Files: NewNet/Services/YTDLPService.swift,NewNetTests/NetworkMonitoringTests.swift
+   Note: Deduplicated video format options by user-visible signature and prioritized direct HTTPS over HLS
+   Detail: tasks/details/18-deduplicate-video-format-options.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-23T15:37:56Z
+   Done by: CODEX
+   Done at: 2026-11-23T15:47:26Z
+

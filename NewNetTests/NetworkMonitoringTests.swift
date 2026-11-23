@@ -562,7 +562,7 @@ final class YTDLPServiceHostTests: XCTestCase {
         XCTAssertFalse(YTDLPService.isReddit(url: URL(string: "https://youtube.com/watch?v=123")!))
     }
 
-    func testBuildAudioOptionsReturnsExactlyTwoOptions() {
+    func testBuildAudioOptionsReturnsThreeOptions() {
         let service = YTDLPService()
         let formats = [
             YTDLPInspectionFormat(
@@ -593,7 +593,7 @@ final class YTDLPServiceHostTests: XCTestCase {
         ]
 
         let options = service.buildAudioOptions(from: formats)
-        XCTAssertEqual(options.count, 2, "There must be exactly two audio options")
+        XCTAssertEqual(options.count, 3, "There must be three audio options (Full MP3, iPhone M4R, and MP3 Ringtone)")
 
         let fullOption = options[0]
         XCTAssertEqual(fullOption.id, "audio-mp3-high")
@@ -605,27 +605,218 @@ final class YTDLPServiceHostTests: XCTestCase {
         XCTAssertNil(fullOption.configuration.clipStart)
         XCTAssertNil(fullOption.configuration.clipEnd)
 
-        let ringtoneOption = options[1]
-        XCTAssertEqual(ringtoneOption.id, "audio-ringtone-29s")
-        XCTAssertEqual(ringtoneOption.label, "Ringtone")
-        XCTAssertEqual(ringtoneOption.configuration.formatExpression, "251")
-        XCTAssertEqual(ringtoneOption.configuration.contentPreference, .audio)
-        XCTAssertTrue(ringtoneOption.configuration.extractAudio)
-        XCTAssertEqual(ringtoneOption.configuration.audioFormat, "mp3")
-        XCTAssertEqual(ringtoneOption.configuration.clipStart, 0)
-        XCTAssertEqual(ringtoneOption.configuration.clipEnd, 29)
+        let m4rRingtoneOption = options[1]
+        XCTAssertEqual(m4rRingtoneOption.id, "audio-ringtone-m4r-29s")
+        XCTAssertEqual(m4rRingtoneOption.label, "iPhone Ringtone (M4R)")
+        XCTAssertEqual(m4rRingtoneOption.configuration.formatExpression, "251")
+        XCTAssertEqual(m4rRingtoneOption.configuration.contentPreference, .audio)
+        XCTAssertTrue(m4rRingtoneOption.configuration.extractAudio)
+        XCTAssertEqual(m4rRingtoneOption.configuration.audioFormat, "m4r")
+        XCTAssertEqual(m4rRingtoneOption.configuration.clipStart, 0)
+        XCTAssertEqual(m4rRingtoneOption.configuration.clipEnd, 29)
+
+        let mp3RingtoneOption = options[2]
+        XCTAssertEqual(mp3RingtoneOption.id, "audio-ringtone-29s")
+        XCTAssertEqual(mp3RingtoneOption.label, "MP3 Ringtone")
+        XCTAssertEqual(mp3RingtoneOption.configuration.formatExpression, "251")
+        XCTAssertEqual(mp3RingtoneOption.configuration.contentPreference, .audio)
+        XCTAssertTrue(mp3RingtoneOption.configuration.extractAudio)
+        XCTAssertEqual(mp3RingtoneOption.configuration.audioFormat, "mp3")
+        XCTAssertEqual(mp3RingtoneOption.configuration.clipStart, 0)
+        XCTAssertEqual(mp3RingtoneOption.configuration.clipEnd, 29)
     }
 
     func testBuildAudioOptionsFallbackWhenEmpty() {
         let service = YTDLPService()
         let options = service.buildAudioOptions(from: [])
-        XCTAssertEqual(options.count, 2)
+        XCTAssertEqual(options.count, 3)
         XCTAssertEqual(options[0].id, "audio-mp3-high")
         XCTAssertEqual(options[0].label, "MP3 Audio High")
         XCTAssertEqual(options[0].configuration.formatExpression, "bestaudio/best")
-        XCTAssertEqual(options[1].id, "audio-ringtone-29s")
-        XCTAssertEqual(options[1].label, "Ringtone")
+        XCTAssertEqual(options[1].id, "audio-ringtone-m4r-29s")
+        XCTAssertEqual(options[1].label, "iPhone Ringtone (M4R)")
         XCTAssertEqual(options[1].configuration.formatExpression, "bestaudio/best")
+        XCTAssertEqual(options[1].configuration.audioFormat, "m4r")
+        XCTAssertEqual(options[2].id, "audio-ringtone-29s")
+        XCTAssertEqual(options[2].label, "MP3 Ringtone")
+        XCTAssertEqual(options[2].configuration.formatExpression, "bestaudio/best")
+    }
+
+    func testBuildVideoOptionsDeduplicatesDuplicateFormatsAndPrefersHTTPS() {
+        let service = YTDLPService()
+        let formats = [
+            // 720p HLS (higher reported tbr, but fragmented m3u8)
+            YTDLPInspectionFormat(
+                formatId: "232",
+                ext: "mp4",
+                height: 720,
+                fps: 25,
+                tbr: 1248,
+                vcodec: "avc1.4d401f",
+                acodec: "none",
+                formatProtocol: "m3u8_native"
+            ),
+            // 720p Direct HTTPS (DASH)
+            YTDLPInspectionFormat(
+                formatId: "136",
+                formatNote: "720p",
+                ext: "mp4",
+                height: 720,
+                fps: 25,
+                tbr: 993,
+                fileSizeExact: 25_000_000,
+                vcodec: "avc1.4d401f",
+                acodec: "none",
+                formatProtocol: "https"
+            ),
+            // 480p HLS
+            YTDLPInspectionFormat(
+                formatId: "231",
+                ext: "mp4",
+                height: 480,
+                fps: 25,
+                tbr: 863,
+                vcodec: "avc1.4d401e",
+                acodec: "none",
+                formatProtocol: "m3u8_native"
+            ),
+            // 480p Direct HTTPS
+            YTDLPInspectionFormat(
+                formatId: "135",
+                formatNote: "480p",
+                ext: "mp4",
+                height: 480,
+                fps: 25,
+                tbr: 530,
+                fileSizeExact: 13_000_000,
+                vcodec: "avc1.4d401e",
+                acodec: "none",
+                formatProtocol: "https"
+            ),
+            // Audio HLS
+            YTDLPInspectionFormat(
+                formatId: "233",
+                formatNote: "Default, low",
+                ext: "mp4",
+                vcodec: "none",
+                acodec: "unknown",
+                formatProtocol: "m3u8_native"
+            ),
+            // Audio Direct HTTPS (clean AAC medium)
+            YTDLPInspectionFormat(
+                formatId: "140",
+                formatNote: "medium",
+                ext: "m4a",
+                tbr: 129,
+                abr: 129,
+                fileSizeExact: 3_500_000,
+                vcodec: "none",
+                acodec: "mp4a.40.2",
+                formatProtocol: "https"
+            )
+        ]
+
+        let options = service.buildVideoOptions(from: formats)
+
+        // Must only show 2 distinct options: one 720p and one 480p (no duplicates)
+        XCTAssertEqual(options.count, 2, "Duplicate HLS streams must be deduplicated when direct HTTPS exists")
+
+        // First option: 720p MP4 using direct HTTPS stream (136) and direct AAC audio (140)
+        let option720p = options[0]
+        XCTAssertEqual(option720p.label, "720p • MP4 + M4A")
+        XCTAssertEqual(option720p.configuration.formatExpression, "136+140")
+
+        // Second option: 480p MP4 using direct HTTPS stream (135) and direct AAC audio (140)
+        let option480p = options[1]
+        XCTAssertEqual(option480p.label, "480p • MP4 + M4A")
+        XCTAssertEqual(option480p.configuration.formatExpression, "135+140")
+    }
+
+    func testBuildVideoOptionsPreservesDistinctContainers() {
+        let service = YTDLPService()
+        let formats = [
+            YTDLPInspectionFormat(
+                formatId: "137",
+                formatNote: "1080p",
+                ext: "mp4",
+                height: 1080,
+                fps: 30,
+                tbr: 2500,
+                vcodec: "avc1.640028",
+                acodec: "none",
+                formatProtocol: "https"
+            ),
+            YTDLPInspectionFormat(
+                formatId: "248",
+                formatNote: "1080p",
+                ext: "webm",
+                height: 1080,
+                fps: 30,
+                tbr: 2000,
+                vcodec: "vp9",
+                acodec: "none",
+                formatProtocol: "https"
+            ),
+            YTDLPInspectionFormat(
+                formatId: "140",
+                ext: "m4a",
+                abr: 128,
+                vcodec: "none",
+                acodec: "mp4a.40.2",
+                formatProtocol: "https"
+            ),
+            YTDLPInspectionFormat(
+                formatId: "251",
+                ext: "webm",
+                abr: 160,
+                vcodec: "none",
+                acodec: "opus",
+                formatProtocol: "https"
+            )
+        ]
+
+        let options = service.buildVideoOptions(from: formats)
+        // Both 1080p MP4 and 1080p WEBM should be kept because container and codec differ
+        XCTAssertEqual(options.count, 2)
+        XCTAssertTrue(options.contains(where: { $0.configuration.formatExpression.starts(with: "137+") }))
+        XCTAssertTrue(options.contains(where: { $0.configuration.formatExpression.starts(with: "248+") }))
+    }
+
+    func testM4RIPhoneRingtoneYTDLPArguments() {
+        let service = YTDLPService()
+        let settings = AppSettings()
+        let m4rConfig = YTDLPDownloadConfiguration(
+            formatExpression: "251",
+            displayName: "iPhone Ringtone (M4R)",
+            detailText: "Native Apple 256k AAC",
+            contentPreference: .audio,
+            extractAudio: true,
+            audioFormat: "m4r",
+            clipStart: 0,
+            clipEnd: 29
+        )
+        let item = DownloadItem(
+            sourceURL: URL(string: "https://youtube.com/watch?v=123")!,
+            fileName: "song.m4r",
+            contentPreference: .audio,
+            ytDLPConfiguration: m4rConfig
+        )
+
+        let args = service.arguments(for: item, settings: settings)
+        XCTAssertTrue(args.contains("--extract-audio"))
+        XCTAssertTrue(args.contains("--audio-format"))
+        if let formatIdx = args.firstIndex(of: "--audio-format") {
+            XCTAssertEqual(args[formatIdx + 1], "m4a", "m4r is extracted as m4a with 256k AAC prior to rename")
+        }
+        XCTAssertTrue(args.contains("--postprocessor-args"))
+        if let ppaIdx = args.firstIndex(of: "--postprocessor-args") {
+            XCTAssertEqual(args[ppaIdx + 1], "ExtractAudio:-b:a 256k", "AAC must be encoded at 256 kbps")
+        }
+        XCTAssertTrue(args.contains("--download-sections"))
+        if let secIdx = args.firstIndex(of: "--download-sections") {
+            XCTAssertEqual(args[secIdx + 1], "*0-29")
+        }
+        XCTAssertTrue(service.requiresFFmpeg(for: item))
     }
 
     func testRequiresFFmpegForAudioAndRingtone() {
@@ -649,6 +840,65 @@ final class YTDLPServiceHostTests: XCTestCase {
         XCTAssertTrue(service.requiresFFmpeg(for: item))
     }
 
+    func testTimeFormattingParsingAndFormatting() {
+        // MM:SS parsing
+        XCTAssertEqual(TimeFormatting.parseTimestamp("1:12"), 72)
+        XCTAssertEqual(TimeFormatting.parseTimestamp("2:22"), 142)
+        XCTAssertEqual(TimeFormatting.parseTimestamp("01:12"), 72)
+        XCTAssertEqual(TimeFormatting.parseTimestamp("0:05"), 5)
+        XCTAssertEqual(TimeFormatting.parseTimestamp("0:00"), 0)
+
+        // Raw seconds
+        XCTAssertEqual(TimeFormatting.parseTimestamp("72"), 72)
+        XCTAssertEqual(TimeFormatting.parseTimestamp("142.5"), 142.5)
+
+        // H:MM:SS
+        XCTAssertEqual(TimeFormatting.parseTimestamp("1:02:15"), 3735)
+
+        // Invalid cases
+        XCTAssertNil(TimeFormatting.parseTimestamp(""))
+        XCTAssertNil(TimeFormatting.parseTimestamp("   "))
+        XCTAssertNil(TimeFormatting.parseTimestamp("-5"))
+        XCTAssertNil(TimeFormatting.parseTimestamp("invalid"))
+
+        // Formatting back to MM:SS
+        XCTAssertEqual(TimeFormatting.formatTimestamp(72), "1:12")
+        XCTAssertEqual(TimeFormatting.formatTimestamp(142), "2:22")
+        XCTAssertEqual(TimeFormatting.formatTimestamp(5), "0:05")
+        XCTAssertEqual(TimeFormatting.formatTimestamp(0), "0:00")
+        XCTAssertEqual(TimeFormatting.formatTimestamp(3735), "1:02:15")
+    }
+
+    func testAudioCutterDownloadSectionsArguments() {
+        let service = YTDLPService()
+        let settings = AppSettings()
+        let cutConfig = YTDLPDownloadConfiguration(
+            formatExpression: "bestaudio/best",
+            displayName: "MP3 Audio [1:12 - 2:22]",
+            detailText: "Trimmed Audio",
+            contentPreference: .audio,
+            extractAudio: true,
+            audioFormat: "mp3",
+            clipStart: 72,
+            clipEnd: 142
+        )
+        let item = DownloadItem(
+            sourceURL: URL(string: "https://www.youtube.com/watch?v=dQw4w9WgXcQ")!,
+            fileName: "song.mp3",
+            contentPreference: .audio,
+            ytDLPConfiguration: cutConfig
+        )
+
+        let args = service.arguments(for: item, settings: settings)
+        XCTAssertTrue(args.contains("--download-sections"), "Arguments must contain --download-sections")
+        if let index = args.firstIndex(of: "--download-sections") {
+            XCTAssertEqual(args[index + 1], "*72-142", "Must specify exact *72-142 time range")
+        }
+        XCTAssertTrue(args.contains("--extract-audio"), "Must extract audio")
+        XCTAssertTrue(args.contains("mp3"), "Must output mp3")
+        XCTAssertTrue(service.requiresFFmpeg(for: item), "Trimmed audio requires FFmpeg")
+    }
+
     func testCustomYTDLPPathOverrideResolution() {
         let settings = AppSettings()
         let service = YTDLPService()
@@ -666,6 +916,80 @@ final class YTDLPServiceHostTests: XCTestCase {
         let service = YTDLPService()
         let version = try await service.latestVersion()
         XCTAssertFalse(version.isEmpty)
+    }
+
+    @MainActor
+    func testHumanizeYouTubeBotCheckError() {
+        let rawBotError = "ERROR: [youtube] yfHDJWWm0LE: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies"
+
+        // Default / no settings
+        let humanizedDefault = YTDLPHumanError.humanize(rawBotError, settings: nil)
+        XCTAssertTrue(humanizedDefault.contains("YouTube requires verification"))
+        XCTAssertTrue(humanizedDefault.contains("Browser Cookies in NewNet Settings"))
+        XCTAssertFalse(humanizedDefault.contains("https://"))
+        XCTAssertFalse(humanizedDefault.contains("--cookies-from-browser"))
+
+        // Chrome configured
+        let chromeSettings = AppSettings()
+        chromeSettings.browserCookieSource = .chrome
+        let humanizedChrome = YTDLPHumanError.humanize(rawBotError, settings: chromeSettings)
+        XCTAssertTrue(humanizedChrome.contains("Google Chrome"))
+        XCTAssertTrue(humanizedChrome.contains("signed in to YouTube"))
+    }
+
+    func testHumanizeSafariOperationNotPermittedError() {
+        let rawSafariError = "ERROR: [Errno 1] Operation not permitted: '/Users/nn/Library/Containers/com.apple.Safari/Data/Library/Cookies/Cookies.binarycookies'"
+        let humanized = YTDLPHumanError.humanize(rawSafariError)
+        XCTAssertTrue(humanized.contains("Full Disk Access"))
+        XCTAssertTrue(humanized.contains("Safari cookies"))
+        XCTAssertTrue(humanized.contains("System Settings"))
+    }
+
+    func testHumanizeAgeRestrictionAndPrivateErrors() {
+        let ageError = "ERROR: [youtube] 12345: Sign in to confirm your age. This video may be inappropriate for some users."
+        let humanizedAge = YTDLPHumanError.humanize(ageError)
+        XCTAssertTrue(humanizedAge.contains("age-restricted"))
+        XCTAssertFalse(humanizedAge.contains("ERROR: [youtube]"))
+
+        let privateError = "ERROR: [youtube] 12345: Private video. Sign in if you've been granted access to this video"
+        let humanizedPrivate = YTDLPHumanError.humanize(privateError)
+        XCTAssertTrue(humanizedPrivate.contains("private or members-only"))
+
+        let geoError = "ERROR: [youtube] 12345: The uploader has not made this video available in your country"
+        let humanizedGeo = YTDLPHumanError.humanize(geoError)
+        XCTAssertTrue(humanizedGeo.contains("geographic restrictions"))
+    }
+
+    @MainActor
+    func testBrowserCookieArguments() {
+        let settings = AppSettings()
+        let service = YTDLPService()
+        let item = DownloadItem(
+            sourceURL: URL(string: "https://www.youtube.com/watch?v=dQw4w9WgXcQ")!,
+            fileName: "video.mp4",
+            contentPreference: .video
+        )
+
+        // None
+        settings.browserCookieSource = .none
+        XCTAssertNil(YTDLPService.cookieArguments(settings: settings))
+
+        // Chrome
+        settings.browserCookieSource = .chrome
+        let chromeArgs = YTDLPService.cookieArguments(settings: settings)
+        XCTAssertEqual(chromeArgs, ["--cookies-from-browser", "chrome"])
+
+        let downloadArgs = service.arguments(for: item, settings: settings)
+        XCTAssertTrue(downloadArgs.contains("--cookies-from-browser"))
+        XCTAssertTrue(downloadArgs.contains("chrome"))
+
+        // Firefox
+        settings.browserCookieSource = .firefox
+        let firefoxArgs = YTDLPService.cookieArguments(settings: settings)
+        XCTAssertEqual(firefoxArgs, ["--cookies-from-browser", "firefox"])
+
+        // Reset
+        settings.browserCookieSource = .safari
     }
 }
 

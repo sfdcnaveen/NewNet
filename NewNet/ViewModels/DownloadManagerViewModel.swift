@@ -2,6 +2,20 @@ import Combine
 import Foundation
 import UniformTypeIdentifiers
 
+enum AudioOutputFormat: String, CaseIterable, Identifiable, Sendable {
+    case m4r = "m4r"
+    case mp3 = "mp3"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .m4r: return "M4R (iPhone)"
+        case .mp3: return "MP3"
+        }
+    }
+}
+
 struct PendingMediaSelection: Identifiable, Hashable {
     let id = UUID()
     let mediaInfo: YTDLPMediaInfo
@@ -9,6 +23,14 @@ struct PendingMediaSelection: Identifiable, Hashable {
     var selectedOptionID: String
     var gifStart: TimeInterval = 0
     var gifEnd: TimeInterval = 5
+
+    // Audio Cutter
+    var isAudioTrimEnabled: Bool = false
+    var audioStart: TimeInterval = 0
+    var audioEnd: TimeInterval = 0
+    var audioStartText: String = "0:00"
+    var audioEndText: String = "0:00"
+    var audioFormat: AudioOutputFormat = .m4r
 
     var availableOptions: [YTDLPDownloadOption] {
         switch selectedPreference {
@@ -27,6 +49,14 @@ struct PendingMediaSelection: Identifiable, Hashable {
 
     var gifDuration: TimeInterval {
         max(0.5, gifEnd - gifStart)
+    }
+
+    var audioDuration: TimeInterval {
+        max(0, audioEnd - audioStart)
+    }
+
+    var isAudioRangeValid: Bool {
+        audioEnd > audioStart
     }
 
     private func makeGIFOption(from option: YTDLPDownloadOption) -> YTDLPDownloadOption {
@@ -176,6 +206,29 @@ final class DownloadManagerViewModel: ObservableObject {
                 estimatedBytes: option.estimatedBytes,
                 configuration: configuration
             )
+        } else if pendingMediaSelection.selectedPreference == .audio && pendingMediaSelection.isAudioTrimEnabled {
+            guard pendingMediaSelection.isAudioRangeValid else {
+                validationMessage = "End time (\(pendingMediaSelection.audioEndText)) must be greater than start time (\(pendingMediaSelection.audioStartText))."
+                return
+            }
+
+            var configuration = option.configuration
+            configuration.clipStart = pendingMediaSelection.audioStart
+            configuration.clipEnd = pendingMediaSelection.audioEnd
+            configuration.audioFormat = pendingMediaSelection.audioFormat.rawValue
+
+            let formatSuffix = pendingMediaSelection.audioFormat == .m4r ? " (M4R)" : " (MP3)"
+            let rangeLabel = "\(TimeFormatting.formatTimestamp(pendingMediaSelection.audioStart)) - \(TimeFormatting.formatTimestamp(pendingMediaSelection.audioEnd))"
+            configuration.displayName = "\(option.label) [\(rangeLabel)]\(formatSuffix)"
+            configuration.detailText = "Trimmed Audio • \(rangeLabel) • \(pendingMediaSelection.audioFormat.displayName)"
+
+            selectedOption = YTDLPDownloadOption(
+                id: "audio-cut-\(pendingMediaSelection.audioFormat.rawValue)-\(option.id)-\(Int(pendingMediaSelection.audioStart))-\(Int(pendingMediaSelection.audioEnd))",
+                label: "\(option.label) [\(rangeLabel)]\(formatSuffix)",
+                detail: "Trimmed Audio • \(rangeLabel) • \(pendingMediaSelection.audioFormat.displayName)",
+                estimatedBytes: option.estimatedBytes,
+                configuration: configuration
+            )
         }
 
         switch downloadManager.confirmMediaDownload(mediaInfo: pendingMediaSelection.mediaInfo, option: selectedOption) {
@@ -202,6 +255,55 @@ final class DownloadManagerViewModel: ObservableObject {
         guard let pendingMediaSelection else { return }
         let maxDuration = pendingMediaSelection.mediaInfo.duration ?? duration
         setGIFRange(start: pendingMediaSelection.gifStart, end: min(pendingMediaSelection.gifStart + duration, maxDuration))
+    }
+
+    func toggleAudioTrim() {
+        guard var pendingMediaSelection else { return }
+        pendingMediaSelection.isAudioTrimEnabled.toggle()
+        if pendingMediaSelection.isAudioTrimEnabled && pendingMediaSelection.audioEnd == 0 {
+            let maxDuration = pendingMediaSelection.mediaInfo.duration ?? 180
+            pendingMediaSelection.audioEnd = maxDuration
+            pendingMediaSelection.audioEndText = TimeFormatting.formatTimestamp(maxDuration)
+        }
+        self.pendingMediaSelection = pendingMediaSelection
+    }
+
+    func setAudioStartText(_ text: String) {
+        guard var pendingMediaSelection else { return }
+        pendingMediaSelection.audioStartText = text
+        if let parsed = TimeFormatting.parseTimestamp(text) {
+            let maxDuration = pendingMediaSelection.mediaInfo.duration ?? 86_400
+            pendingMediaSelection.audioStart = min(max(0, parsed), maxDuration)
+        }
+        self.pendingMediaSelection = pendingMediaSelection
+    }
+
+    func setAudioEndText(_ text: String) {
+        guard var pendingMediaSelection else { return }
+        pendingMediaSelection.audioEndText = text
+        if let parsed = TimeFormatting.parseTimestamp(text) {
+            let maxDuration = pendingMediaSelection.mediaInfo.duration ?? 86_400
+            pendingMediaSelection.audioEnd = min(max(0, parsed), maxDuration)
+        }
+        self.pendingMediaSelection = pendingMediaSelection
+    }
+
+    func applyAudioPreset(start: TimeInterval, end: TimeInterval) {
+        guard var pendingMediaSelection else { return }
+        let maxDuration = pendingMediaSelection.mediaInfo.duration ?? 86_400
+        let clampedStart = min(max(0, start), maxDuration)
+        let clampedEnd = min(max(clampedStart + 1, end), maxDuration)
+        pendingMediaSelection.audioStart = clampedStart
+        pendingMediaSelection.audioEnd = clampedEnd
+        pendingMediaSelection.audioStartText = TimeFormatting.formatTimestamp(clampedStart)
+        pendingMediaSelection.audioEndText = TimeFormatting.formatTimestamp(clampedEnd)
+        self.pendingMediaSelection = pendingMediaSelection
+    }
+
+    func setAudioFormat(_ format: AudioOutputFormat) {
+        guard var pendingMediaSelection else { return }
+        pendingMediaSelection.audioFormat = format
+        self.pendingMediaSelection = pendingMediaSelection
     }
 
     func installYTDLP() {
@@ -338,11 +440,18 @@ final class DownloadManagerViewModel: ObservableObject {
             }
         }() ?? ""
 
+        let trackDuration = mediaInfo.duration ?? 180
         return PendingMediaSelection(
             mediaInfo: mediaInfo,
             selectedPreference: preferredSelection,
             selectedOptionID: selectedOptionID,
-            gifEnd: min(5, mediaInfo.duration ?? 5)
+            gifEnd: min(5, mediaInfo.duration ?? 5),
+            isAudioTrimEnabled: false,
+            audioStart: 0,
+            audioEnd: trackDuration,
+            audioStartText: "0:00",
+            audioEndText: TimeFormatting.formatTimestamp(trackDuration),
+            audioFormat: .m4r
         )
     }
 

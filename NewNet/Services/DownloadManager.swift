@@ -232,11 +232,24 @@ final class DownloadManager: ObservableObject {
         option: YTDLPDownloadOption
     ) -> DownloadSubmissionResult {
         if let existingItem = duplicateItem(for: mediaInfo.sourceURL, engine: .ytDLP) {
-            if existingItem.isTerminal {
-                return .rejected("This link was already downloaded recently.")
-            }
+            let isDifferentClip = existingItem.ytDLPConfiguration?.clipStart != option.configuration.clipStart ||
+                                  existingItem.ytDLPConfiguration?.clipEnd != option.configuration.clipEnd ||
+                                  existingItem.ytDLPConfiguration?.contentPreference != option.configuration.contentPreference
 
-            return .rejected("This link is already in your downloads.")
+            if !isDifferentClip {
+                if existingItem.isTerminal {
+                    return .rejected("This link was already downloaded recently.")
+                }
+
+                return .rejected("This link is already in your downloads.")
+            }
+        }
+
+        var fileName = mediaInfo.title
+        if let clipStart = option.configuration.clipStart, let clipEnd = option.configuration.clipEnd {
+            let startTag = TimeFormatting.formatTimestamp(clipStart).replacingOccurrences(of: ":", with: ".")
+            let endTag = TimeFormatting.formatTimestamp(clipEnd).replacingOccurrences(of: ":", with: ".")
+            fileName = "\(mediaInfo.title) [\(startTag)-\(endTag)]"
         }
 
         enqueue(
@@ -244,7 +257,7 @@ final class DownloadManager: ObservableObject {
             engine: .ytDLP,
             contentPreference: option.configuration.contentPreference,
             ytDLPConfiguration: option.configuration,
-            preferredFileName: mediaInfo.title
+            preferredFileName: fileName
         )
 
         return .accepted
@@ -502,9 +515,23 @@ final class DownloadManager: ObservableObject {
             scheduleSave()
 
         case .finalFile(let fileURL):
-            items[index].destinationURL = fileURL
-            items[index].fileName = fileURL.lastPathComponent
-            syncFileMetrics(for: index, preferredURL: fileURL)
+            var targetURL = fileURL
+            if items[index].ytDLPConfiguration?.audioFormat == "m4r" && fileURL.pathExtension.lowercased() == "m4a" {
+                let m4rURL = fileURL.deletingPathExtension().appendingPathExtension("m4r")
+                if FileManager.default.fileExists(atPath: m4rURL.path(percentEncoded: false)) {
+                    try? FileManager.default.removeItem(at: m4rURL)
+                }
+                do {
+                    try FileManager.default.moveItem(at: fileURL, to: m4rURL)
+                    targetURL = m4rURL
+                } catch {
+                    logger.error("Failed to rename m4a to m4r: \(error.localizedDescription)")
+                }
+            }
+
+            items[index].destinationURL = targetURL
+            items[index].fileName = targetURL.lastPathComponent
+            syncFileMetrics(for: index, preferredURL: targetURL)
             items[index].state = .completing
             scheduleSave()
 
