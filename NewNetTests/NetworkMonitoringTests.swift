@@ -737,6 +737,45 @@ final class UtilitiesServicesTests: XCTestCase {
         XCTAssertFalse(service.isActive)
     }
 
+    func testKeepAwakeLidClosedAndDisplayAssertions() {
+        let service = KeepAwakeService()
+        XCTAssertFalse(service.isActive)
+        XCTAssertFalse(service.hasDisplayAssertion)
+        XCTAssertFalse(service.hasSystemAssertion)
+        XCTAssertFalse(service.hasLidAssertion)
+
+        // Scenario 1: Keep Awake Enabled, Lid-closed mode Disabled
+        // Expected: Display & System assertions active (Macbook stays awake unless lid is closed), Lid assertion inactive
+        service.preventLidSleep = false
+        service.activate(minutes: 0)
+        XCTAssertTrue(service.isActive)
+        XCTAssertTrue(service.hasDisplayAssertion, "Display assertion must be active when Keep Awake is enabled with lid-closed mode disabled")
+        XCTAssertTrue(service.hasSystemAssertion, "System idle assertion must be active")
+        XCTAssertFalse(service.hasLidAssertion, "Lid-close assertion must NOT be active when lid-closed mode is disabled")
+
+        // Scenario 2: Keep Awake Enabled, Lid-closed mode Enabled
+        // Expected: Display, System, and Lid assertions all active (Macbook stays awake even if lid is closed)
+        service.preventLidSleep = true
+        XCTAssertTrue(service.isActive)
+        XCTAssertTrue(service.hasDisplayAssertion)
+        XCTAssertTrue(service.hasSystemAssertion)
+        XCTAssertTrue(service.hasLidAssertion, "Lid-close assertion must be active when lid-closed mode is enabled")
+
+        // Toggling Lid-closed mode back to Disabled while Keep Awake is still active
+        service.preventLidSleep = false
+        XCTAssertTrue(service.isActive)
+        XCTAssertTrue(service.hasDisplayAssertion, "Display assertion must remain active")
+        XCTAssertTrue(service.hasSystemAssertion, "System assertion must remain active")
+        XCTAssertFalse(service.hasLidAssertion, "Lid-close assertion must be released")
+
+        // Deactivation releases all assertions
+        service.deactivate()
+        XCTAssertFalse(service.isActive)
+        XCTAssertFalse(service.hasDisplayAssertion)
+        XCTAssertFalse(service.hasSystemAssertion)
+        XCTAssertFalse(service.hasLidAssertion)
+    }
+
     // MARK: - Clipboard History Tests
 
     func testClipboardHistoryItemCreationAndFiltering() {

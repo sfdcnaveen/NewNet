@@ -14,11 +14,6 @@ final class KeepAwakeService: ObservableObject {
     @Published var preventLidSleep: Bool = false {
         didSet {
             guard oldValue != preventLidSleep else { return }
-            if preventLidSleep {
-                setPmsetDisableSleep(true)
-            } else {
-                setPmsetDisableSleep(false)
-            }
             if isActive {
                 applyAssertions()
             }
@@ -42,9 +37,9 @@ final class KeepAwakeService: ObservableObject {
     private var systemAssertionID: IOPMAssertionID = 0
     private var displayAssertionID: IOPMAssertionID = 0
     private var lidAssertionID: IOPMAssertionID = 0
-    private var hasSystemAssertion: Bool = false
-    private var hasDisplayAssertion: Bool = false
-    private var hasLidAssertion: Bool = false
+    private(set) var hasSystemAssertion: Bool = false
+    private(set) var hasDisplayAssertion: Bool = false
+    private(set) var hasLidAssertion: Bool = false
 
     private var countdownTimer: Timer?
     private var batteryTimer: Timer?
@@ -133,8 +128,8 @@ final class KeepAwakeService: ObservableObject {
     // MARK: - Private Session Management
 
     private func startSession(minutes: Int) {
-        applyAssertions()
         isActive = true
+        applyAssertions()
 
         countdownTimer?.invalidate()
         countdownTimer = nil
@@ -155,7 +150,7 @@ final class KeepAwakeService: ObservableObject {
             endDate = nil
         }
 
-        Self.logger.info("Keep Awake activated for \(minutes == 0 ? "indefinite" : "\(minutes)m")")
+        Self.logger.info("Keep Awake activated for \(minutes == 0 ? "indefinite" : "\(minutes)m") (preventLidSleep=\(self.preventLidSleep))")
     }
 
     private func tick() {
@@ -171,7 +166,26 @@ final class KeepAwakeService: ObservableObject {
     // MARK: - IOKit Power Assertions & Clamshell Mode
 
     private func applyAssertions() {
-        // Prevent system idle sleep
+        guard isActive else { return }
+
+        // 1. Prevent display sleep: keeps screen awake when MacBook lid is open
+        if !hasDisplayAssertion {
+            var assertionID = IOPMAssertionID(0)
+            let result = IOPMAssertionCreateWithName(
+                kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
+                IOPMAssertionLevel(kIOPMAssertionLevelOn),
+                "NewNet Keep Awake: Preventing display sleep" as CFString,
+                &assertionID
+            )
+            if result == kIOReturnSuccess {
+                displayAssertionID = assertionID
+                hasDisplayAssertion = true
+            } else {
+                Self.logger.error("Failed to create display sleep assertion: \(result)")
+            }
+        }
+
+        // 2. Prevent system idle sleep: keeps Mac awake while active
         if !hasSystemAssertion {
             var assertionID = IOPMAssertionID(0)
             let result = IOPMAssertionCreateWithName(
@@ -188,7 +202,7 @@ final class KeepAwakeService: ObservableObject {
             }
         }
 
-        // Lid closed mode: prevents sleep even when MacBook clamshell / lid is closed
+        // 3. Lid closed mode: prevents sleep even when MacBook clamshell / lid is shut
         if preventLidSleep {
             setPmsetDisableSleep(true)
 
@@ -207,32 +221,13 @@ final class KeepAwakeService: ObservableObject {
                     Self.logger.error("Failed to create lid-close assertion: \(result)")
                 }
             }
-
-            if !hasDisplayAssertion {
-                var assertionID = IOPMAssertionID(0)
-                let result = IOPMAssertionCreateWithName(
-                    kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
-                    IOPMAssertionLevel(kIOPMAssertionLevelOn),
-                    "NewNet Keep Awake: Preventing display sleep" as CFString,
-                    &assertionID
-                )
-                if result == kIOReturnSuccess {
-                    displayAssertionID = assertionID
-                    hasDisplayAssertion = true
-                } else {
-                    Self.logger.error("Failed to create display sleep assertion: \(result)")
-                }
-            }
         } else {
+            // When lid closed mode is disabled, allow sleep when lid is closed
             setPmsetDisableSleep(false)
 
             if hasLidAssertion {
                 IOPMAssertionRelease(lidAssertionID)
                 hasLidAssertion = false
-            }
-            if hasDisplayAssertion {
-                IOPMAssertionRelease(displayAssertionID)
-                hasDisplayAssertion = false
             }
         }
     }
