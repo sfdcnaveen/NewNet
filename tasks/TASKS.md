@@ -134,3 +134,14 @@
    Done by: CODEX
    Done at: 2026-11-20T14:10:35Z
 
+13. fix-keep-awake-lid-closed-modes
+   Id: 13-fix-keep-awake-lid-closed-modes
+   Scope: Utilities/KeepAwakeService
+   Files: NewNet/Services/Utilities/KeepAwakeService.swift
+   Note: Fixed Keep Awake assertions: display assertion always active when Keep Awake is enabled so screen stays awake unless lid is closed; lid-close assertion & pmset disablesleep only active when lid-closed mode is enabled. All 44 unit tests pass, make diagnose and make package pass.
+   Detail: tasks/details/13-fix-keep-awake-lid-closed-modes.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-23T08:44:43Z
+   Done by: CODEX
+   Done at: 2026-11-23T08:50:44Z
+
