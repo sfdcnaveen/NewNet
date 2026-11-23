@@ -156,3 +156,14 @@
    Done by: CODEX
    Done at: 2026-11-23T09:20:30Z
 
+15. audio-cutter-mmss
+   Id: 15-audio-cutter-mmss
+   Scope: DownloadManager & UI
+   Files: NewNet/ViewModels/DownloadManagerViewModel.swift NewNet/Views/DropdownPanel.swift NewNet/Services/YTDLPService.swift NewNetTests/YTDLPServiceHostTests.swift
+   Note: Implemented Audio Cutter with MM:SS time range selection, dynamic duration pill, preset chips, and yt-dlp section cutting arguments. All 46 tests pass, make diagnose and package pass.
+   Detail: tasks/details/15-audio-cutter-mmss.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-23T11:06:02Z
+   Done by: CODEX
+   Done at: 2026-11-23T11:14:56Z
+

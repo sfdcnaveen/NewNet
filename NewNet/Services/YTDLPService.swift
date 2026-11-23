@@ -794,7 +794,7 @@ final class YTDLPService {
         return runningTask
     }
 
-    private func arguments(for item: DownloadItem, settings: AppSettings) -> [String] {
+    func arguments(for item: DownloadItem, settings: AppSettings) -> [String] {
         let downloadsDirectory = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
         let outputTemplate: String
         let customName = item.fileName.trimmingCharacters(in: .whitespacesAndNewlines)

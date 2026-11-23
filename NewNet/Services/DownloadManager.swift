@@ -232,11 +232,24 @@ final class DownloadManager: ObservableObject {
         option: YTDLPDownloadOption
     ) -> DownloadSubmissionResult {
         if let existingItem = duplicateItem(for: mediaInfo.sourceURL, engine: .ytDLP) {
-            if existingItem.isTerminal {
-                return .rejected("This link was already downloaded recently.")
-            }
+            let isDifferentClip = existingItem.ytDLPConfiguration?.clipStart != option.configuration.clipStart ||
+                                  existingItem.ytDLPConfiguration?.clipEnd != option.configuration.clipEnd ||
+                                  existingItem.ytDLPConfiguration?.contentPreference != option.configuration.contentPreference
 
-            return .rejected("This link is already in your downloads.")
+            if !isDifferentClip {
+                if existingItem.isTerminal {
+                    return .rejected("This link was already downloaded recently.")
+                }
+
+                return .rejected("This link is already in your downloads.")
+            }
+        }
+
+        var fileName = mediaInfo.title
+        if let clipStart = option.configuration.clipStart, let clipEnd = option.configuration.clipEnd {
+            let startTag = TimeFormatting.formatTimestamp(clipStart).replacingOccurrences(of: ":", with: ".")
+            let endTag = TimeFormatting.formatTimestamp(clipEnd).replacingOccurrences(of: ":", with: ".")
+            fileName = "\(mediaInfo.title) [\(startTag)-\(endTag)]"
         }
 
         enqueue(
@@ -244,7 +257,7 @@ final class DownloadManager: ObservableObject {
             engine: .ytDLP,
             contentPreference: option.configuration.contentPreference,
             ytDLPConfiguration: option.configuration,
-            preferredFileName: mediaInfo.title
+            preferredFileName: fileName
         )
 
         return .accepted

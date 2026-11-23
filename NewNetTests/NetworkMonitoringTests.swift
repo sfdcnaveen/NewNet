@@ -649,6 +649,65 @@ final class YTDLPServiceHostTests: XCTestCase {
         XCTAssertTrue(service.requiresFFmpeg(for: item))
     }
 
+    func testTimeFormattingParsingAndFormatting() {
+        // MM:SS parsing
+        XCTAssertEqual(TimeFormatting.parseTimestamp("1:12"), 72)
+        XCTAssertEqual(TimeFormatting.parseTimestamp("2:22"), 142)
+        XCTAssertEqual(TimeFormatting.parseTimestamp("01:12"), 72)
+        XCTAssertEqual(TimeFormatting.parseTimestamp("0:05"), 5)
+        XCTAssertEqual(TimeFormatting.parseTimestamp("0:00"), 0)
+
+        // Raw seconds
+        XCTAssertEqual(TimeFormatting.parseTimestamp("72"), 72)
+        XCTAssertEqual(TimeFormatting.parseTimestamp("142.5"), 142.5)
+
+        // H:MM:SS
+        XCTAssertEqual(TimeFormatting.parseTimestamp("1:02:15"), 3735)
+
+        // Invalid cases
+        XCTAssertNil(TimeFormatting.parseTimestamp(""))
+        XCTAssertNil(TimeFormatting.parseTimestamp("   "))
+        XCTAssertNil(TimeFormatting.parseTimestamp("-5"))
+        XCTAssertNil(TimeFormatting.parseTimestamp("invalid"))
+
+        // Formatting back to MM:SS
+        XCTAssertEqual(TimeFormatting.formatTimestamp(72), "1:12")
+        XCTAssertEqual(TimeFormatting.formatTimestamp(142), "2:22")
+        XCTAssertEqual(TimeFormatting.formatTimestamp(5), "0:05")
+        XCTAssertEqual(TimeFormatting.formatTimestamp(0), "0:00")
+        XCTAssertEqual(TimeFormatting.formatTimestamp(3735), "1:02:15")
+    }
+
+    func testAudioCutterDownloadSectionsArguments() {
+        let service = YTDLPService()
+        let settings = AppSettings()
+        let cutConfig = YTDLPDownloadConfiguration(
+            formatExpression: "bestaudio/best",
+            displayName: "MP3 Audio [1:12 - 2:22]",
+            detailText: "Trimmed Audio",
+            contentPreference: .audio,
+            extractAudio: true,
+            audioFormat: "mp3",
+            clipStart: 72,
+            clipEnd: 142
+        )
+        let item = DownloadItem(
+            sourceURL: URL(string: "https://www.youtube.com/watch?v=dQw4w9WgXcQ")!,
+            fileName: "song.mp3",
+            contentPreference: .audio,
+            ytDLPConfiguration: cutConfig
+        )
+
+        let args = service.arguments(for: item, settings: settings)
+        XCTAssertTrue(args.contains("--download-sections"), "Arguments must contain --download-sections")
+        if let index = args.firstIndex(of: "--download-sections") {
+            XCTAssertEqual(args[index + 1], "*72-142", "Must specify exact *72-142 time range")
+        }
+        XCTAssertTrue(args.contains("--extract-audio"), "Must extract audio")
+        XCTAssertTrue(args.contains("mp3"), "Must output mp3")
+        XCTAssertTrue(service.requiresFFmpeg(for: item), "Trimmed audio requires FFmpeg")
+    }
+
     func testCustomYTDLPPathOverrideResolution() {
         let settings = AppSettings()
         let service = YTDLPService()
