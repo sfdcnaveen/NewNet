@@ -1148,7 +1148,7 @@ final class YTDLPService {
         return data[firstBrace...lastBrace]
     }
 
-    private func buildVideoOptions(from formats: [YTDLPInspectionFormat]) -> [YTDLPDownloadOption] {
+    func buildVideoOptions(from formats: [YTDLPInspectionFormat]) -> [YTDLPDownloadOption] {
         let combinedFormats = formats
             .filter(\.hasVideo)
             .filter(\.hasAudio)
@@ -1166,16 +1166,23 @@ final class YTDLPService {
 
         var options: [YTDLPDownloadOption] = []
         var seenIDs: Set<String> = []
+        var seenVisualKeys: Set<String> = []
 
         for format in combinedFormats {
-            let option = makeCombinedVideoOption(from: format)
-            if seenIDs.insert(option.id).inserted {
-                options.append(option)
+            let key = Self.visualDeduplicationKey(for: format)
+            if seenVisualKeys.insert(key).inserted {
+                let option = makeCombinedVideoOption(from: format)
+                if seenIDs.insert(option.id).inserted {
+                    options.append(option)
+                }
             }
         }
 
         for format in videoOnlyFormats {
+            let key = Self.visualDeduplicationKey(for: format)
+            guard !seenVisualKeys.contains(key) else { continue }
             guard let audio = bestCompatibleAudio(for: format, from: audioOnlyFormats) else { continue }
+            seenVisualKeys.insert(key)
             let option = makeMuxedVideoOption(video: format, audio: audio)
             if seenIDs.insert(option.id).inserted {
                 options.append(option)
@@ -1362,21 +1369,34 @@ final class YTDLPService {
         return nil
     }
 
-    nonisolated private static func isPreferredVideoFormat(_ lhs: YTDLPInspectionFormat, _ rhs: YTDLPInspectionFormat) -> Bool {
+    nonisolated static func isPreferredVideoFormat(_ lhs: YTDLPInspectionFormat, _ rhs: YTDLPInspectionFormat) -> Bool {
         if lhs.height != rhs.height { return (lhs.height ?? 0) > (rhs.height ?? 0) }
         if lhs.fps != rhs.fps { return (lhs.fps ?? 0) > (rhs.fps ?? 0) }
         if lhs.dynamicRangePriority != rhs.dynamicRangePriority {
             return lhs.dynamicRangePriority > rhs.dynamicRangePriority
         }
-        return (lhs.tbr ?? 0) > (rhs.tbr ?? 0)
-    }
-
-    nonisolated private static func isPreferredAudioFormat(_ lhs: YTDLPInspectionFormat, _ rhs: YTDLPInspectionFormat) -> Bool {
-        if lhs.audioBitrate != rhs.audioBitrate { return lhs.audioBitrate > rhs.audioBitrate }
+        if lhs.protocolPriority != rhs.protocolPriority {
+            return lhs.protocolPriority > rhs.protocolPriority
+        }
+        if lhs.videoCodecPriority != rhs.videoCodecPriority {
+            return lhs.videoCodecPriority > rhs.videoCodecPriority
+        }
+        if lhs.tbr != rhs.tbr { return (lhs.tbr ?? 0) > (rhs.tbr ?? 0) }
         return (lhs.fileSize ?? 0) > (rhs.fileSize ?? 0)
     }
 
-    nonisolated private static func videoQualityLabel(for format: YTDLPInspectionFormat) -> String {
+    nonisolated static func isPreferredAudioFormat(_ lhs: YTDLPInspectionFormat, _ rhs: YTDLPInspectionFormat) -> Bool {
+        if lhs.protocolPriority != rhs.protocolPriority {
+            return lhs.protocolPriority > rhs.protocolPriority
+        }
+        if lhs.audioBitrate != rhs.audioBitrate { return lhs.audioBitrate > rhs.audioBitrate }
+        if lhs.audioCodecPriority != rhs.audioCodecPriority {
+            return lhs.audioCodecPriority > rhs.audioCodecPriority
+        }
+        return (lhs.fileSize ?? 0) > (rhs.fileSize ?? 0)
+    }
+
+    nonisolated static func videoQualityLabel(for format: YTDLPInspectionFormat) -> String {
         if let height = format.height {
             if let fps = format.fps, fps >= 50 {
                 return "\(height)p\(Int(fps.rounded()))"
@@ -1385,7 +1405,25 @@ final class YTDLPService {
             return "\(height)p"
         }
 
-        return format.resolution?.nilIfNone ?? format.formatNote?.nilIfNone ?? "Video"
+        if let resolution = format.resolution?.nilIfNone {
+            let parts = resolution.split(separator: "x")
+            if parts.count == 2, let h = Int(parts[1]) {
+                if let fps = format.fps, fps >= 50 {
+                    return "\(h)p\(Int(fps.rounded()))"
+                }
+                return "\(h)p"
+            }
+            return resolution
+        }
+
+        return format.formatNote?.nilIfNone ?? "Video"
+    }
+
+    nonisolated static func visualDeduplicationKey(for format: YTDLPInspectionFormat) -> String {
+        let quality = videoQualityLabel(for: format)
+        let ext = format.ext?.lowercased() ?? "video"
+        let dr = format.dynamicRangePriority
+        return "\(quality)_\(ext)_\(dr)"
     }
 
     nonisolated private static func audioQualityLabel(for format: YTDLPInspectionFormat) -> String {
@@ -1640,6 +1678,7 @@ struct YTDLPInspectionFormat: Decodable, Sendable {
     let vcodec: String?
     let acodec: String?
     let dynamicRange: String?
+    let formatProtocol: String?
 
     init(
         formatId: String,
@@ -1657,7 +1696,8 @@ struct YTDLPInspectionFormat: Decodable, Sendable {
         fileSizeApprox: Int64? = nil,
         vcodec: String? = nil,
         acodec: String? = nil,
-        dynamicRange: String? = nil
+        dynamicRange: String? = nil,
+        formatProtocol: String? = nil
     ) {
         self.formatId = formatId
         self.formatNote = formatNote
@@ -1675,6 +1715,7 @@ struct YTDLPInspectionFormat: Decodable, Sendable {
         self.vcodec = vcodec
         self.acodec = acodec
         self.dynamicRange = dynamicRange
+        self.formatProtocol = formatProtocol
     }
 
     nonisolated var hasVideo: Bool {
@@ -1691,6 +1732,53 @@ struct YTDLPInspectionFormat: Decodable, Sendable {
 
     nonisolated var audioBitrate: Double {
         abr ?? tbr ?? 0
+    }
+
+    nonisolated var isHLS: Bool {
+        guard let proto = formatProtocol?.lowercased() else { return false }
+        return proto.contains("m3u8")
+    }
+
+    nonisolated var protocolPriority: Int {
+        guard let proto = formatProtocol?.lowercased() else { return 1 }
+        if proto.starts(with: "http") || proto.starts(with: "https") {
+            return 2
+        }
+        if proto.contains("m3u8") {
+            return 0
+        }
+        return 1
+    }
+
+    nonisolated var videoCodecPriority: Int {
+        guard let vcodec = vcodec?.lowercased(), !vcodec.isEmpty, vcodec != "none" else { return 0 }
+        if vcodec.starts(with: "avc1") || vcodec.starts(with: "h264") {
+            return 4
+        }
+        if vcodec.starts(with: "hvc1") || vcodec.starts(with: "hev1") || vcodec.starts(with: "hevc") {
+            return 3
+        }
+        if vcodec.starts(with: "av01") || vcodec.starts(with: "av1") {
+            return 2
+        }
+        if vcodec.starts(with: "vp09") || vcodec.starts(with: "vp9") {
+            return 1
+        }
+        return 0
+    }
+
+    nonisolated var audioCodecPriority: Int {
+        guard let acodec = acodec?.lowercased(), !acodec.isEmpty, acodec != "none" else { return 0 }
+        if acodec.contains("mp4a") || acodec.contains("aac") {
+            return 3
+        }
+        if acodec.contains("opus") {
+            return 2
+        }
+        if acodec.contains("mp3") {
+            return 1
+        }
+        return 0
     }
 
     nonisolated var dynamicRangePriority: Int {
@@ -1721,6 +1809,7 @@ struct YTDLPInspectionFormat: Decodable, Sendable {
         case vcodec
         case acodec
         case dynamicRange = "dynamic_range"
+        case formatProtocol = "protocol"
     }
 
     init(from decoder: Decoder) throws {
@@ -1741,6 +1830,7 @@ struct YTDLPInspectionFormat: Decodable, Sendable {
         vcodec = try container.decodeIfPresent(String.self, forKey: .vcodec)
         acodec = try container.decodeIfPresent(String.self, forKey: .acodec)
         dynamicRange = try container.decodeIfPresent(String.self, forKey: .dynamicRange)
+        formatProtocol = try container.decodeIfPresent(String.self, forKey: .formatProtocol)
     }
 }
 

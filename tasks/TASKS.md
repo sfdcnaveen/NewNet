@@ -189,3 +189,14 @@
    Done by: CODEX
    Done at: 2026-11-23T13:08:07Z
 
+18. deduplicate-video-format-options
+   Id: 18-deduplicate-video-format-options
+   Scope: Feature/Backend
+   Files: NewNet/Services/YTDLPService.swift,NewNetTests/NetworkMonitoringTests.swift
+   Note: Deduplicated video format options by user-visible signature and prioritized direct HTTPS over HLS
+   Detail: tasks/details/18-deduplicate-video-format-options.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-23T15:37:56Z
+   Done by: CODEX
+   Done at: 2026-11-23T15:47:26Z
+

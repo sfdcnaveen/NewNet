@@ -642,6 +642,146 @@ final class YTDLPServiceHostTests: XCTestCase {
         XCTAssertEqual(options[2].configuration.formatExpression, "bestaudio/best")
     }
 
+    func testBuildVideoOptionsDeduplicatesDuplicateFormatsAndPrefersHTTPS() {
+        let service = YTDLPService()
+        let formats = [
+            // 720p HLS (higher reported tbr, but fragmented m3u8)
+            YTDLPInspectionFormat(
+                formatId: "232",
+                ext: "mp4",
+                height: 720,
+                fps: 25,
+                tbr: 1248,
+                vcodec: "avc1.4d401f",
+                acodec: "none",
+                formatProtocol: "m3u8_native"
+            ),
+            // 720p Direct HTTPS (DASH)
+            YTDLPInspectionFormat(
+                formatId: "136",
+                formatNote: "720p",
+                ext: "mp4",
+                height: 720,
+                fps: 25,
+                tbr: 993,
+                fileSizeExact: 25_000_000,
+                vcodec: "avc1.4d401f",
+                acodec: "none",
+                formatProtocol: "https"
+            ),
+            // 480p HLS
+            YTDLPInspectionFormat(
+                formatId: "231",
+                ext: "mp4",
+                height: 480,
+                fps: 25,
+                tbr: 863,
+                vcodec: "avc1.4d401e",
+                acodec: "none",
+                formatProtocol: "m3u8_native"
+            ),
+            // 480p Direct HTTPS
+            YTDLPInspectionFormat(
+                formatId: "135",
+                formatNote: "480p",
+                ext: "mp4",
+                height: 480,
+                fps: 25,
+                tbr: 530,
+                fileSizeExact: 13_000_000,
+                vcodec: "avc1.4d401e",
+                acodec: "none",
+                formatProtocol: "https"
+            ),
+            // Audio HLS
+            YTDLPInspectionFormat(
+                formatId: "233",
+                formatNote: "Default, low",
+                ext: "mp4",
+                vcodec: "none",
+                acodec: "unknown",
+                formatProtocol: "m3u8_native"
+            ),
+            // Audio Direct HTTPS (clean AAC medium)
+            YTDLPInspectionFormat(
+                formatId: "140",
+                formatNote: "medium",
+                ext: "m4a",
+                tbr: 129,
+                abr: 129,
+                fileSizeExact: 3_500_000,
+                vcodec: "none",
+                acodec: "mp4a.40.2",
+                formatProtocol: "https"
+            )
+        ]
+
+        let options = service.buildVideoOptions(from: formats)
+
+        // Must only show 2 distinct options: one 720p and one 480p (no duplicates)
+        XCTAssertEqual(options.count, 2, "Duplicate HLS streams must be deduplicated when direct HTTPS exists")
+
+        // First option: 720p MP4 using direct HTTPS stream (136) and direct AAC audio (140)
+        let option720p = options[0]
+        XCTAssertEqual(option720p.label, "720p • MP4 + M4A")
+        XCTAssertEqual(option720p.configuration.formatExpression, "136+140")
+
+        // Second option: 480p MP4 using direct HTTPS stream (135) and direct AAC audio (140)
+        let option480p = options[1]
+        XCTAssertEqual(option480p.label, "480p • MP4 + M4A")
+        XCTAssertEqual(option480p.configuration.formatExpression, "135+140")
+    }
+
+    func testBuildVideoOptionsPreservesDistinctContainers() {
+        let service = YTDLPService()
+        let formats = [
+            YTDLPInspectionFormat(
+                formatId: "137",
+                formatNote: "1080p",
+                ext: "mp4",
+                height: 1080,
+                fps: 30,
+                tbr: 2500,
+                vcodec: "avc1.640028",
+                acodec: "none",
+                formatProtocol: "https"
+            ),
+            YTDLPInspectionFormat(
+                formatId: "248",
+                formatNote: "1080p",
+                ext: "webm",
+                height: 1080,
+                fps: 30,
+                tbr: 2000,
+                vcodec: "vp9",
+                acodec: "none",
+                formatProtocol: "https"
+            ),
+            YTDLPInspectionFormat(
+                formatId: "140",
+                ext: "m4a",
+                abr: 128,
+                vcodec: "none",
+                acodec: "mp4a.40.2",
+                formatProtocol: "https"
+            ),
+            YTDLPInspectionFormat(
+                formatId: "251",
+                ext: "webm",
+                abr: 160,
+                vcodec: "none",
+                acodec: "opus",
+                formatProtocol: "https"
+            )
+        ]
+
+        let options = service.buildVideoOptions(from: formats)
+        // Both 1080p MP4 and 1080p WEBM should be kept because container and codec differ
+        XCTAssertEqual(options.count, 2)
+        XCTAssertTrue(options.contains(where: { $0.configuration.formatExpression.starts(with: "137+") }))
+        XCTAssertTrue(options.contains(where: { $0.configuration.formatExpression.starts(with: "248+") }))
+    }
+
     func testM4RIPhoneRingtoneYTDLPArguments() {
         let service = YTDLPService()
         let settings = AppSettings()
