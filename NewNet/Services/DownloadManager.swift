@@ -515,9 +515,23 @@ final class DownloadManager: ObservableObject {
             scheduleSave()
 
         case .finalFile(let fileURL):
-            items[index].destinationURL = fileURL
-            items[index].fileName = fileURL.lastPathComponent
-            syncFileMetrics(for: index, preferredURL: fileURL)
+            var targetURL = fileURL
+            if items[index].ytDLPConfiguration?.audioFormat == "m4r" && fileURL.pathExtension.lowercased() == "m4a" {
+                let m4rURL = fileURL.deletingPathExtension().appendingPathExtension("m4r")
+                if FileManager.default.fileExists(atPath: m4rURL.path(percentEncoded: false)) {
+                    try? FileManager.default.removeItem(at: m4rURL)
+                }
+                do {
+                    try FileManager.default.moveItem(at: fileURL, to: m4rURL)
+                    targetURL = m4rURL
+                } catch {
+                    logger.error("Failed to rename m4a to m4r: \(error.localizedDescription)")
+                }
+            }
+
+            items[index].destinationURL = targetURL
+            items[index].fileName = targetURL.lastPathComponent
+            syncFileMetrics(for: index, preferredURL: targetURL)
             items[index].state = .completing
             scheduleSave()
 

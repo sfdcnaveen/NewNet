@@ -178,3 +178,14 @@
    Done by: CODEX
    Done at: 2026-11-23T11:49:54Z
 
+17. m4r-iphone-ringtone-support
+   Id: 17-m4r-iphone-ringtone-support
+   Scope: Feature/UI
+   Files: NewNet/Services/YTDLPService.swift,NewNet/ViewModels/DownloadManagerViewModel.swift,NewNet/Views/DropdownPanel.swift,NewNetTests/NetworkMonitoringTests.swift
+   Note: Added native M4R iPhone ringtone support with 256k AAC, format selector, and tests
+   Detail: tasks/details/17-m4r-iphone-ringtone-support.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-23T12:58:05Z
+   Done by: CODEX
+   Done at: 2026-11-23T13:08:07Z
+

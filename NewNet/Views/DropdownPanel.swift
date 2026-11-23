@@ -640,7 +640,8 @@ private struct MediaFormatSelectionScreen: View {
                             onToggleTrim: downloadManagerViewModel.toggleAudioTrim,
                             onStartChange: downloadManagerViewModel.setAudioStartText,
                             onEndChange: downloadManagerViewModel.setAudioEndText,
-                            onPreset: downloadManagerViewModel.applyAudioPreset
+                            onPreset: downloadManagerViewModel.applyAudioPreset,
+                            onFormatChange: downloadManagerViewModel.setAudioFormat
                         )
                     }
 
@@ -967,6 +968,7 @@ private struct AudioClipEditor: View {
     let onStartChange: @MainActor @Sendable (String) -> Void
     let onEndChange: @MainActor @Sendable (String) -> Void
     let onPreset: @MainActor @Sendable (TimeInterval, TimeInterval) -> Void
+    let onFormatChange: @MainActor @Sendable (AudioOutputFormat) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -1051,6 +1053,42 @@ private struct AudioClipEditor: View {
                         .help("Selected cut duration")
                     }
 
+                    // Format selector: [ M4R (iPhone) | MP3 ]
+                    HStack(spacing: 6) {
+                        Text("Format:")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.secondary)
+
+                        ForEach(AudioOutputFormat.allCases) { format in
+                            Button {
+                                onFormatChange(format)
+                            } label: {
+                                HStack(spacing: 3) {
+                                    if format == .m4r {
+                                        Image(systemName: "applelogo")
+                                            .font(.system(size: 8))
+                                    }
+                                    Text(format.displayName)
+                                }
+                                .font(.system(size: 10, weight: pendingSelection.audioFormat == format ? .semibold : .regular))
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(
+                                    RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
+                                        .fill(pendingSelection.audioFormat == format ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.04))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
+                                        .stroke(pendingSelection.audioFormat == format ? Color.accentColor.opacity(0.4) : Color.clear, lineWidth: 1)
+                                )
+                                .foregroundStyle(pendingSelection.audioFormat == format ? Color.accentColor : Color.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        Spacer()
+                    }
+
                     // Quick presets
                     HStack(spacing: 6) {
                         let totalDuration = pendingSelection.mediaInfo.duration ?? 180
@@ -1081,7 +1119,7 @@ private struct AudioClipEditor: View {
                             .font(.system(size: 10, weight: .medium))
                             .foregroundStyle(.red)
                     } else if pendingSelection.audioDuration > 0 {
-                        Text("Extracts audio from \(pendingSelection.audioStartText) to \(pendingSelection.audioEndText)")
+                        Text("Extracts \(pendingSelection.audioFormat.displayName) from \(pendingSelection.audioStartText) to \(pendingSelection.audioEndText)")
                             .font(.system(size: 10))
                             .foregroundStyle(.secondary)
                     }

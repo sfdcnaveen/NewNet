@@ -562,7 +562,7 @@ final class YTDLPServiceHostTests: XCTestCase {
         XCTAssertFalse(YTDLPService.isReddit(url: URL(string: "https://youtube.com/watch?v=123")!))
     }
 
-    func testBuildAudioOptionsReturnsExactlyTwoOptions() {
+    func testBuildAudioOptionsReturnsThreeOptions() {
         let service = YTDLPService()
         let formats = [
             YTDLPInspectionFormat(
@@ -593,7 +593,7 @@ final class YTDLPServiceHostTests: XCTestCase {
         ]
 
         let options = service.buildAudioOptions(from: formats)
-        XCTAssertEqual(options.count, 2, "There must be exactly two audio options")
+        XCTAssertEqual(options.count, 3, "There must be three audio options (Full MP3, iPhone M4R, and MP3 Ringtone)")
 
         let fullOption = options[0]
         XCTAssertEqual(fullOption.id, "audio-mp3-high")
@@ -605,27 +605,78 @@ final class YTDLPServiceHostTests: XCTestCase {
         XCTAssertNil(fullOption.configuration.clipStart)
         XCTAssertNil(fullOption.configuration.clipEnd)
 
-        let ringtoneOption = options[1]
-        XCTAssertEqual(ringtoneOption.id, "audio-ringtone-29s")
-        XCTAssertEqual(ringtoneOption.label, "Ringtone")
-        XCTAssertEqual(ringtoneOption.configuration.formatExpression, "251")
-        XCTAssertEqual(ringtoneOption.configuration.contentPreference, .audio)
-        XCTAssertTrue(ringtoneOption.configuration.extractAudio)
-        XCTAssertEqual(ringtoneOption.configuration.audioFormat, "mp3")
-        XCTAssertEqual(ringtoneOption.configuration.clipStart, 0)
-        XCTAssertEqual(ringtoneOption.configuration.clipEnd, 29)
+        let m4rRingtoneOption = options[1]
+        XCTAssertEqual(m4rRingtoneOption.id, "audio-ringtone-m4r-29s")
+        XCTAssertEqual(m4rRingtoneOption.label, "iPhone Ringtone (M4R)")
+        XCTAssertEqual(m4rRingtoneOption.configuration.formatExpression, "251")
+        XCTAssertEqual(m4rRingtoneOption.configuration.contentPreference, .audio)
+        XCTAssertTrue(m4rRingtoneOption.configuration.extractAudio)
+        XCTAssertEqual(m4rRingtoneOption.configuration.audioFormat, "m4r")
+        XCTAssertEqual(m4rRingtoneOption.configuration.clipStart, 0)
+        XCTAssertEqual(m4rRingtoneOption.configuration.clipEnd, 29)
+
+        let mp3RingtoneOption = options[2]
+        XCTAssertEqual(mp3RingtoneOption.id, "audio-ringtone-29s")
+        XCTAssertEqual(mp3RingtoneOption.label, "MP3 Ringtone")
+        XCTAssertEqual(mp3RingtoneOption.configuration.formatExpression, "251")
+        XCTAssertEqual(mp3RingtoneOption.configuration.contentPreference, .audio)
+        XCTAssertTrue(mp3RingtoneOption.configuration.extractAudio)
+        XCTAssertEqual(mp3RingtoneOption.configuration.audioFormat, "mp3")
+        XCTAssertEqual(mp3RingtoneOption.configuration.clipStart, 0)
+        XCTAssertEqual(mp3RingtoneOption.configuration.clipEnd, 29)
     }
 
     func testBuildAudioOptionsFallbackWhenEmpty() {
         let service = YTDLPService()
         let options = service.buildAudioOptions(from: [])
-        XCTAssertEqual(options.count, 2)
+        XCTAssertEqual(options.count, 3)
         XCTAssertEqual(options[0].id, "audio-mp3-high")
         XCTAssertEqual(options[0].label, "MP3 Audio High")
         XCTAssertEqual(options[0].configuration.formatExpression, "bestaudio/best")
-        XCTAssertEqual(options[1].id, "audio-ringtone-29s")
-        XCTAssertEqual(options[1].label, "Ringtone")
+        XCTAssertEqual(options[1].id, "audio-ringtone-m4r-29s")
+        XCTAssertEqual(options[1].label, "iPhone Ringtone (M4R)")
         XCTAssertEqual(options[1].configuration.formatExpression, "bestaudio/best")
+        XCTAssertEqual(options[1].configuration.audioFormat, "m4r")
+        XCTAssertEqual(options[2].id, "audio-ringtone-29s")
+        XCTAssertEqual(options[2].label, "MP3 Ringtone")
+        XCTAssertEqual(options[2].configuration.formatExpression, "bestaudio/best")
+    }
+
+    func testM4RIPhoneRingtoneYTDLPArguments() {
+        let service = YTDLPService()
+        let settings = AppSettings()
+        let m4rConfig = YTDLPDownloadConfiguration(
+            formatExpression: "251",
+            displayName: "iPhone Ringtone (M4R)",
+            detailText: "Native Apple 256k AAC",
+            contentPreference: .audio,
+            extractAudio: true,
+            audioFormat: "m4r",
+            clipStart: 0,
+            clipEnd: 29
+        )
+        let item = DownloadItem(
+            sourceURL: URL(string: "https://youtube.com/watch?v=123")!,
+            fileName: "song.m4r",
+            contentPreference: .audio,
+            ytDLPConfiguration: m4rConfig
+        )
+
+        let args = service.arguments(for: item, settings: settings)
+        XCTAssertTrue(args.contains("--extract-audio"))
+        XCTAssertTrue(args.contains("--audio-format"))
+        if let formatIdx = args.firstIndex(of: "--audio-format") {
+            XCTAssertEqual(args[formatIdx + 1], "m4a", "m4r is extracted as m4a with 256k AAC prior to rename")
+        }
+        XCTAssertTrue(args.contains("--postprocessor-args"))
+        if let ppaIdx = args.firstIndex(of: "--postprocessor-args") {
+            XCTAssertEqual(args[ppaIdx + 1], "ExtractAudio:-b:a 256k", "AAC must be encoded at 256 kbps")
+        }
+        XCTAssertTrue(args.contains("--download-sections"))
+        if let secIdx = args.firstIndex(of: "--download-sections") {
+            XCTAssertEqual(args[secIdx + 1], "*0-29")
+        }
+        XCTAssertTrue(service.requiresFFmpeg(for: item))
     }
 
     func testRequiresFFmpegForAudioAndRingtone() {

@@ -2,6 +2,20 @@ import Combine
 import Foundation
 import UniformTypeIdentifiers
 
+enum AudioOutputFormat: String, CaseIterable, Identifiable, Sendable {
+    case m4r = "m4r"
+    case mp3 = "mp3"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .m4r: return "M4R (iPhone)"
+        case .mp3: return "MP3"
+        }
+    }
+}
+
 struct PendingMediaSelection: Identifiable, Hashable {
     let id = UUID()
     let mediaInfo: YTDLPMediaInfo
@@ -16,6 +30,7 @@ struct PendingMediaSelection: Identifiable, Hashable {
     var audioEnd: TimeInterval = 0
     var audioStartText: String = "0:00"
     var audioEndText: String = "0:00"
+    var audioFormat: AudioOutputFormat = .m4r
 
     var availableOptions: [YTDLPDownloadOption] {
         switch selectedPreference {
@@ -200,15 +215,17 @@ final class DownloadManagerViewModel: ObservableObject {
             var configuration = option.configuration
             configuration.clipStart = pendingMediaSelection.audioStart
             configuration.clipEnd = pendingMediaSelection.audioEnd
+            configuration.audioFormat = pendingMediaSelection.audioFormat.rawValue
 
+            let formatSuffix = pendingMediaSelection.audioFormat == .m4r ? " (M4R)" : " (MP3)"
             let rangeLabel = "\(TimeFormatting.formatTimestamp(pendingMediaSelection.audioStart)) - \(TimeFormatting.formatTimestamp(pendingMediaSelection.audioEnd))"
-            configuration.displayName = "\(option.label) [\(rangeLabel)]"
-            configuration.detailText = "Trimmed Audio • \(rangeLabel)"
+            configuration.displayName = "\(option.label) [\(rangeLabel)]\(formatSuffix)"
+            configuration.detailText = "Trimmed Audio • \(rangeLabel) • \(pendingMediaSelection.audioFormat.displayName)"
 
             selectedOption = YTDLPDownloadOption(
-                id: "audio-cut-\(option.id)-\(Int(pendingMediaSelection.audioStart))-\(Int(pendingMediaSelection.audioEnd))",
-                label: "\(option.label) [\(rangeLabel)]",
-                detail: "Trimmed Audio • \(rangeLabel)",
+                id: "audio-cut-\(pendingMediaSelection.audioFormat.rawValue)-\(option.id)-\(Int(pendingMediaSelection.audioStart))-\(Int(pendingMediaSelection.audioEnd))",
+                label: "\(option.label) [\(rangeLabel)]\(formatSuffix)",
+                detail: "Trimmed Audio • \(rangeLabel) • \(pendingMediaSelection.audioFormat.displayName)",
                 estimatedBytes: option.estimatedBytes,
                 configuration: configuration
             )
@@ -280,6 +297,12 @@ final class DownloadManagerViewModel: ObservableObject {
         pendingMediaSelection.audioEnd = clampedEnd
         pendingMediaSelection.audioStartText = TimeFormatting.formatTimestamp(clampedStart)
         pendingMediaSelection.audioEndText = TimeFormatting.formatTimestamp(clampedEnd)
+        self.pendingMediaSelection = pendingMediaSelection
+    }
+
+    func setAudioFormat(_ format: AudioOutputFormat) {
+        guard var pendingMediaSelection else { return }
+        pendingMediaSelection.audioFormat = format
         self.pendingMediaSelection = pendingMediaSelection
     }
 
@@ -427,7 +450,8 @@ final class DownloadManagerViewModel: ObservableObject {
             audioStart: 0,
             audioEnd: trackDuration,
             audioStartText: "0:00",
-            audioEndText: TimeFormatting.formatTimestamp(trackDuration)
+            audioEndText: TimeFormatting.formatTimestamp(trackDuration),
+            audioFormat: .m4r
         )
     }
 

@@ -1030,10 +1030,18 @@ final class YTDLPService {
 
             if configuration.extractAudio {
                 arguments.append("--extract-audio")
-                if let audioFormat = configuration.audioFormat, !audioFormat.isEmpty {
-                    arguments += ["--audio-format", audioFormat]
+                if configuration.audioFormat == "m4r" {
+                    arguments += [
+                        "--audio-format", "m4a",
+                        "--audio-quality", "0",
+                        "--postprocessor-args", "ExtractAudio:-b:a 256k"
+                    ]
+                } else {
+                    if let audioFormat = configuration.audioFormat, !audioFormat.isEmpty {
+                        arguments += ["--audio-format", audioFormat]
+                    }
+                    arguments += ["--audio-quality", "0"]
                 }
-                arguments += ["--audio-quality", "0"]
             }
 
             if configuration.contentPreference != .gif,
@@ -1208,14 +1216,32 @@ final class YTDLPService {
             )
         )
 
-        let ringtoneOption = YTDLPDownloadOption(
+        let m4rRingtoneOption = YTDLPDownloadOption(
+            id: "audio-ringtone-m4r-29s",
+            label: "iPhone Ringtone (M4R)",
+            detail: "Native Apple 256k AAC (trimmed to 29 seconds)",
+            estimatedBytes: nil,
+            configuration: YTDLPDownloadConfiguration(
+                formatExpression: formatExpression,
+                displayName: "iPhone Ringtone (M4R)",
+                detailText: "Native Apple 256k AAC (trimmed to 29 seconds)",
+                contentPreference: .audio,
+                extractAudio: true,
+                audioFormat: "m4r",
+                mergeOutputFormat: nil,
+                clipStart: 0,
+                clipEnd: 29
+            )
+        )
+
+        let mp3RingtoneOption = YTDLPDownloadOption(
             id: "audio-ringtone-29s",
-            label: "Ringtone",
+            label: "MP3 Ringtone",
             detail: "High quality MP3 (trimmed to 29 seconds)",
             estimatedBytes: nil,
             configuration: YTDLPDownloadConfiguration(
                 formatExpression: formatExpression,
-                displayName: "Ringtone",
+                displayName: "MP3 Ringtone",
                 detailText: "High quality MP3 (trimmed to 29 seconds)",
                 contentPreference: .audio,
                 extractAudio: true,
@@ -1226,7 +1252,7 @@ final class YTDLPService {
             )
         )
 
-        return [fullOption, ringtoneOption]
+        return [fullOption, m4rRingtoneOption, mp3RingtoneOption]
     }
 
 
