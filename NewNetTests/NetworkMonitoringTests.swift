@@ -1062,6 +1062,45 @@ final class YTDLPServiceHostTests: XCTestCase {
         XCTAssertEqual(result, .accepted)
         XCTAssertEqual(downloadManager.items.first?.fileName, "DC Ringtone")
     }
+
+    func testDownloadManagerRemoveSingleItem() {
+        let settings = AppSettings()
+        let downloadManager = DownloadManager(settings: settings)
+        let initialCount = downloadManager.items.count
+        let mediaInfo = YTDLPMediaInfo(
+            sourceURL: URL(string: "https://example.com/unique_item_\(UUID().uuidString)")!,
+            title: "File1",
+            uploader: nil,
+            extractor: nil,
+            duration: nil,
+            thumbnailURL: nil,
+            videoOptions: [],
+            audioOptions: []
+        )
+        let option = YTDLPDownloadOption(
+            id: "opt1",
+            label: "720p",
+            detail: "",
+            estimatedBytes: nil,
+            configuration: YTDLPDownloadConfiguration(
+                formatExpression: "best",
+                displayName: "720p",
+                detailText: "",
+                contentPreference: .video,
+                extractAudio: false
+            )
+        )
+        _ = downloadManager.confirmMediaDownload(mediaInfo: mediaInfo, option: option, customFileName: "File1")
+        XCTAssertEqual(downloadManager.items.count, initialCount + 1)
+
+        guard let addedItem = downloadManager.items.first(where: { $0.fileName == "File1" }) else {
+            XCTFail("Item was not added")
+            return
+        }
+        downloadManager.removeItem(addedItem)
+        XCTAssertEqual(downloadManager.items.count, initialCount)
+        XCTAssertFalse(downloadManager.items.contains(where: { $0.id == addedItem.id }))
+    }
 }
 
 @MainActor

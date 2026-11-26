@@ -222,3 +222,14 @@
    Done by: CODEX
    Done at: 2026-11-26T06:54:00Z
 
+21. download-row-ui-cleanup
+   Id: 21-download-row-ui-cleanup
+   Scope: UI
+   Files: NewNet/Views/DownloadRow.swift,NewNet/Views/DropdownPanel.swift,NewNet/ViewModels/DownloadManagerViewModel.swift,NewNet/Services/DownloadManager.swift
+   Note: Cleaned up download row: removed yt-dlp tag, simplified format tag to M4R, circular action buttons, added delete button, and optimized item height
+   Detail: tasks/details/21-download-row-ui-cleanup.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-26T07:15:49Z
+   Done by: CODEX
+   Done at: 2026-11-26T07:20:05Z
+

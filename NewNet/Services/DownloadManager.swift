@@ -327,6 +327,16 @@ final class DownloadManager: ObservableObject {
         scheduleSave()
     }
 
+    func removeItem(_ item: DownloadItem) {
+        remove(id: item.id)
+    }
+
+    func remove(id: UUID) {
+        cancelDownloadWork(for: id)
+        items.removeAll { $0.id == id }
+        scheduleSave()
+    }
+
     func ytDLPBinaryDescription() -> String {
         ytDLPService.discoveredBinaryDescription(settings: settings)
     }

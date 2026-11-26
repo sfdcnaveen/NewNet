@@ -388,6 +388,10 @@ final class DownloadManagerViewModel: ObservableObject {
         downloadManager.clearRecentDownloads()
     }
 
+    func remove(_ item: DownloadItem) {
+        downloadManager.removeItem(item)
+    }
+
     func fillURLField(with url: URL) {
         urlField = url.absoluteString
         validationMessage = nil

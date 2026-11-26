@@ -6,102 +6,73 @@ struct DownloadRow: View {
     let onResume: () -> Void
     let onPlay: () -> Void
     let onShowInFinder: () -> Void
+    let onDelete: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var isHovering = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
-            HStack(alignment: .center, spacing: DesignTokens.Spacing.medium) {
-                
-                ZStack {
-                    Circle()
-                        .fill(leadingColor.opacity(0.15))
-                    
-                    Image(systemName: leadingSymbol)
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(leadingColor)
-                }
-                .frame(width: 32, height: 32)
-                
-                VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .center, spacing: 10) {
+                leadingIcon
+
+                VStack(alignment: .leading, spacing: 3) {
                     Text(item.fileName)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
-                    
+
                     HStack(spacing: 6) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "cpu")
-                            Text(item.engine.displayName)
-                        }
-                        .font(.system(size: 9, weight: .bold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .liquidGlassPill()
-                        .foregroundStyle(.secondary)
-                        
-                        if let formatSummary = item.ytDLPConfiguration?.displayName, item.engine == .ytDLP {
-                            HStack(spacing: 4) {
-                                if item.ytDLPConfiguration?.contentPreference == .gif {
-                                    Text("GIF")
-                                        .font(.system(size: 8, weight: .black))
-                                } else {
-                                    Image(systemName: "film")
-                                }
-                                Text(formatSummary)
+                        if let tag = simplifiedFormatTag {
+                            HStack(spacing: 3) {
+                                Image(systemName: formatIcon)
+                                    .font(.system(size: 8))
+                                Text(tag)
+                                    .font(.system(size: 9, weight: .bold))
                             }
-                            .font(.system(size: 9, weight: .bold))
                             .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
+                            .padding(.vertical, 2)
                             .liquidGlassPill(tint: item.ytDLPConfiguration?.contentPreference == .gif ? .accentColor : nil)
                             .foregroundStyle(.secondary)
                         }
+
+                        Text(statusText)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(statusColor)
+
+                        if item.state == .completed && item.downloadedBytes > 0 {
+                            Text("•")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.tertiary)
+                            Text(ByteCountFormatter.compactFileSize(item.downloadedBytes))
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(.secondary)
+                        } else if item.state == .failed, let error = item.errorDescription {
+                            Text("•")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.tertiary)
+                            Text(error)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
                     }
                 }
-                
-                Spacer(minLength: DesignTokens.Spacing.small)
-                
-                if item.state == .completed {
-                    HStack(spacing: 6) {
-                        Button(action: onPlay) {
-                            Image(systemName: "play.fill")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(Color.accentColor)
-                                .frame(width: 22, height: 22)
-                        }
-                        .buttonStyle(LiquidGlassButtonStyle(cornerRadius: 10, horizontalPadding: 7, verticalPadding: 5))
-                        .help("Play in default player")
-                        
-                        Button(action: onShowInFinder) {
-                            Image(systemName: "folder.fill")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(Color.primary)
-                                .frame(width: 22, height: 22)
-                        }
-                        .buttonStyle(LiquidGlassButtonStyle(cornerRadius: 10, horizontalPadding: 7, verticalPadding: 5))
-                        .help("Open in Finder")
-                    }
-                } else {
-                    Button(action: action) {
-                        Image(systemName: actionSymbol)
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(Color.accentColor)
-                            .frame(width: 26, height: 26)
-                    }
-                    .buttonStyle(LiquidGlassButtonStyle(cornerRadius: 13))
-                }
+
+                Spacer(minLength: 8)
+
+                trailingActions
             }
-            
+
             if item.isActive {
-                VStack(spacing: 6) {
+                VStack(spacing: 4) {
                     ProgressView(value: item.progress)
                         .progressViewStyle(.linear)
                         .tint(Color.accentColor)
-                        .frame(height: 4)
+                        .frame(height: 3)
                         .clipShape(Capsule())
                         .animation(DesignTokens.Animation.progress, value: item.progress)
-                    
+
                     HStack {
                         Text(activeStatusText)
                         Spacer()
@@ -109,36 +80,129 @@ struct DownloadRow: View {
                             Text("\(Int(item.progress * 100))%")
                         }
                     }
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.secondary)
                 }
-                .padding(.top, 4)
-            } else {
-                HStack {
-                    Text(statusText)
-                        .foregroundStyle(statusColor)
-                    
-                    Spacer()
-                    
-                    if item.state == .completed {
-                        Text(ByteCountFormatter.compactFileSize(item.downloadedBytes))
-                            .foregroundStyle(.secondary)
-                    } else if item.state == .failed {
-                        Text(item.errorDescription ?? "Failed to download")
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-                .font(.system(size: 11, weight: .medium))
                 .padding(.top, 2)
             }
         }
-        .padding(.horizontal, DesignTokens.Spacing.medium)
-        .padding(.vertical, DesignTokens.Spacing.medium)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium, isHovered: isHovering, isActive: item.isActive)
         .onHover { isHovering = $0 }
         .animation(DesignTokens.Animation.hover, value: isHovering)
         .animation(DesignTokens.Animation.transition, value: item.state)
+    }
+
+    private var leadingIcon: some View {
+        ZStack {
+            Circle()
+                .fill(leadingColor.opacity(0.12))
+            Image(systemName: leadingSymbol)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(leadingColor)
+        }
+        .frame(width: 28, height: 28)
+    }
+
+    @ViewBuilder
+    private var trailingActions: some View {
+        if item.state == .completed {
+            HStack(spacing: 6) {
+                Button(action: onPlay) {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 10, weight: .bold))
+                        .frame(width: 26, height: 26)
+                }
+                .buttonStyle(LiquidGlassButtonStyle(tint: .accentColor, isCircular: true))
+                .help("Play in default player")
+
+                Button(action: onShowInFinder) {
+                    Image(systemName: "folder")
+                        .font(.system(size: 10, weight: .semibold))
+                        .frame(width: 26, height: 26)
+                }
+                .buttonStyle(LiquidGlassButtonStyle(isCircular: true))
+                .help("Show in Finder")
+
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 10, weight: .semibold))
+                        .frame(width: 26, height: 26)
+                }
+                .buttonStyle(LiquidGlassButtonStyle(tint: .secondary, isCircular: true))
+                .help("Remove from list")
+            }
+        } else if item.state == .failed {
+            HStack(spacing: 6) {
+                Button(action: action) {
+                    Image(systemName: actionSymbol)
+                        .font(.system(size: 10, weight: .bold))
+                        .frame(width: 26, height: 26)
+                }
+                .buttonStyle(LiquidGlassButtonStyle(tint: .accentColor, isCircular: true))
+                .help("Retry download")
+
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 10, weight: .semibold))
+                        .frame(width: 26, height: 26)
+                }
+                .buttonStyle(LiquidGlassButtonStyle(tint: .secondary, isCircular: true))
+                .help("Remove from list")
+            }
+        } else {
+            HStack(spacing: 6) {
+                Button(action: action) {
+                    Image(systemName: actionSymbol)
+                        .font(.system(size: 10, weight: .bold))
+                        .frame(width: 26, height: 26)
+                }
+                .buttonStyle(LiquidGlassButtonStyle(tint: .accentColor, isCircular: true))
+                .help(item.state == .paused ? "Resume download" : "Pause download")
+
+                Button(action: onDelete) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .frame(width: 26, height: 26)
+                }
+                .buttonStyle(LiquidGlassButtonStyle(tint: .secondary, isCircular: true))
+                .help("Cancel download")
+            }
+        }
+    }
+
+    private var simplifiedFormatTag: String? {
+        if let config = item.ytDLPConfiguration {
+            if config.audioFormat == "m4r" || config.displayName.localizedCaseInsensitiveContains("m4r") || item.fileName.lowercased().hasSuffix(".m4r") {
+                return "M4R"
+            }
+            if config.contentPreference == .gif {
+                return "GIF"
+            }
+            if config.contentPreference == .audio {
+                if config.audioFormat == "mp3" || config.displayName.localizedCaseInsensitiveContains("mp3") {
+                    return "MP3"
+                }
+                return "Audio"
+            }
+            return config.displayName
+        }
+        let ext = item.destinationURL.pathExtension.uppercased()
+        if !ext.isEmpty && ext != "DOWNLOAD" && ext != "PART" {
+            return ext
+        }
+        return nil
+    }
+
+    private var formatIcon: String {
+        guard let tag = simplifiedFormatTag else { return "doc" }
+        switch tag {
+        case "M4R": return "bell.fill"
+        case "MP3", "Audio", "M4A", "AAC", "FLAC", "WAV": return "music.note"
+        case "GIF": return "film.stack"
+        default: return "play.rectangle"
+        }
     }
 
     private var statusText: String {
