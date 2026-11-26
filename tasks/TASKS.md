@@ -200,3 +200,14 @@
    Done by: CODEX
    Done at: 2026-11-23T15:47:26Z
 
+19. media-download-ui-text-optimisation
+   Id: 19-media-download-ui-text-optimisation
+   Scope: UI
+   Files: NewNet/Views/DropdownPanel.swift,NewNet/ViewModels/DownloadManagerViewModel.swift,NewNet/Services/DownloadManager.swift
+   Note: Optimized media download UI text, editable file name, layout spacing, format row alignment, and removed redundant subtext
+   Detail: tasks/details/19-media-download-ui-text-optimisation.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-26T06:13:09Z
+   Done by: CODEX
+   Done at: 2026-11-26T06:21:28Z
+

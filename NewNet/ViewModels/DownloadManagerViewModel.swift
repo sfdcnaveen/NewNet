@@ -19,6 +19,7 @@ enum AudioOutputFormat: String, CaseIterable, Identifiable, Sendable {
 struct PendingMediaSelection: Identifiable, Hashable {
     let id = UUID()
     let mediaInfo: YTDLPMediaInfo
+    var customFileName: String
     var selectedPreference: DownloadContentPreference
     var selectedOptionID: String
     var gifStart: TimeInterval = 0
@@ -31,6 +32,15 @@ struct PendingMediaSelection: Identifiable, Hashable {
     var audioStartText: String = "0:00"
     var audioEndText: String = "0:00"
     var audioFormat: AudioOutputFormat = .m4r
+
+    static func cleanedTitle(_ raw: String, uploader: String? = nil) -> String {
+        var cleaned = raw.replacingOccurrences(of: #"https?://\S+"#, with: "", options: .regularExpression)
+        cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "-–—:•| ")))
+        if cleaned.isEmpty {
+            return (uploader?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "Media"
+        }
+        return cleaned
+    }
 
     var availableOptions: [YTDLPDownloadOption] {
         switch selectedPreference {
@@ -161,6 +171,10 @@ final class DownloadManagerViewModel: ObservableObject {
         pendingMediaSelection = nil
     }
 
+    func setCustomFileName(_ name: String) {
+        pendingMediaSelection?.customFileName = name
+    }
+
     func setPendingPreference(_ preference: DownloadContentPreference) {
         guard var pendingMediaSelection else { return }
 
@@ -231,7 +245,11 @@ final class DownloadManagerViewModel: ObservableObject {
             )
         }
 
-        switch downloadManager.confirmMediaDownload(mediaInfo: pendingMediaSelection.mediaInfo, option: selectedOption) {
+        switch downloadManager.confirmMediaDownload(
+            mediaInfo: pendingMediaSelection.mediaInfo,
+            option: selectedOption,
+            customFileName: pendingMediaSelection.customFileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : pendingMediaSelection.customFileName.trimmingCharacters(in: .whitespacesAndNewlines)
+        ) {
         case .accepted:
             validationMessage = nil
             urlField = ""
@@ -330,7 +348,12 @@ final class DownloadManagerViewModel: ObservableObject {
             return
         }
 
-        switch downloadManager.confirmMediaDownload(mediaInfo: mediaInfo, option: option) {
+        let customName = pendingSelection.customFileName.trimmingCharacters(in: .whitespacesAndNewlines)
+        switch downloadManager.confirmMediaDownload(
+            mediaInfo: mediaInfo,
+            option: option,
+            customFileName: customName.isEmpty ? nil : customName
+        ) {
         case .accepted:
             validationMessage = nil
             urlField = ""
@@ -443,6 +466,7 @@ final class DownloadManagerViewModel: ObservableObject {
         let trackDuration = mediaInfo.duration ?? 180
         return PendingMediaSelection(
             mediaInfo: mediaInfo,
+            customFileName: PendingMediaSelection.cleanedTitle(mediaInfo.title, uploader: mediaInfo.uploader),
             selectedPreference: preferredSelection,
             selectedOptionID: selectedOptionID,
             gifEnd: min(5, mediaInfo.duration ?? 5),

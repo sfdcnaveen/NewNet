@@ -229,7 +229,8 @@ final class DownloadManager: ObservableObject {
 
     func confirmMediaDownload(
         mediaInfo: YTDLPMediaInfo,
-        option: YTDLPDownloadOption
+        option: YTDLPDownloadOption,
+        customFileName: String? = nil
     ) -> DownloadSubmissionResult {
         if let existingItem = duplicateItem(for: mediaInfo.sourceURL, engine: .ytDLP) {
             let isDifferentClip = existingItem.ytDLPConfiguration?.clipStart != option.configuration.clipStart ||
@@ -245,11 +246,13 @@ final class DownloadManager: ObservableObject {
             }
         }
 
-        var fileName = mediaInfo.title
+        let trimmedCustom = customFileName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let baseTitle = (trimmedCustom?.isEmpty == false ? trimmedCustom : nil) ?? mediaInfo.title
+        var fileName = baseTitle
         if let clipStart = option.configuration.clipStart, let clipEnd = option.configuration.clipEnd {
             let startTag = TimeFormatting.formatTimestamp(clipStart).replacingOccurrences(of: ":", with: ".")
             let endTag = TimeFormatting.formatTimestamp(clipEnd).replacingOccurrences(of: ":", with: ".")
-            fileName = "\(mediaInfo.title) [\(startTag)-\(endTag)]"
+            fileName = "\(baseTitle) [\(startTag)-\(endTag)]"
         }
 
         enqueue(
