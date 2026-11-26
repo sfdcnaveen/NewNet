@@ -244,3 +244,14 @@
    Done by: CODEX
    Done at: 2026-11-26T09:41:06Z
 
+23. release-v1-5-4
+   Id: 23-release-v1-5-4
+   Scope: Release
+   Files: NewNet/Info.plist,NewNet.xcodeproj/project.pbxproj
+   Note: Bumped version to 1.5.4 (154), passed 57 tests, packaged DMG
+   Detail: tasks/details/23-release-v1-5-4.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-26T09:47:23Z
+   Done by: CODEX
+   Done at: 2026-11-26T09:48:53Z
+
