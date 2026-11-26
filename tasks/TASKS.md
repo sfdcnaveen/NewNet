@@ -233,3 +233,14 @@
    Done by: CODEX
    Done at: 2026-11-26T07:20:05Z
 
+22. delete-downloaded-file-on-trash
+   Id: 22-delete-downloaded-file-on-trash
+   Scope: Services/UI
+   Files: NewNet/Services/DownloadManager.swift,NewNet/Views/DownloadRow.swift,NewNetTests/NetworkMonitoringTests.swift
+   Note: Deleted physical files from disk when clicking trash button and removed item from UI list
+   Detail: tasks/details/22-delete-downloaded-file-on-trash.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-26T09:37:50Z
+   Done by: CODEX
+   Done at: 2026-11-26T09:41:06Z
+

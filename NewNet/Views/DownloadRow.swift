@@ -131,7 +131,7 @@ struct DownloadRow: View {
                         .frame(width: 26, height: 26)
                 }
                 .buttonStyle(LiquidGlassButtonStyle(tint: .secondary, isCircular: true))
-                .help("Remove from list")
+                .help("Delete downloaded file")
             }
         } else if item.state == .failed {
             HStack(spacing: 6) {
@@ -149,7 +149,7 @@ struct DownloadRow: View {
                         .frame(width: 26, height: 26)
                 }
                 .buttonStyle(LiquidGlassButtonStyle(tint: .secondary, isCircular: true))
-                .help("Remove from list")
+                .help("Delete downloaded file")
             }
         } else {
             HStack(spacing: 6) {
