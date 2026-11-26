@@ -991,6 +991,77 @@ final class YTDLPServiceHostTests: XCTestCase {
         // Reset
         settings.browserCookieSource = .safari
     }
+
+    func testYTDLPOutputTemplateExactFileName() {
+        let service = YTDLPService()
+        let settings = AppSettings()
+
+        // 1. Exact custom name without extension
+        let item1 = DownloadItem(
+            sourceURL: URL(string: "https://x.com/user/status/123")!,
+            fileName: "DC Ringtone",
+            contentPreference: .audio
+        )
+        let args1 = service.arguments(for: item1, settings: settings)
+        if let outIdx = args1.firstIndex(of: "--output") {
+            XCTAssertEqual(args1[outIdx + 1], "DC Ringtone.%(ext)s")
+        } else {
+            XCTFail("Missing --output argument")
+        }
+
+        // 2. Custom name where user included extension (.m4r or .mp4)
+        let item2 = DownloadItem(
+            sourceURL: URL(string: "https://x.com/user/status/123")!,
+            fileName: "DC Ringtone.m4r",
+            contentPreference: .audio
+        )
+        let args2 = service.arguments(for: item2, settings: settings)
+        if let outIdx = args2.firstIndex(of: "--output") {
+            XCTAssertEqual(args2[outIdx + 1], "DC Ringtone.%(ext)s")
+        } else {
+            XCTFail("Missing --output argument")
+        }
+    }
+
+    func testConfirmMediaDownloadDoesNotAppendClipTimestampsOrTags() {
+        let settings = AppSettings()
+        let downloadManager = DownloadManager(settings: settings)
+        let mediaInfo = YTDLPMediaInfo(
+            sourceURL: URL(string: "https://x.com/user/status/123")!,
+            title: "Original Raw Title - https://t.co/abc",
+            uploader: "DC",
+            extractor: "Twitter",
+            duration: 30,
+            thumbnailURL: nil,
+            videoOptions: [],
+            audioOptions: []
+        )
+        let option = YTDLPDownloadOption(
+            id: "audio-ringtone-m4r-29s",
+            label: "iPhone Ringtone (M4R)",
+            detail: "",
+            estimatedBytes: nil,
+            configuration: YTDLPDownloadConfiguration(
+                formatExpression: "bestaudio",
+                displayName: "iPhone Ringtone (M4R)",
+                detailText: "",
+                contentPreference: .audio,
+                extractAudio: true,
+                audioFormat: "m4r",
+                mergeOutputFormat: nil,
+                clipStart: 0,
+                clipEnd: 29
+            )
+        )
+
+        let result = downloadManager.confirmMediaDownload(
+            mediaInfo: mediaInfo,
+            option: option,
+            customFileName: "DC Ringtone"
+        )
+        XCTAssertEqual(result, .accepted)
+        XCTAssertEqual(downloadManager.items.first?.fileName, "DC Ringtone")
+    }
 }
 
 @MainActor

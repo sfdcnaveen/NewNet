@@ -4,7 +4,7 @@ import Foundation
 import UserNotifications
 import os
 
-enum DownloadSubmissionResult {
+enum DownloadSubmissionResult: Equatable {
     case accepted
     case rejected(String)
 }
@@ -247,13 +247,14 @@ final class DownloadManager: ObservableObject {
         }
 
         let trimmedCustom = customFileName?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let baseTitle = (trimmedCustom?.isEmpty == false ? trimmedCustom : nil) ?? mediaInfo.title
-        var fileName = baseTitle
-        if let clipStart = option.configuration.clipStart, let clipEnd = option.configuration.clipEnd {
-            let startTag = TimeFormatting.formatTimestamp(clipStart).replacingOccurrences(of: ":", with: ".")
-            let endTag = TimeFormatting.formatTimestamp(clipEnd).replacingOccurrences(of: ":", with: ".")
-            fileName = "\(baseTitle) [\(startTag)-\(endTag)]"
+        var baseTitle = (trimmedCustom?.isEmpty == false ? trimmedCustom : nil) ?? mediaInfo.title
+        for ext in ["mp4", "m4a", "m4r", "mp3", "gif", "webm", "mov", "mkv", "aac", "wav", "flac"] {
+            if baseTitle.lowercased().hasSuffix(".\(ext)") {
+                baseTitle = String(baseTitle.dropLast(ext.count + 1))
+                break
+            }
         }
+        let fileName = baseTitle
 
         enqueue(
             url: mediaInfo.sourceURL,
@@ -494,8 +495,10 @@ final class DownloadManager: ObservableObject {
 
         switch event {
         case .title(let title):
-            items[index].fileName = title
-            scheduleSave()
+            if items[index].fileName.isEmpty || items[index].fileName == "Media" || items[index].fileName.hasPrefix("HLSPlaylist") {
+                items[index].fileName = title
+                scheduleSave()
+            }
 
         case .progress(let downloadedBytes, let totalBytes):
             var item = items[index]

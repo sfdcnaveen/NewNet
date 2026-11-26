@@ -985,10 +985,18 @@ final class YTDLPService {
         let downloadsDirectory = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
         let outputTemplate: String
         let customName = item.fileName.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !customName.isEmpty, customName != "HLSPlaylist", !customName.hasPrefix("HLSPlaylist.") {
-            outputTemplate = "\(customName) [%(extractor_key)s-%(id)s].%(ext)s"
+        var baseName = customName
+        for ext in ["mp4", "m4a", "m4r", "mp3", "gif", "webm", "mov", "mkv", "aac", "wav", "flac"] {
+            if baseName.lowercased().hasSuffix(".\(ext)") {
+                baseName = String(baseName.dropLast(ext.count + 1))
+                break
+            }
+        }
+
+        if !baseName.isEmpty, baseName != "HLSPlaylist", !baseName.hasPrefix("HLSPlaylist.") {
+            outputTemplate = "\(baseName).%(ext)s"
         } else {
-            outputTemplate = "%(title).170B [%(extractor_key)s-%(id)s].%(ext)s"
+            outputTemplate = "%(title).170B.%(ext)s"
         }
 
         var arguments = [

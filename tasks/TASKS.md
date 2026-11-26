@@ -211,3 +211,14 @@
    Done by: CODEX
    Done at: 2026-11-26T06:21:28Z
 
+20. media-download-exact-filename
+   Id: 20-media-download-exact-filename
+   Scope: UI/Services
+   Files: NewNet/Services/DownloadManager.swift,NewNet/Services/YTDLPService.swift,NewNetTests/NetworkMonitoringTests.swift
+   Note: Enforced exact custom filename (e.g. DC Ringtone.m4r / DC Ringtone.mp4 / DC Ringtone.gif) without clip timestamps or extractor tags
+   Detail: tasks/details/20-media-download-exact-filename.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-26T06:51:44Z
+   Done by: CODEX
+   Done at: 2026-11-26T06:54:00Z
+
