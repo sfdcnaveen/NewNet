@@ -857,6 +857,14 @@ final class YTDLPService {
                 return titleOverride
             }
             if let rawTitle, !rawTitle.isEmpty, rawTitle != "HLSPlaylist" {
+                let cleaned = rawTitle.replacingOccurrences(of: #"https?://\S+"#, with: "", options: .regularExpression)
+                    .trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "-–—:•| ")))
+                if !cleaned.isEmpty {
+                    return cleaned
+                }
+                if let uploader = response.uploader?.trimmingCharacters(in: .whitespacesAndNewlines), !uploader.isEmpty {
+                    return uploader
+                }
                 return rawTitle
             }
             return url.host?.replacingOccurrences(of: "www.", with: "") ?? "Reddit Video"
@@ -977,10 +985,18 @@ final class YTDLPService {
         let downloadsDirectory = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
         let outputTemplate: String
         let customName = item.fileName.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !customName.isEmpty, customName != "HLSPlaylist", !customName.hasPrefix("HLSPlaylist.") {
-            outputTemplate = "\(customName) [%(extractor_key)s-%(id)s].%(ext)s"
+        var baseName = customName
+        for ext in ["mp4", "m4a", "m4r", "mp3", "gif", "webm", "mov", "mkv", "aac", "wav", "flac"] {
+            if baseName.lowercased().hasSuffix(".\(ext)") {
+                baseName = String(baseName.dropLast(ext.count + 1))
+                break
+            }
+        }
+
+        if !baseName.isEmpty, baseName != "HLSPlaylist", !baseName.hasPrefix("HLSPlaylist.") {
+            outputTemplate = "\(baseName).%(ext)s"
         } else {
-            outputTemplate = "%(title).170B [%(extractor_key)s-%(id)s].%(ext)s"
+            outputTemplate = "%(title).170B.%(ext)s"
         }
 
         var arguments = [
@@ -1208,12 +1224,12 @@ final class YTDLPService {
         let fullOption = YTDLPDownloadOption(
             id: "audio-mp3-high",
             label: "MP3 Audio High",
-            detail: "High quality MP3 audio (full length)",
+            detail: "",
             estimatedBytes: estimatedBytes,
             configuration: YTDLPDownloadConfiguration(
                 formatExpression: formatExpression,
                 displayName: "MP3 Audio High",
-                detailText: "High quality MP3 audio (full length)",
+                detailText: "High quality MP3 audio",
                 contentPreference: .audio,
                 extractAudio: true,
                 audioFormat: "mp3",
@@ -1226,7 +1242,7 @@ final class YTDLPService {
         let m4rRingtoneOption = YTDLPDownloadOption(
             id: "audio-ringtone-m4r-29s",
             label: "iPhone Ringtone (M4R)",
-            detail: "Native Apple 256k AAC (trimmed to 29 seconds)",
+            detail: "",
             estimatedBytes: nil,
             configuration: YTDLPDownloadConfiguration(
                 formatExpression: formatExpression,
@@ -1244,7 +1260,7 @@ final class YTDLPService {
         let mp3RingtoneOption = YTDLPDownloadOption(
             id: "audio-ringtone-29s",
             label: "MP3 Ringtone",
-            detail: "High quality MP3 (trimmed to 29 seconds)",
+            detail: "",
             estimatedBytes: nil,
             configuration: YTDLPDownloadConfiguration(
                 formatExpression: formatExpression,

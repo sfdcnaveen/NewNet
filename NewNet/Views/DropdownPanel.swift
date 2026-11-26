@@ -534,7 +534,8 @@ struct DropdownPanel: View {
                             onPause: { downloadManagerViewModel.pause(item) },
                             onResume: { downloadManagerViewModel.resume(item) },
                             onPlay: { downloadManagerViewModel.open(item) },
-                            onShowInFinder: { downloadManagerViewModel.showInFinder(item) }
+                            onShowInFinder: { downloadManagerViewModel.showInFinder(item) },
+                            onDelete: { downloadManagerViewModel.remove(item) }
                         )
                     }
                 }
@@ -739,19 +740,6 @@ private struct MediaFormatSelectionScreen: View {
 
                 Spacer()
 
-                if let selectedOption = pendingSelection.selectedOption {
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(selectedOption.label)
-                            .font(.system(size: 12, weight: .semibold))
-                            .lineLimit(1)
-                        Text(selectedOption.detail)
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                    .frame(maxWidth: 170, alignment: .trailing)
-                }
-
                 Button("Download") {
                     downloadManagerViewModel.confirmPendingSelection()
                 }
@@ -814,12 +802,34 @@ private struct MediaFormatSelectionScreen: View {
             .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.15), radius: 6, x: 0, y: 3)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(pendingSelection.mediaInfo.title)
-                    .font(.system(size: 14, weight: .semibold))
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
+                HStack(spacing: 6) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
 
-                FlowLayout(horizontalSpacing: 6, verticalSpacing: 6) {
+                    TextField(
+                        "File Name",
+                        text: Binding(
+                            get: { pendingSelection.customFileName },
+                            set: { downloadManagerViewModel.setCustomFileName($0) }
+                        )
+                    )
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(1)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color.primary.opacity(0.05))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
+                )
+
+                HStack(spacing: 6) {
                     if let uploader = pendingSelection.mediaInfo.uploader, !uploader.isEmpty {
                         infoChip(text: uploader)
                     }
@@ -864,9 +874,10 @@ private struct MediaFormatSelectionScreen: View {
         Text(text)
             .font(.system(size: 10, weight: .semibold))
             .foregroundStyle(.secondary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Capsule(style: .continuous).fill(Color.primary.opacity(0.1)))
+            .lineLimit(1)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Capsule(style: .continuous).fill(Color.primary.opacity(0.08)))
     }
 
     private func durationString(for duration: TimeInterval) -> String {
@@ -984,22 +995,17 @@ private struct AudioClipEditor: View {
                                 .fill(pendingSelection.isAudioTrimEnabled ? Color.orange.opacity(0.18) : Color.primary.opacity(0.06))
                         )
 
-                    VStack(alignment: .leading, spacing: 1) {
-                        HStack(spacing: 4) {
-                            Text("Audio Cutter")
-                                .font(.system(size: 12, weight: .semibold))
-                            if pendingSelection.isAudioTrimEnabled {
-                                Text("ACTIVE")
-                                    .font(.system(size: 8, weight: .bold))
-                                    .foregroundStyle(.white)
-                                    .padding(.horizontal, 5)
-                                    .padding(.vertical, 1.5)
-                                    .background(Capsule().fill(Color.orange))
-                            }
+                    HStack(spacing: 6) {
+                        Text("Audio Cutter")
+                            .font(.system(size: 12, weight: .semibold))
+                        if pendingSelection.isAudioTrimEnabled {
+                            Text("ACTIVE")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1.5)
+                                .background(Capsule().fill(Color.orange))
                         }
-                        Text(pendingSelection.isAudioTrimEnabled ? "Trim range in MM:SS" : "Download a specific section of the audio")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
                     }
                 }
 
@@ -1196,13 +1202,8 @@ private struct DownloadPreferenceControl: View {
                         }
 
                         HStack(spacing: 6) {
-                            if option == .gif {
-                                Text("GIF")
-                                    .font(.system(size: 11, weight: .black))
-                            } else {
-                                Image(systemName: option.icon)
-                                    .font(.system(size: 12, weight: .bold))
-                            }
+                            Image(systemName: option.icon)
+                                .font(.system(size: 12, weight: .bold))
                             Text(option.title)
                                 .font(.system(size: 11, weight: .semibold))
                         }
@@ -1234,37 +1235,33 @@ private struct MediaFormatOptionRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
                 ZStack {
                     Circle()
                         .fill(isSelected ? Color.accentColor.opacity(0.20) : Color.primary.opacity(0.08))
-                        .frame(width: 28, height: 28)
+                        .frame(width: 26, height: 26)
 
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
                 }
-                .padding(.top, 2)
 
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        Text(option.label)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.primary)
-                            .lineLimit(2)
+                Text(option.label)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
 
-                        Spacer(minLength: 6)
-                    }
+                Spacer(minLength: 8)
 
+                if option.configuration.contentPreference != .audio && !option.detail.isEmpty {
                     Text(option.detail)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(1)
                 }
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 12)
+            .padding(.vertical, 11)
             .frame(maxWidth: .infinity, alignment: .leading)
             .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium, isHovered: isHovering, isActive: isSelected)
         }

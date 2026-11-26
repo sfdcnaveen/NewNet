@@ -991,6 +991,165 @@ final class YTDLPServiceHostTests: XCTestCase {
         // Reset
         settings.browserCookieSource = .safari
     }
+
+    func testYTDLPOutputTemplateExactFileName() {
+        let service = YTDLPService()
+        let settings = AppSettings()
+
+        // 1. Exact custom name without extension
+        let item1 = DownloadItem(
+            sourceURL: URL(string: "https://x.com/user/status/123")!,
+            fileName: "DC Ringtone",
+            contentPreference: .audio
+        )
+        let args1 = service.arguments(for: item1, settings: settings)
+        if let outIdx = args1.firstIndex(of: "--output") {
+            XCTAssertEqual(args1[outIdx + 1], "DC Ringtone.%(ext)s")
+        } else {
+            XCTFail("Missing --output argument")
+        }
+
+        // 2. Custom name where user included extension (.m4r or .mp4)
+        let item2 = DownloadItem(
+            sourceURL: URL(string: "https://x.com/user/status/123")!,
+            fileName: "DC Ringtone.m4r",
+            contentPreference: .audio
+        )
+        let args2 = service.arguments(for: item2, settings: settings)
+        if let outIdx = args2.firstIndex(of: "--output") {
+            XCTAssertEqual(args2[outIdx + 1], "DC Ringtone.%(ext)s")
+        } else {
+            XCTFail("Missing --output argument")
+        }
+    }
+
+    func testConfirmMediaDownloadDoesNotAppendClipTimestampsOrTags() {
+        let settings = AppSettings()
+        let downloadManager = DownloadManager(settings: settings)
+        let mediaInfo = YTDLPMediaInfo(
+            sourceURL: URL(string: "https://x.com/user/status/123")!,
+            title: "Original Raw Title - https://t.co/abc",
+            uploader: "DC",
+            extractor: "Twitter",
+            duration: 30,
+            thumbnailURL: nil,
+            videoOptions: [],
+            audioOptions: []
+        )
+        let option = YTDLPDownloadOption(
+            id: "audio-ringtone-m4r-29s",
+            label: "iPhone Ringtone (M4R)",
+            detail: "",
+            estimatedBytes: nil,
+            configuration: YTDLPDownloadConfiguration(
+                formatExpression: "bestaudio",
+                displayName: "iPhone Ringtone (M4R)",
+                detailText: "",
+                contentPreference: .audio,
+                extractAudio: true,
+                audioFormat: "m4r",
+                mergeOutputFormat: nil,
+                clipStart: 0,
+                clipEnd: 29
+            )
+        )
+
+        let result = downloadManager.confirmMediaDownload(
+            mediaInfo: mediaInfo,
+            option: option,
+            customFileName: "DC Ringtone"
+        )
+        XCTAssertEqual(result, .accepted)
+        XCTAssertEqual(downloadManager.items.first?.fileName, "DC Ringtone")
+    }
+
+    func testDownloadManagerRemoveSingleItem() {
+        let settings = AppSettings()
+        let downloadManager = DownloadManager(settings: settings)
+        let initialCount = downloadManager.items.count
+        let mediaInfo = YTDLPMediaInfo(
+            sourceURL: URL(string: "https://example.com/unique_item_\(UUID().uuidString)")!,
+            title: "File1",
+            uploader: nil,
+            extractor: nil,
+            duration: nil,
+            thumbnailURL: nil,
+            videoOptions: [],
+            audioOptions: []
+        )
+        let option = YTDLPDownloadOption(
+            id: "opt1",
+            label: "720p",
+            detail: "",
+            estimatedBytes: nil,
+            configuration: YTDLPDownloadConfiguration(
+                formatExpression: "best",
+                displayName: "720p",
+                detailText: "",
+                contentPreference: .video,
+                extractAudio: false
+            )
+        )
+        _ = downloadManager.confirmMediaDownload(mediaInfo: mediaInfo, option: option, customFileName: "File1")
+        XCTAssertEqual(downloadManager.items.count, initialCount + 1)
+
+        guard let addedItem = downloadManager.items.first(where: { $0.fileName == "File1" }) else {
+            XCTFail("Item was not added")
+            return
+        }
+        downloadManager.removeItem(addedItem)
+        XCTAssertEqual(downloadManager.items.count, initialCount)
+        XCTAssertFalse(downloadManager.items.contains(where: { $0.id == addedItem.id }))
+    }
+
+    func testDownloadManagerRemoveSingleItemDeletesPhysicalFile() throws {
+        let settings = AppSettings()
+        let downloadManager = DownloadManager(settings: settings)
+        let downloadsDir = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
+        let uniqueBaseName = "test-delete-\(UUID().uuidString)"
+        let uniqueFileName = "\(uniqueBaseName).m4r"
+        let testFileURL = downloadsDir.appendingPathComponent(uniqueFileName)
+
+        // Create test file on disk
+        try "test audio data".write(to: testFileURL, atomically: true, encoding: .utf8)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: testFileURL.path))
+
+        let mediaInfo = YTDLPMediaInfo(
+            sourceURL: URL(string: "https://example.com/unique_item_\(UUID().uuidString)")!,
+            title: uniqueBaseName,
+            uploader: nil,
+            extractor: nil,
+            duration: nil,
+            thumbnailURL: nil,
+            videoOptions: [],
+            audioOptions: []
+        )
+        let option = YTDLPDownloadOption(
+            id: "opt-del",
+            label: "M4R",
+            detail: "",
+            estimatedBytes: nil,
+            configuration: YTDLPDownloadConfiguration(
+                formatExpression: "best",
+                displayName: "M4R",
+                detailText: "",
+                contentPreference: .audio,
+                extractAudio: true,
+                audioFormat: "m4r"
+            )
+        )
+        _ = downloadManager.confirmMediaDownload(mediaInfo: mediaInfo, option: option, customFileName: uniqueBaseName)
+
+        guard let addedItem = downloadManager.items.first(where: { $0.fileName == uniqueBaseName }) else {
+            XCTFail("Item was not added")
+            try? FileManager.default.removeItem(at: testFileURL)
+            return
+        }
+
+        downloadManager.removeItem(addedItem)
+        XCTAssertFalse(downloadManager.items.contains(where: { $0.id == addedItem.id }), "Item should be removed from UI list")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: testFileURL.path), "Physical file must be deleted from storage")
+    }
 }
 
 @MainActor

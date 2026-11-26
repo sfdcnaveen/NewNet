@@ -200,3 +200,58 @@
    Done by: CODEX
    Done at: 2026-11-23T15:47:26Z
 
+19. media-download-ui-text-optimisation
+   Id: 19-media-download-ui-text-optimisation
+   Scope: UI
+   Files: NewNet/Views/DropdownPanel.swift,NewNet/ViewModels/DownloadManagerViewModel.swift,NewNet/Services/DownloadManager.swift
+   Note: Optimized media download UI text, editable file name, layout spacing, format row alignment, and removed redundant subtext
+   Detail: tasks/details/19-media-download-ui-text-optimisation.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-26T06:13:09Z
+   Done by: CODEX
+   Done at: 2026-11-26T06:21:28Z
+
+20. media-download-exact-filename
+   Id: 20-media-download-exact-filename
+   Scope: UI/Services
+   Files: NewNet/Services/DownloadManager.swift,NewNet/Services/YTDLPService.swift,NewNetTests/NetworkMonitoringTests.swift
+   Note: Enforced exact custom filename (e.g. DC Ringtone.m4r / DC Ringtone.mp4 / DC Ringtone.gif) without clip timestamps or extractor tags
+   Detail: tasks/details/20-media-download-exact-filename.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-26T06:51:44Z
+   Done by: CODEX
+   Done at: 2026-11-26T06:54:00Z
+
+21. download-row-ui-cleanup
+   Id: 21-download-row-ui-cleanup
+   Scope: UI
+   Files: NewNet/Views/DownloadRow.swift,NewNet/Views/DropdownPanel.swift,NewNet/ViewModels/DownloadManagerViewModel.swift,NewNet/Services/DownloadManager.swift
+   Note: Cleaned up download row: removed yt-dlp tag, simplified format tag to M4R, circular action buttons, added delete button, and optimized item height
+   Detail: tasks/details/21-download-row-ui-cleanup.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-26T07:15:49Z
+   Done by: CODEX
+   Done at: 2026-11-26T07:20:05Z
+
+22. delete-downloaded-file-on-trash
+   Id: 22-delete-downloaded-file-on-trash
+   Scope: Services/UI
+   Files: NewNet/Services/DownloadManager.swift,NewNet/Views/DownloadRow.swift,NewNetTests/NetworkMonitoringTests.swift
+   Note: Deleted physical files from disk when clicking trash button and removed item from UI list
+   Detail: tasks/details/22-delete-downloaded-file-on-trash.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-26T09:37:50Z
+   Done by: CODEX
+   Done at: 2026-11-26T09:41:06Z
+
+23. release-v1-5-4
+   Id: 23-release-v1-5-4
+   Scope: Release
+   Files: NewNet/Info.plist,NewNet.xcodeproj/project.pbxproj
+   Note: Bumped version to 1.5.4 (154), passed 57 tests, packaged DMG
+   Detail: tasks/details/23-release-v1-5-4.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-26T09:47:23Z
+   Done by: CODEX
+   Done at: 2026-11-26T09:48:53Z
+

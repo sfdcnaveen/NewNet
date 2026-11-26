@@ -4,7 +4,7 @@ import Foundation
 import UserNotifications
 import os
 
-enum DownloadSubmissionResult {
+enum DownloadSubmissionResult: Equatable {
     case accepted
     case rejected(String)
 }
@@ -229,7 +229,8 @@ final class DownloadManager: ObservableObject {
 
     func confirmMediaDownload(
         mediaInfo: YTDLPMediaInfo,
-        option: YTDLPDownloadOption
+        option: YTDLPDownloadOption,
+        customFileName: String? = nil
     ) -> DownloadSubmissionResult {
         if let existingItem = duplicateItem(for: mediaInfo.sourceURL, engine: .ytDLP) {
             let isDifferentClip = existingItem.ytDLPConfiguration?.clipStart != option.configuration.clipStart ||
@@ -245,12 +246,15 @@ final class DownloadManager: ObservableObject {
             }
         }
 
-        var fileName = mediaInfo.title
-        if let clipStart = option.configuration.clipStart, let clipEnd = option.configuration.clipEnd {
-            let startTag = TimeFormatting.formatTimestamp(clipStart).replacingOccurrences(of: ":", with: ".")
-            let endTag = TimeFormatting.formatTimestamp(clipEnd).replacingOccurrences(of: ":", with: ".")
-            fileName = "\(mediaInfo.title) [\(startTag)-\(endTag)]"
+        let trimmedCustom = customFileName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        var baseTitle = (trimmedCustom?.isEmpty == false ? trimmedCustom : nil) ?? mediaInfo.title
+        for ext in ["mp4", "m4a", "m4r", "mp3", "gif", "webm", "mov", "mkv", "aac", "wav", "flac"] {
+            if baseTitle.lowercased().hasSuffix(".\(ext)") {
+                baseTitle = String(baseTitle.dropLast(ext.count + 1))
+                break
+            }
         }
+        let fileName = baseTitle
 
         enqueue(
             url: mediaInfo.sourceURL,
@@ -321,6 +325,78 @@ final class DownloadManager: ObservableObject {
     func clearRecentDownloads() {
         items.removeAll { $0.isTerminal }
         scheduleSave()
+    }
+
+    func removeItem(_ item: DownloadItem) {
+        cancelDownloadWork(for: item.id)
+        let resolvedItem = items.first(where: { $0.id == item.id }) ?? item
+        deletePhysicalFiles(for: resolvedItem)
+        if resolvedItem.destinationURL != item.destinationURL {
+            deletePhysicalFiles(for: item)
+        }
+        items.removeAll { $0.id == item.id }
+        scheduleSave()
+    }
+
+    func remove(id: UUID) {
+        cancelDownloadWork(for: id)
+        if let item = items.first(where: { $0.id == id }) {
+            deletePhysicalFiles(for: item)
+        }
+        items.removeAll { $0.id == id }
+        scheduleSave()
+    }
+
+    private func deletePhysicalFiles(for item: DownloadItem) {
+        var candidateURLs: Set<URL> = []
+        let dest = item.destinationURL.standardizedFileURL
+        let downloadsDir = downloadsDirectory.standardizedFileURL
+
+        // 1. Destination URL if not pointing directly to downloads directory itself
+        if dest.path != downloadsDir.path && !dest.hasDirectoryPath {
+            candidateURLs.insert(dest)
+        }
+
+        // 2. Candidate inside downloads directory with item.fileName
+        if !item.fileName.isEmpty {
+            let fileInDownloads = downloadsDir.appendingPathComponent(item.fileName).standardizedFileURL
+            if fileInDownloads.path != downloadsDir.path {
+                candidateURLs.insert(fileInDownloads)
+            }
+        }
+
+        // 3. Include format extensions, partial or variant artifacts (.part, .ytdl, .m4a if m4r)
+        for url in Array(candidateURLs) {
+            if url.pathExtension.isEmpty {
+                for ext in ["m4r", "mp4", "mp3", "gif", "m4a", "webm", "mov"] {
+                    candidateURLs.insert(url.appendingPathExtension(ext))
+                }
+            }
+            candidateURLs.insert(url.appendingPathExtension("part"))
+            candidateURLs.insert(url.appendingPathExtension("ytdl"))
+            if url.pathExtension.lowercased() == "m4r" {
+                candidateURLs.insert(url.deletingPathExtension().appendingPathExtension("m4a"))
+                candidateURLs.insert(url.deletingPathExtension().appendingPathExtension("m4a.part"))
+            }
+        }
+
+        // 4. Attempt moving to Trash first (native macOS), falling back to removeItem
+        for fileURL in candidateURLs {
+            let path = fileURL.path(percentEncoded: false)
+            if FileManager.default.fileExists(atPath: path) {
+                do {
+                    try FileManager.default.trashItem(at: fileURL, resultingItemURL: nil)
+                    logger.info("Moved downloaded file to trash: \(path)")
+                } catch {
+                    do {
+                        try FileManager.default.removeItem(at: fileURL)
+                        logger.info("Removed downloaded file: \(path)")
+                    } catch {
+                        logger.error("Failed to delete physical file \(path): \(error.localizedDescription)")
+                    }
+                }
+            }
+        }
     }
 
     func ytDLPBinaryDescription() -> String {
@@ -491,8 +567,10 @@ final class DownloadManager: ObservableObject {
 
         switch event {
         case .title(let title):
-            items[index].fileName = title
-            scheduleSave()
+            if items[index].fileName.isEmpty || items[index].fileName == "Media" || items[index].fileName.hasPrefix("HLSPlaylist") {
+                items[index].fileName = title
+                scheduleSave()
+            }
 
         case .progress(let downloadedBytes, let totalBytes):
             var item = items[index]
