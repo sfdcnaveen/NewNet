@@ -13,10 +13,10 @@ final class UtilitiesCoordinator: ObservableObject {
 
     private var cancellables: Set<AnyCancellable> = []
 
-    init(settings: AppSettings) {
+    init(settings: AppSettings, clipboardStorageURL: URL? = nil) {
         self.settings = settings
         self.keepAwake = KeepAwakeService()
-        self.clipboardHistory = ClipboardHistoryService()
+        self.clipboardHistory = ClipboardHistoryService(storageURL: clipboardStorageURL)
         self.quitOnClose = QuitOnCloseService()
         self.scrollInverter = ScrollInverterService()
         self.finderCutPaste = FinderCutPasteService()

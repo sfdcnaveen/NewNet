@@ -255,3 +255,36 @@
    Done by: CODEX
    Done at: 2026-11-26T09:48:53Z
 
+24. clipboard-persistence-and-filtering
+   Id: 24-clipboard-persistence-and-filtering
+   Scope: Services/Utilities,Tests
+   Files: NewNet/Services/Utilities/ClipboardHistoryService.swift,NewNetTests/NetworkMonitoringTests.swift,NewNet/Services/Utilities/UtilitiesCoordinator.swift
+   Note: Investigated clipboard history loss and unexpected link appearance, implemented test storage isolation, backup resilience, and Restored/TransientType filtering
+   Detail: tasks/details/24-clipboard-persistence-and-filtering.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-27T06:33:58Z
+   Done by: CODEX
+   Done at: 2026-11-27T06:38:35Z
+
+25. liquid-glass-launch-transparency
+   Id: 25-liquid-glass-launch-transparency
+   Scope: App/UI
+   Files: NewNet/App/StatusBarController.swift,NewNet/Views/NetworkDashboardView.swift
+   Note: Configured popover window transparency on popoverWillShow/popoverDidShow and upgraded NetworkDashboardView to individual liquid glass cards
+   Detail: tasks/details/25-liquid-glass-launch-transparency.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-27T07:27:16Z
+   Done by: CODEX
+   Done at: 2026-11-27T07:31:55Z
+
+26. release-v1-5-5
+   Id: 26-release-v1-5-5
+   Scope: Release,Packaging
+   Files: NewNet/Info.plist,NewNet.xcodeproj/project.pbxproj,appcast.xml
+   Note: Bumped version to 1.5.5 (155), passed 61 tests, packaged DMG, and signed Sparkle appcast
+   Detail: tasks/details/26-release-v1-5-5.md
+   Claimed by: CODEX
+   Claimed at: 2026-11-27T08:23:58Z
+   Done by: CODEX
+   Done at: 2026-11-27T08:26:07Z
+
