@@ -1275,7 +1275,12 @@ final class UtilitiesServicesTests: XCTestCase {
     }
 
     func testClipboardServicePinningAndDeletion() {
-        let service = ClipboardHistoryService()
+        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("test-clipboard-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempStorage = tempDir.appendingPathComponent("clipboard_history.json")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let service = ClipboardHistoryService(storageURL: tempStorage, startMonitoringImmediately: false)
         service.clearAllIncludingPinned()
         XCTAssertEqual(service.items.count, 0)
 
@@ -1295,6 +1300,80 @@ final class UtilitiesServicesTests: XCTestCase {
             service.deleteItem(first)
             XCTAssertFalse(service.items.contains { $0.id == first.id })
         }
+    }
+
+    func testClipboardHistoryStorageIsolatesFromRealUserFiles() {
+        let service = ClipboardHistoryService(startMonitoringImmediately: false)
+        XCTAssertFalse(service.storageURL.path.contains("Application Support/NewNet/clipboard_history.json"))
+        XCTAssertTrue(service.storageURL.path.contains("NewNet-Tests"))
+    }
+
+    func testClipboardHistoryBackupAndCorruptRecovery() {
+        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("test-backup-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempStorage = tempDir.appendingPathComponent("clipboard_history.json")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let service = ClipboardHistoryService(storageURL: tempStorage, startMonitoringImmediately: false)
+        let item = ClipboardItem(text: "Persistent Item", kind: .text)
+        service.record(item: item)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: service.storageURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: service.backupStorageURL.path))
+
+        // Corrupt primary file
+        try? "corrupted json content".data(using: .utf8)?.write(to: service.storageURL)
+
+        // New service instance should gracefully restore from backup
+        let restoredService = ClipboardHistoryService(storageURL: tempStorage, startMonitoringImmediately: false)
+        XCTAssertEqual(restoredService.items.count, 1)
+        XCTAssertEqual(restoredService.items.first?.text, "Persistent Item")
+    }
+
+    func testClipboardHistoryFiltersTransientAndRestoredTypes() {
+        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("test-filter-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempStorage = tempDir.appendingPathComponent("clipboard_history.json")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let customPasteboard = NSPasteboard.withUniqueName()
+        let service = ClipboardHistoryService(pasteboard: customPasteboard, storageURL: tempStorage, startMonitoringImmediately: false)
+
+        // 1. Normal copy should not be ignored
+        customPasteboard.clearContents()
+        customPasteboard.setString("Hello World", forType: .string)
+        XCTAssertFalse(service.shouldIgnorePasteboard())
+
+        // 2. Restored type (e.g. org.nspasteboard.RestoredType from system/utility restore) must be ignored
+        customPasteboard.setString("", forType: NSPasteboard.PasteboardType("org.nspasteboard.RestoredType"))
+        XCTAssertTrue(service.shouldIgnorePasteboard())
+
+        // 3. Transient type must also be ignored
+        customPasteboard.clearContents()
+        customPasteboard.setString("https://example.com", forType: .string)
+        customPasteboard.setString("", forType: NSPasteboard.PasteboardType("org.nspasteboard.TransientType"))
+        XCTAssertTrue(service.shouldIgnorePasteboard())
+    }
+
+    func testClipboardHistoryCopyDoesNotChangeCreationDate() {
+        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("test-copy-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempStorage = tempDir.appendingPathComponent("clipboard_history.json")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let customPasteboard = NSPasteboard.withUniqueName()
+        let service = ClipboardHistoryService(pasteboard: customPasteboard, storageURL: tempStorage, startMonitoringImmediately: false)
+
+        let yesterday = Date().addingTimeInterval(-86400)
+        let originalItem = ClipboardItem(text: "Yesterday Link", kind: .link, createdAt: yesterday)
+        service.record(item: originalItem)
+
+        let loadedItem = service.items.first!
+        XCTAssertEqual(loadedItem.createdAt.timeIntervalSince1970, yesterday.timeIntervalSince1970, accuracy: 1.0)
+
+        // When user copies to pasteboard, original createdAt should remain intact
+        service.copyToPasteboard(loadedItem)
+        XCTAssertEqual(service.items.first?.createdAt.timeIntervalSince1970 ?? 0, yesterday.timeIntervalSince1970, accuracy: 1.0)
     }
 
     // MARK: - Scroll Inverter Tests

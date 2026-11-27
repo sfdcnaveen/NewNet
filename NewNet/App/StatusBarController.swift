@@ -110,6 +110,7 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
             appearanceName = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) ?? .aqua
         }
         popover.appearance = NSAppearance(named: appearanceName)
+        configurePopoverWindow()
     }
 
     private func bindSnapshot(_ menuBarViewModel: MenuBarViewModel) {
@@ -230,9 +231,9 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
 
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         updatePopoverAppearance()
-        if let window = popover.contentViewController?.view.window {
-            window.isOpaque = false
-            window.backgroundColor = .clear
+        configurePopoverWindow()
+        DispatchQueue.main.async { [weak self] in
+            self?.configurePopoverWindow()
         }
         NSApp.activate(ignoringOtherApps: true)
         PermissionsManager.shared.refresh(prompt: false)
@@ -250,8 +251,28 @@ final class StatusBarController: NSObject, NSPopoverDelegate {
         applyWidth(width, to: button)
     }
 
+    // MARK: - NSPopoverDelegate
+
+    func popoverWillShow(_ notification: Notification) {
+        configurePopoverWindow()
+    }
+
+    func popoverDidShow(_ notification: Notification) {
+        configurePopoverWindow()
+    }
+
     func popoverDidClose(_ notification: Notification) {
         applyDeferredWidthIfNeeded()
+    }
+
+    private func configurePopoverWindow() {
+        guard let window = popover.contentViewController?.view.window else { return }
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.hasShadow = true
+        if let frameView = window.contentView?.superview {
+            frameView.wantsLayer = true
+        }
     }
 
 }

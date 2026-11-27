@@ -8,6 +8,7 @@ struct NetworkDashboardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            // Header
             HStack {
                 Text("Network")
                     .font(.system(size: 12, weight: .semibold))
@@ -18,103 +19,121 @@ struct NetworkDashboardView: View {
                     .foregroundStyle(statusColor)
             }
 
+            // Download & Upload metric cards with liquid glass specular highlights
             HStack(spacing: 10) {
                 metric(title: "Download", value: ByteCountFormatter.compactSpeedString(for: networkMonitor.snapshot.downloadBytesPerSecond), icon: "arrow.down", tint: .accentColor)
                 metric(title: "Upload", value: ByteCountFormatter.compactSpeedString(for: networkMonitor.snapshot.uploadBytesPerSecond), icon: "arrow.up", tint: .green)
             }
 
-            if !networkMonitor.history.isEmpty {
-                NetworkHistoryGraph(samples: networkMonitor.history)
-                    .frame(height: 48)
-                    .padding(6)
-                    .background {
-                        RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
-                            .fill(Color.primary.opacity(0.03))
-                    }
-                    .accessibilityLabel("Recent network activity graph")
-            }
+            // Interface Traffic & Graph Card
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "waveform.path.ecg")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.accentColor)
+                    Text(networkMonitor.activeInterfaceName ?? "Active Interface")
+                        .font(.system(size: 11, weight: .semibold))
+                    Spacer()
+                    Text(sessionUsageText)
+                        .font(.system(size: 10, weight: .medium))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
 
-            HStack(spacing: 8) {
-                Text(networkMonitor.activeInterfaceName ?? "No active interface")
-                    .font(.system(size: 11, weight: .medium))
-                Spacer()
-                Text(sessionUsageText)
-                    .font(.system(size: 10, weight: .medium))
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-            }
-
-            Divider()
-
-            HStack {
-                Text("Internet speed test")
-                    .font(.system(size: 11, weight: .semibold))
-                Spacer()
-                if speedTestService.isRunning {
-                    ProgressView(value: speedTestService.progress)
-                        .frame(width: 70)
-                    Button("Cancel") { speedTestService.cancel() }
-                        .buttonStyle(.plain)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.red)
-                } else {
-                    Button(speedTestService.downloadMegabitsPerSecond == nil ? "Start Test" : "Test Again") {
-                        speedTestService.start()
-                    }
-                    .buttonStyle(LiquidGlassButtonStyle(cornerRadius: DesignTokens.Radius.chip))
-                    .font(.system(size: 11, weight: .medium))
+                if !networkMonitor.history.isEmpty {
+                    NetworkHistoryGraph(samples: networkMonitor.history)
+                        .frame(height: 52)
+                        .padding(.vertical, 2)
+                        .accessibilityLabel("Recent network activity graph")
                 }
             }
+            .padding(12)
+            .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium)
 
-            if let down = speedTestService.downloadMegabitsPerSecond,
-               let up = speedTestService.uploadMegabitsPerSecond,
-               let latency = speedTestService.latencyMilliseconds {
-                Text("↓\(formatted(down, decimals: 1)) Mbps  ↑\(formatted(up, decimals: 1)) Mbps  •  \(formatted(latency, decimals: 0)) ms latency")
-                    .font(.system(size: 10, weight: .medium))
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
+            // Speed Test Card
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Label("Internet Speed Test", systemImage: "gauge.with.needle")
+                        .font(.system(size: 11, weight: .semibold))
+                    Spacer()
+                    if speedTestService.isRunning {
+                        ProgressView(value: speedTestService.progress)
+                            .frame(width: 70)
+                        Button("Cancel") { speedTestService.cancel() }
+                            .buttonStyle(.plain)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.red)
+                    } else {
+                        Button(speedTestService.downloadMegabitsPerSecond == nil ? "Start Test" : "Test Again") {
+                            speedTestService.start()
+                        }
+                        .buttonStyle(LiquidGlassButtonStyle(cornerRadius: DesignTokens.Radius.chip))
+                        .font(.system(size: 11, weight: .medium))
+                    }
+                }
+
+                if let down = speedTestService.downloadMegabitsPerSecond,
+                   let up = speedTestService.uploadMegabitsPerSecond,
+                   let latency = speedTestService.latencyMilliseconds {
+                    HStack(spacing: 8) {
+                        Text("↓\(formatted(down, decimals: 1)) Mbps  ↑\(formatted(up, decimals: 1)) Mbps")
+                            .font(.system(size: 10, weight: .medium))
+                            .monospacedDigit()
+                        Text("•")
+                            .foregroundStyle(.tertiary)
+                        Text("\(formatted(latency, decimals: 0)) ms latency")
+                            .font(.system(size: 10, weight: .medium))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
+            .padding(12)
+            .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium)
 
-            Toggle(
-                "Show active applications",
-                isOn: Binding(
-                    get: { settings.showActiveApplications },
-                    set: { settings.showActiveApplications = $0 }
+            // Active Applications Section
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle(
+                    "Show active applications",
+                    isOn: Binding(
+                        get: { settings.showActiveApplications },
+                        set: { settings.showActiveApplications = $0 }
+                    )
                 )
-            )
                 .toggleStyle(.checkbox)
                 .font(.system(size: 11))
                 .onChange(of: settings.showActiveApplications) { _, enabled in
                     networkMonitor.setProcessMonitoringEnabled(enabled)
                 }
 
-            if settings.showActiveApplications {
-                if networkMonitor.processUsage.isEmpty {
-                    Text(networkMonitor.processMonitoringMessage ?? "Measuring application network activity…")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(networkMonitor.processUsage) { process in
-                        HStack(spacing: 8) {
-                            ProcessIconView(processID: process.id)
-                            Text(process.name)
-                                .font(.system(size: 11, weight: .medium))
-                                .lineLimit(1)
-                            Spacer()
-                            Text("↓\(ByteCountFormatter.compactSpeedString(for: process.downloadBytesPerSecond)) ↑\(ByteCountFormatter.compactSpeedString(for: process.uploadBytesPerSecond))")
-                                .font(.system(size: 10))
-                                .monospacedDigit()
-                                .foregroundStyle(.secondary)
+                if settings.showActiveApplications {
+                    if networkMonitor.processUsage.isEmpty {
+                        Text(networkMonitor.processMonitoringMessage ?? "Measuring application network activity…")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(networkMonitor.processUsage) { process in
+                            HStack(spacing: 8) {
+                                ProcessIconView(processID: process.id)
+                                Text(process.name)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .lineLimit(1)
+                                Spacer()
+                                Text("↓\(ByteCountFormatter.compactSpeedString(for: process.downloadBytesPerSecond)) ↑\(ByteCountFormatter.compactSpeedString(for: process.uploadBytesPerSecond))")
+                                    .font(.system(size: 10))
+                                    .monospacedDigit()
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .liquidGlassControl(cornerRadius: DesignTokens.Radius.small)
                         }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .liquidGlassControl(cornerRadius: DesignTokens.Radius.small)
                     }
                 }
             }
+            .padding(12)
+            .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium)
         }
-        .padding(14)
-        .liquidGlassCard(cornerRadius: DesignTokens.Radius.large)
         .onAppear {
             networkMonitor.setProcessMonitoringEnabled(settings.showActiveApplications)
         }
@@ -157,7 +176,7 @@ struct NetworkDashboardView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .liquidGlassControl(cornerRadius: DesignTokens.Radius.medium)
+        .liquidGlassCard(cornerRadius: DesignTokens.Radius.medium, tint: tint.opacity(0.12))
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
